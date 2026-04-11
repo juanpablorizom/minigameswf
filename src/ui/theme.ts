@@ -1,3 +1,5 @@
+import type { AppThemePreference } from '../lib/storage';
+
 export const colors = {
   background: '#171311',
   backgroundElevated: '#211b18',
@@ -50,3 +52,29 @@ export const shadows = {
     elevation: 6
   }
 };
+
+export const themeOptions: {
+  id: AppThemePreference;
+  label: string;
+  description: string;
+  preview: [string, string, string];
+}[] = [
+  {
+    id: 'warm-night',
+    label: 'Warm Night',
+    description: 'Current dark foundation with champagne contrast.',
+    preview: ['#171311', '#2a221e', '#d6b989']
+  },
+  {
+    id: 'sunset-pop',
+    label: 'Sunset Pop',
+    description: 'A more vibrant direction with warmer highlights for the next visual pass.',
+    preview: ['#1a1110', '#39211a', '#e19a6d']
+  },
+  {
+    id: 'olive-pulse',
+    label: 'Olive Pulse',
+    description: 'Keeps the dark base but pushes active states toward a livelier social tone.',
+    preview: ['#151513', '#223026', '#9cb07f']
+  }
+];

@@ -8,11 +8,16 @@ type AppButtonProps = {
   onPress: () => void;
   variant?: 'primary' | 'secondary' | 'ghost';
   leftSlot?: ReactNode;
+  disabled?: boolean;
 };
 
-export function AppButton({ label, onPress, variant = 'primary', leftSlot }: AppButtonProps) {
+export function AppButton({ label, onPress, variant = 'primary', leftSlot, disabled = false }: AppButtonProps) {
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => [styles.base, styles[variant], pressed && styles.pressed]}>
+    <Pressable
+      onPress={onPress}
+      disabled={disabled}
+      style={({ pressed }) => [styles.base, styles[variant], disabled && styles.disabled, pressed && !disabled && styles.pressed]}
+    >
       {leftSlot ? <View style={styles.leftSlot}>{leftSlot}</View> : null}
       <Text style={[styles.label, styles[`${variant}Label`]]}>{label}</Text>
     </Pressable>
@@ -32,6 +37,9 @@ const styles = StyleSheet.create({
   pressed: {
     opacity: 0.88,
     transform: [{ scale: 0.99 }]
+  },
+  disabled: {
+    opacity: 0.45
   },
   primary: {
     backgroundColor: colors.accent

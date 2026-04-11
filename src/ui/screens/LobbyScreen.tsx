@@ -1,65 +1,118 @@
 import { StyleSheet, Text, View } from 'react-native';
 
-import { featuredGames, lobbyHighlights, onlineFriends } from '../../data/mockData';
-import type { UserProfile } from '../../navigation/types';
+import { featuredGames } from '../../data/mockData';
+import type { LobbyActionId, LobbyScenario } from '../../navigation/types';
 import { AppButton } from '../components/AppButton';
 import { AppScreen } from '../components/AppScreen';
 import { Badge } from '../components/Badge';
 import { SurfaceCard } from '../components/SurfaceCard';
-import { colors, spacing, typography } from '../theme';
+import { colors, radius, spacing, typography } from '../theme';
 
 type LobbyScreenProps = {
-  profile: UserProfile;
-  onCreateRoom: () => void;
-  onQuickPlay: () => void;
+  displayName: string;
+  scenario: LobbyScenario;
+  onAction: (actionId: LobbyActionId) => void;
 };
 
-export function LobbyScreen({ profile, onCreateRoom, onQuickPlay }: LobbyScreenProps) {
+export function LobbyScreen({ displayName, scenario, onAction }: LobbyScreenProps) {
+  const availableModes = featuredGames.filter((game) => scenario.modeIds.includes(game.id));
+
   return (
-    <AppScreen title={`Good evening, ${profile.name}`} subtitle="Rooms are built for quick starts, easy invites, and clean transitions into play.">
+    <AppScreen title={`${scenario.greeting}, ${displayName}`} subtitle={scenario.statusLabel}>
       <SurfaceCard>
-        <Badge label="Tonight's lobby" tone="accent" />
-        <Text style={styles.heroTitle}>Start a private room and pull your crew in fast.</Text>
-        <Text style={styles.copy}>
-          Keep the focus on the table: create a room, lock the lineup, and move straight into a social game stack.
-        </Text>
+        <View style={styles.heroTopRow}>
+          <Badge label={scenario.statusLabel} tone="accent" />
+          <Text style={styles.stateHint}>Home</Text>
+        </View>
+        <Text style={styles.heroTitle}>{scenario.title}</Text>
+        <Text style={styles.copy}>{scenario.subtitle}</Text>
         <View style={styles.actionRow}>
-          <AppButton label="Create Private Room" onPress={onCreateRoom} />
-          <AppButton label="Quick Play Preview" onPress={onQuickPlay} variant="secondary" />
+          <AppButton
+            label={scenario.primaryAction.label}
+            onPress={() => onAction(scenario.primaryAction.id)}
+            variant={scenario.primaryAction.variant}
+          />
+          {scenario.secondaryAction ? (
+            <AppButton
+              label={scenario.secondaryAction.label}
+              onPress={() => onAction(scenario.secondaryAction!.id)}
+              variant={scenario.secondaryAction.variant}
+            />
+          ) : null}
         </View>
         <View style={styles.pillRow}>
-          <Badge label="4 friends online" tone="success" />
-          <Badge label="Featured: Mentiroso Profesional" tone="neutral" />
+          <Badge label={`${scenario.socialItems.length} live updates`} tone="success" />
+          <Badge label={`${availableModes.length} modes ready`} tone="neutral" />
+          {(scenario.key === 'guest' || scenario.key === 'noRoom') ? (
+            <AppButton label="Quick play" onPress={() => onAction('quickPlay')} variant="ghost" />
+          ) : null}
         </View>
       </SurfaceCard>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Featured tonight</Text>
-        <SurfaceCard>
-          <View style={styles.featuredHeader}>
-            <View style={styles.featuredMeta}>
-              <Text style={styles.itemTitle}>Mentiroso Profesional</Text>
-              <Text style={styles.itemSubtitle}>A bluffing round built for fast social reads, clean answers, and loud reactions.</Text>
-            </View>
-            <Badge label="5 min" tone="accent" />
-          </View>
-        </SurfaceCard>
-        {featuredGames.slice(0, 2).map((game) => (
-          <SurfaceCard key={game.id}>
-            <View style={styles.featuredHeader}>
-              <View style={styles.featuredMeta}>
-                <Text style={styles.itemTitle}>{game.name}</Text>
-                <Text style={styles.itemSubtitle}>{game.description}</Text>
+      {scenario.roomSummary ? (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Current room</Text>
+          <SurfaceCard>
+            <View style={styles.detailHeader}>
+              <View style={styles.detailMeta}>
+                <Text style={styles.itemTitle}>{scenario.roomSummary.title}</Text>
+                <Text style={styles.itemSubtitle}>{scenario.roomSummary.subtitle}</Text>
               </View>
-              <Badge label={game.category} />
+              <View style={styles.codePill}>
+                <Text style={styles.codeLabel}>{scenario.roomSummary.code}</Text>
+              </View>
             </View>
+            <Text style={styles.supportingCopy}>{scenario.roomSummary.meta}</Text>
+            <AppButton
+              label={scenario.roomSummary.ctaLabel}
+              onPress={() => onAction(scenario.roomSummary!.ctaAction)}
+              variant="secondary"
+            />
           </SurfaceCard>
-        ))}
-      </View>
+        </View>
+      ) : null}
+
+      {scenario.invite ? (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Invite waiting</Text>
+          <SurfaceCard>
+            <View style={styles.detailHeader}>
+              <View style={styles.detailMeta}>
+                <Text style={styles.itemTitle}>{scenario.invite.title}</Text>
+                <Text style={styles.itemSubtitle}>{scenario.invite.subtitle}</Text>
+              </View>
+              <View style={styles.codePill}>
+                <Text style={styles.codeLabel}>{scenario.invite.code}</Text>
+              </View>
+            </View>
+            <Text style={styles.supportingCopy}>{scenario.invite.fromLabel}</Text>
+            <AppButton
+              label={scenario.invite.ctaLabel}
+              onPress={() => onAction(scenario.invite!.ctaAction)}
+              variant="secondary"
+            />
+          </SurfaceCard>
+        </View>
+      ) : null}
+
+      {scenario.recentActivity ? (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Resume</Text>
+          <SurfaceCard>
+            <Text style={styles.itemTitle}>{scenario.recentActivity.title}</Text>
+            <Text style={styles.itemSubtitle}>{scenario.recentActivity.subtitle}</Text>
+            <AppButton
+              label={scenario.recentActivity.ctaLabel}
+              onPress={() => onAction(scenario.recentActivity!.ctaAction)}
+              variant="secondary"
+            />
+          </SurfaceCard>
+        </View>
+      ) : null}
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Room pulse</Text>
-        {lobbyHighlights.map((item) => (
+        <Text style={styles.sectionTitle}>Friends and room activity</Text>
+        {scenario.socialItems.map((item) => (
           <SurfaceCard key={item.id}>
             <Text style={styles.itemTitle}>{item.title}</Text>
             <Text style={styles.itemSubtitle}>{item.subtitle}</Text>
@@ -68,8 +121,27 @@ export function LobbyScreen({ profile, onCreateRoom, onQuickPlay }: LobbyScreenP
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Friends around tonight</Text>
-        {onlineFriends.map((item) => (
+        <Text style={styles.sectionTitle}>Modes ready for tonight</Text>
+        {availableModes.map((game) => (
+          <SurfaceCard key={game.id}>
+            <View style={styles.detailHeader}>
+              <View style={styles.detailMeta}>
+                <Text style={styles.itemTitle}>{game.name}</Text>
+                <Text style={styles.itemSubtitle}>{game.description}</Text>
+              </View>
+              <Badge label={game.duration} tone="neutral" />
+            </View>
+            <View style={styles.metaRow}>
+              <Badge label={game.category} />
+              <Badge label={game.energy} tone="success" />
+            </View>
+          </SurfaceCard>
+        ))}
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Good next move</Text>
+        {scenario.recommendationItems.map((item) => (
           <SurfaceCard key={item.id}>
             <Text style={styles.itemTitle}>{item.title}</Text>
             <Text style={styles.itemSubtitle}>{item.subtitle}</Text>
@@ -81,6 +153,18 @@ export function LobbyScreen({ profile, onCreateRoom, onQuickPlay }: LobbyScreenP
 }
 
 const styles = StyleSheet.create({
+  heroTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: spacing.sm
+  },
+  stateHint: {
+    color: colors.textMuted,
+    fontSize: typography.caption,
+    textTransform: 'uppercase',
+    letterSpacing: 1.1
+  },
   heroTitle: {
     color: colors.textPrimary,
     fontSize: typography.title,
@@ -99,7 +183,8 @@ const styles = StyleSheet.create({
   pillRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: spacing.sm
+    gap: spacing.sm,
+    alignItems: 'center'
   },
   section: {
     gap: spacing.md
@@ -114,12 +199,12 @@ const styles = StyleSheet.create({
     fontSize: typography.body,
     fontWeight: '700'
   },
-  featuredHeader: {
+  detailHeader: {
     flexDirection: 'row',
     gap: spacing.md,
     alignItems: 'flex-start'
   },
-  featuredMeta: {
+  detailMeta: {
     flex: 1,
     gap: spacing.xs
   },
@@ -127,5 +212,31 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     fontSize: typography.body,
     lineHeight: 22
+  },
+  supportingCopy: {
+    color: colors.textMuted,
+    fontSize: typography.caption,
+    lineHeight: 18
+  },
+  codePill: {
+    minWidth: 74,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.pill,
+    backgroundColor: colors.backgroundElevated,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center'
+  },
+  codeLabel: {
+    color: colors.accentSoft,
+    fontSize: typography.caption,
+    fontWeight: '800',
+    letterSpacing: 1.2
+  },
+  metaRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm
   }
 });

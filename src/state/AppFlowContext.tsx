@@ -1,20 +1,27 @@
 import { createContext, useContext, useMemo, useState, type PropsWithChildren } from 'react';
 
-import { featuredGames, initialRoomSettings, initialSelectedGameIds } from '../data/mockData';
+import { featuredGames, initialRoomSettings, initialSelectedGameIds, lobbyScenarios } from '../data/mockData';
 import { screenOrder } from '../navigation/routes';
-import type { MiniGame, RoomSettings, ScreenName, UserProfile } from '../navigation/types';
+import type { AppTab, LobbyScenario, LobbyScenarioKey, MiniGame, RoomSettings, ScreenName } from '../navigation/types';
 
 type AppFlowValue = {
+  activeTab: AppTab;
   currentScreen: ScreenName;
-  profile: UserProfile;
+  lobbyScenarioKey: LobbyScenarioKey;
+  lobbyScenario: LobbyScenario;
   selectedGameIds: string[];
   selectedGames: MiniGame[];
   roomSettings: RoomSettings;
   canGoBack: boolean;
   goBack: () => void;
-  continueFromWelcome: (name: string) => void;
-  continueAsGuest: () => void;
+  openAccount: () => void;
+  openSettings: () => void;
+  openGamesTab: () => void;
   openRoom: () => void;
+  joinRoomByCode: () => void;
+  continueRoom: () => void;
+  inviteFriends: () => void;
+  resumeLastActivity: () => void;
   openQuickPlay: () => void;
   openChooseGames: () => void;
   openRoomSettings: () => void;
@@ -26,50 +33,98 @@ type AppFlowValue = {
   revealResults: () => void;
   playAgain: () => void;
   backToLobby: () => void;
+  resetToLobby: () => void;
 };
 
 const AppFlowContext = createContext<AppFlowValue | null>(null);
 
 export function AppFlowProvider({ children }: PropsWithChildren) {
-  const [currentScreen, setCurrentScreen] = useState<ScreenName>('welcome');
-  const [profile, setProfile] = useState<UserProfile>({ name: 'Player One' });
+  const [activeTab, setActiveTab] = useState<AppTab>('games');
+  const [currentScreen, setCurrentScreen] = useState<ScreenName>('lobby');
+  const [returnScreen, setReturnScreen] = useState<ScreenName>('lobby');
+  const [lobbyScenarioKey, setLobbyScenarioKey] = useState<LobbyScenarioKey>('invited');
   const [selectedGameIds, setSelectedGameIds] = useState<string[]>(initialSelectedGameIds);
   const [roomSettings, setRoomSettings] = useState<RoomSettings>(initialRoomSettings);
 
+  const lobbyScenario = lobbyScenarios[lobbyScenarioKey];
   const selectedGames = useMemo(
     () => featuredGames.filter((game) => selectedGameIds.includes(game.id)),
     [selectedGameIds]
   );
 
-  const canGoBack = currentScreen !== 'welcome' && currentScreen !== 'lobby';
+  const canGoBack = activeTab === 'games' && currentScreen !== 'lobby';
 
   const value = useMemo<AppFlowValue>(
     () => ({
+      activeTab,
       currentScreen,
-      profile,
+      lobbyScenarioKey,
+      lobbyScenario,
       selectedGameIds,
       selectedGames,
       roomSettings,
       canGoBack,
       goBack: () => {
+        if (activeTab !== 'games') {
+          setActiveTab('games');
+          return;
+        }
+
         const currentIndex = screenOrder.indexOf(currentScreen);
 
         if (currentIndex > 0) {
           setCurrentScreen(screenOrder[currentIndex - 1]);
         }
       },
-      continueFromWelcome: (name) => {
-        setProfile({ name: name.trim() || 'Guest Player' });
-        setCurrentScreen('lobby');
+      openAccount: () => {
+        setReturnScreen(currentScreen);
+        setActiveTab('account');
       },
-      continueAsGuest: () => {
-        setProfile({ name: 'Guest Player' });
-        setCurrentScreen('lobby');
+      openSettings: () => {
+        setReturnScreen(currentScreen);
+        setActiveTab('settings');
       },
-      openRoom: () => setCurrentScreen('room'),
-      openQuickPlay: () => setCurrentScreen('gameplay'),
-      openChooseGames: () => setCurrentScreen('chooseGames'),
-      openRoomSettings: () => setCurrentScreen('roomSettings'),
+      openGamesTab: () => {
+        setCurrentScreen(returnScreen);
+        setActiveTab('games');
+      },
+      openRoom: () => {
+        setActiveTab('games');
+        setLobbyScenarioKey('activeRoom');
+        setCurrentScreen('room');
+      },
+      joinRoomByCode: () => {
+        setActiveTab('games');
+        setLobbyScenarioKey('activeRoom');
+        setCurrentScreen('room');
+      },
+      continueRoom: () => {
+        setActiveTab('games');
+        setLobbyScenarioKey('activeRoom');
+        setCurrentScreen('room');
+      },
+      inviteFriends: () => {
+        setActiveTab('games');
+        setLobbyScenarioKey('activeRoom');
+        setCurrentScreen('room');
+      },
+      resumeLastActivity: () => {
+        setActiveTab('games');
+        setLobbyScenarioKey('returning');
+        setCurrentScreen('gameplay');
+      },
+      openQuickPlay: () => {
+        setActiveTab('games');
+        setCurrentScreen('gameplay');
+      },
+      openChooseGames: () => {
+        setActiveTab('games');
+        setCurrentScreen('chooseGames');
+      },
+      openRoomSettings: () => {
+        setActiveTab('games');
+        setCurrentScreen('roomSettings');
+      },
       toggleGameSelection: (gameId) => {
         setSelectedGameIds((current) =>
           current.includes(gameId) ? current.filter((id) => id !== gameId) : [...current, gameId]
@@ -78,12 +133,32 @@ export function AppFlowProvider({ children }: PropsWithChildren) {
       saveGames: () => setCurrentScreen('room'),
       updateRoomSettings: setRoomSettings,
       saveRoomSettings: () => setCurrentScreen('room'),
-      startGameplay: () => setCurrentScreen('gameplay'),
-      revealResults: () => setCurrentScreen('results'),
-      playAgain: () => setCurrentScreen('gameplay'),
-      backToLobby: () => setCurrentScreen('lobby')
+      startGameplay: () => {
+        setActiveTab('games');
+        setLobbyScenarioKey('activeRoom');
+        setCurrentScreen('gameplay');
+      },
+      revealResults: () => {
+        setActiveTab('games');
+        setCurrentScreen('results');
+      },
+      playAgain: () => {
+        setActiveTab('games');
+        setCurrentScreen('gameplay');
+      },
+      backToLobby: () => {
+        setActiveTab('games');
+        setLobbyScenarioKey('returning');
+        setCurrentScreen('lobby');
+      },
+      resetToLobby: () => {
+        setReturnScreen('lobby');
+        setActiveTab('games');
+        setLobbyScenarioKey('noRoom');
+        setCurrentScreen('lobby');
+      }
     }),
-    [canGoBack, currentScreen, profile, roomSettings, selectedGameIds, selectedGames]
+    [activeTab, canGoBack, currentScreen, lobbyScenario, lobbyScenarioKey, returnScreen, roomSettings, selectedGameIds, selectedGames]
   );
 
   return <AppFlowContext.Provider value={value}>{children}</AppFlowContext.Provider>;

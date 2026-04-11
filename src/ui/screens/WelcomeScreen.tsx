@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import { AppButton } from '../components/AppButton';
 import { AppScreen } from '../components/AppScreen';
@@ -8,23 +9,27 @@ import { SurfaceCard } from '../components/SurfaceCard';
 import { colors, radius, spacing, typography } from '../theme';
 
 type WelcomeScreenProps = {
-  initialName: string;
-  onContinue: (name: string) => void;
-  onContinueAsGuest: () => void;
+  isBusy: boolean;
+  isSupabaseConfigured: boolean;
+  notice: string | null;
+  onSignIn: (email: string, password: string) => void;
+  onSignUp: (email: string, password: string, displayName: string) => void;
+  onContinueAsGuest: (displayName: string) => void;
 };
 
-export function WelcomeScreen({ initialName, onContinue, onContinueAsGuest }: WelcomeScreenProps) {
-  const [name, setName] = useState(initialName);
+export function WelcomeScreen({ isBusy, isSupabaseConfigured, notice, onSignIn, onSignUp, onContinueAsGuest }: WelcomeScreenProps) {
+  const { t } = useTranslation();
+  const [displayName, setDisplayName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
 
   return (
     <AppScreen>
       <View style={styles.hero}>
-        <Badge label="JUNTADA" tone="accent" />
-        <Text style={styles.eyebrow}>Social Game Night</Text>
-        <Text style={styles.title}>Bring the room together before the first round even starts.</Text>
-        <Text style={styles.subtitle}>
-          Join fast, host cleanly, invite friends, line up games, and keep the whole night moving through one polished flow.
-        </Text>
+        <Badge label={t('auth.badge')} tone="accent" />
+        <Text style={styles.eyebrow}>{t('auth.eyebrow')}</Text>
+        <Text style={styles.title}>{t('auth.title')}</Text>
+        <Text style={styles.subtitle}>{t('auth.subtitle')}</Text>
         <View style={styles.visualBlock}>
           <View style={styles.visualRow}>
             <View style={styles.visualCardLarge}>
@@ -44,28 +49,53 @@ export function WelcomeScreen({ initialName, onContinue, onContinueAsGuest }: We
       </View>
 
       <SurfaceCard>
-        <Text style={styles.sectionTitle}>Enter the lobby</Text>
-        <Text style={styles.cardCopy}>Pick the name your friends will see when you drop into a room.</Text>
+        <Text style={styles.sectionTitle}>{t('auth.primaryCardTitle')}</Text>
+        <Text style={styles.cardCopy}>{t('auth.primaryCardCopy')}</Text>
         <TextInput
-          value={name}
-          onChangeText={setName}
-          placeholder="Your display name"
+          value={displayName}
+          onChangeText={setDisplayName}
+          placeholder={t('auth.displayNamePlaceholder')}
           placeholderTextColor={colors.textMuted}
           style={styles.input}
         />
-        <AppButton label="Continue" onPress={() => onContinue(name.trim() || 'Guest Player')} />
-        <AppButton label="Continue as Guest" onPress={onContinueAsGuest} variant="secondary" />
+        <TextInput
+          value={email}
+          onChangeText={setEmail}
+          placeholder={t('auth.emailPlaceholder')}
+          placeholderTextColor={colors.textMuted}
+          style={styles.input}
+          autoCapitalize="none"
+          keyboardType="email-address"
+        />
+        <TextInput
+          value={password}
+          onChangeText={setPassword}
+          placeholder={t('auth.passwordPlaceholder')}
+          placeholderTextColor={colors.textMuted}
+          style={styles.input}
+          autoCapitalize="none"
+          secureTextEntry
+        />
+        <AppButton label={t('auth.signIn')} onPress={() => onSignIn(email.trim(), password)} disabled={!isSupabaseConfigured || isBusy} />
+        <AppButton
+          label={t('auth.signUp')}
+          onPress={() => onSignUp(email.trim(), password, displayName.trim())}
+          variant="secondary"
+          disabled={!isSupabaseConfigured || isBusy}
+        />
+        <AppButton label={t('auth.continueAsGuest')} onPress={() => onContinueAsGuest(displayName.trim())} variant="ghost" disabled={isBusy} />
+        <Text style={styles.helper}>{t('auth.guestHint')}</Text>
+        {!isSupabaseConfigured ? <Text style={styles.notice}>{t('auth.supabaseMissing')}</Text> : null}
+        {notice ? <Text style={styles.notice}>{notice}</Text> : null}
       </SurfaceCard>
 
       <SurfaceCard>
         <View style={styles.previewHeader}>
-          <Text style={styles.sectionTitle}>What’s ready now</Text>
+          <Text style={styles.sectionTitle}>{t('auth.continueBlockTitle')}</Text>
           <Badge label="Shell MVP" tone="success" />
         </View>
         <View style={styles.featureList}>
-          <Text style={styles.featureItem}>Private rooms with host controls and invite code</Text>
-          <Text style={styles.featureItem}>Mini game selection with realistic pacing</Text>
-          <Text style={styles.featureItem}>Gameplay shell and clean results podium</Text>
+          <Text style={styles.featureItem}>{t('auth.continueBlockCopy')}</Text>
         </View>
       </SurfaceCard>
     </AppScreen>
@@ -178,6 +208,16 @@ const styles = StyleSheet.create({
     gap: spacing.sm
   },
   featureItem: {
+    color: colors.textSecondary,
+    fontSize: typography.body,
+    lineHeight: 22
+  },
+  notice: {
+    color: colors.accentSoft,
+    fontSize: typography.caption,
+    lineHeight: 18
+  },
+  helper: {
     color: colors.textSecondary,
     fontSize: typography.body,
     lineHeight: 22
