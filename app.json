@@ -1,0 +1,24 @@
+{
+  "expo": {
+    "name": "JUNTADA",
+    "slug": "juntada",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#171311"
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#171311"
+      }
+    },
+    "web": {
+      "bundler": "metro"
+    }
+  }
+}
