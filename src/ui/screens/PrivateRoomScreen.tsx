@@ -1,7 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native';
 
-import { featuredGames, roomActivity } from '../../data/mockData';
-import type { MiniGame, Player, RoomSettings } from '../../navigation/types';
+import type { RoomActivityView, RoomMemberView } from '../../data/rooms';
+import type { MiniGame, RoomSettings } from '../../navigation/types';
 import { AppButton } from '../components/AppButton';
 import { AppScreen } from '../components/AppScreen';
 import { Badge } from '../components/Badge';
@@ -9,84 +9,107 @@ import { SurfaceCard } from '../components/SurfaceCard';
 import { colors, spacing, typography } from '../theme';
 
 type PrivateRoomScreenProps = {
-  players: Player[];
-  selectedGames: MiniGame[];
+  roomCode: string;
+  roomStatus: 'waiting' | 'active' | 'finished';
+  members: RoomMemberView[];
+  activity: RoomActivityView[];
+  selectedGame: MiniGame | null;
   settings: RoomSettings;
-  onInviteFriends: () => void;
+  canManageRoom: boolean;
+  isBusy: boolean;
+  notice: string | null;
+  onShareCode: () => void;
   onChooseGames: () => void;
   onOpenSettings: () => void;
   onStart: () => void;
 };
 
 export function PrivateRoomScreen({
-  players,
-  selectedGames,
+  roomCode,
+  roomStatus,
+  members,
+  activity,
+  selectedGame,
   settings,
-  onInviteFriends,
+  canManageRoom,
+  isBusy,
+  notice,
+  onShareCode,
   onChooseGames,
   onOpenSettings,
   onStart
 }: PrivateRoomScreenProps) {
+  const activeMembers = members.filter((member) => member.isActive);
+  const host = members.find((member) => member.role === 'host') ?? null;
+
   return (
-    <AppScreen title="Private Room" subtitle="Host tools, guest readiness, and tonight’s lineup live here.">
+    <AppScreen title="Party room" subtitle={canManageRoom ? 'You are hosting this room. Keep members moving and lock the flow before the first round starts.' : 'The host controls setup. You can follow who is in and wait for the next step.'}>
       <SurfaceCard>
         <View style={styles.roomTop}>
           <View style={styles.codeBlock}>
-            <Text style={styles.codeLabel}>Invite code</Text>
-            <Text style={styles.codeValue}>Q7K9</Text>
+            <Text style={styles.codeLabel}>Room code</Text>
+            <Text style={styles.codeValue}>{roomCode}</Text>
           </View>
-          <Badge label="Host ready" tone="success" />
+          <Badge label={roomStatus === 'active' ? 'In session' : roomStatus === 'finished' ? 'Finished' : 'Waiting'} tone={roomStatus === 'active' ? 'success' : 'accent'} />
         </View>
         <Text style={styles.sectionCopy}>
-          The room is staged for {players.length} players, {selectedGames.length} selected games, and {settings.rounds} rounds.
+          {host ? `${host.displayName} is hosting` : 'Host unavailable'} · {activeMembers.length} active members
         </Text>
         <View style={styles.roomActions}>
-          <AppButton label="Invite Friends" onPress={onInviteFriends} variant="secondary" />
-          <AppButton label="Continue to Game" onPress={onStart} />
+          <AppButton label="Share code" onPress={onShareCode} variant="secondary" />
+          {canManageRoom ? (
+            <AppButton label={roomStatus === 'active' ? 'Return to game' : 'Continue to game'} onPress={onStart} disabled={isBusy} />
+          ) : null}
         </View>
+        {notice ? <Text style={styles.notice}>{notice}</Text> : null}
       </SurfaceCard>
 
       <SurfaceCard>
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Players</Text>
-          <Badge label={`${players.filter((player) => player.status !== 'invited').length} active`} />
+          <Text style={styles.sectionTitle}>Members</Text>
+          <Badge label={`${activeMembers.length} active`} />
         </View>
-        {players.map((player) => (
-          <View key={player.id} style={styles.playerRow}>
+        {members.map((member) => (
+          <View key={member.id} style={styles.playerRow}>
             <View style={styles.avatar}>
-              <Text style={styles.avatarLabel}>{player.name.slice(0, 2).toUpperCase()}</Text>
+              <Text style={styles.avatarLabel}>{member.displayName.slice(0, 2).toUpperCase()}</Text>
             </View>
             <View style={styles.playerMeta}>
-              <Text style={styles.playerName}>{player.name}</Text>
-              <Text style={styles.playerMood}>{player.mood}</Text>
+              <View style={styles.playerTitleRow}>
+                <Text style={styles.playerName}>{member.displayName}</Text>
+                {member.isCurrentUser ? <Badge label="You" tone="neutral" /> : null}
+              </View>
+              <Text style={styles.playerMood}>@{member.username}</Text>
             </View>
-            <Badge label={player.status === 'host' ? 'Host' : player.status === 'invited' ? 'Invited' : 'Ready'} tone={player.status === 'invited' ? 'neutral' : 'success'} />
+            <Badge label={member.role === 'host' ? 'Host' : member.isActive ? 'Joined' : 'Away'} tone={member.role === 'host' || member.isActive ? 'success' : 'neutral'} />
           </View>
         ))}
       </SurfaceCard>
 
       <SurfaceCard>
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Mini game lineup</Text>
-          <AppButton label="Edit" onPress={onChooseGames} variant="ghost" />
+          <Text style={styles.sectionTitle}>Current mode</Text>
+          {canManageRoom ? <AppButton label="Change" onPress={onChooseGames} variant="ghost" /> : null}
         </View>
-        {(selectedGames.length ? selectedGames : featuredGames.slice(0, 2)).map((game) => (
-          <View key={game.id} style={styles.listRow}>
+        {selectedGame ? (
+          <View style={styles.listRow}>
             <View style={styles.listMeta}>
-              <Text style={styles.itemTitle}>{game.name}</Text>
+              <Text style={styles.itemTitle}>{selectedGame.name}</Text>
               <Text style={styles.itemSubtitle}>
-                {game.duration} · {game.energy}
+                {selectedGame.duration} · {selectedGame.energy}
               </Text>
             </View>
-            <Badge label="Queued" tone="accent" />
+            <Badge label="Selected" tone="accent" />
           </View>
-        ))}
+        ) : (
+          <Text style={styles.itemSubtitle}>{canManageRoom ? 'Choose the first mode before starting the party.' : 'The host has not selected the next mode yet.'}</Text>
+        )}
       </SurfaceCard>
 
       <SurfaceCard>
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Room setup</Text>
-          <AppButton label="Adjust" onPress={onOpenSettings} variant="ghost" />
+          <Text style={styles.sectionTitle}>Party setup</Text>
+          {canManageRoom ? <AppButton label="Adjust" onPress={onOpenSettings} variant="ghost" /> : null}
         </View>
         <Text style={styles.itemSubtitle}>Privacy: {settings.privacy}</Text>
         <Text style={styles.itemSubtitle}>Max players: {settings.maxPlayers}</Text>
@@ -98,18 +121,22 @@ export function PrivateRoomScreen({
 
       <SurfaceCard>
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Room activity</Text>
+          <Text style={styles.sectionTitle}>Party activity</Text>
           <Badge label="Live" tone="success" />
         </View>
-        {roomActivity.map((item) => (
-          <View key={item.id} style={styles.activityRow}>
-            <View style={styles.activityMarker} />
-            <View style={styles.listMeta}>
-              <Text style={styles.itemTitle}>{item.title}</Text>
-              <Text style={styles.itemSubtitle}>{item.subtitle}</Text>
+        {activity.length ? (
+          activity.map((item) => (
+            <View key={item.id} style={styles.activityRow}>
+              <View style={styles.activityMarker} />
+              <View style={styles.listMeta}>
+                <Text style={styles.itemTitle}>{item.title}</Text>
+                <Text style={styles.itemSubtitle}>{item.subtitle}</Text>
+              </View>
             </View>
-          </View>
-        ))}
+          ))
+        ) : (
+          <Text style={styles.itemSubtitle}>Room activity will appear here as members join and the party moves forward.</Text>
+        )}
       </SurfaceCard>
     </AppScreen>
   );
@@ -143,6 +170,11 @@ const styles = StyleSheet.create({
   roomActions: {
     gap: spacing.sm
   },
+  notice: {
+    color: colors.accentSoft,
+    fontSize: typography.caption,
+    lineHeight: 18
+  },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -174,6 +206,12 @@ const styles = StyleSheet.create({
   playerMeta: {
     flex: 1,
     gap: 2
+  },
+  playerTitleRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    alignItems: 'center'
   },
   playerName: {
     color: colors.textPrimary,

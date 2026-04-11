@@ -2,6 +2,7 @@ export type AppTab = 'account' | 'games' | 'settings';
 
 export type ScreenName =
   | 'lobby'
+  | 'joinRoom'
   | 'room'
   | 'chooseGames'
   | 'roomSettings'

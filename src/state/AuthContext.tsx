@@ -4,18 +4,7 @@ import type { Session, User } from '@supabase/supabase-js';
 import { ensureAccountRecords, providerLabelFromUser, updateLanguagePreference, type ProfileRow, type UserSettingsRow } from '../data/account';
 import i18n from '../i18n/i18n';
 import { isAccountLinkingEnabled, isSupabaseConfigured, supabase } from '../lib/supabase';
-import {
-  clearStoredGuestProfile,
-  loadStoredGuestProfile,
-  loadStoredLanguage,
-  loadStoredTheme,
-  storeGuestProfile,
-  storeLanguage,
-  storeTheme,
-  type AppLanguage,
-  type AppThemePreference,
-  type GuestProfile
-} from '../lib/storage';
+import { loadStoredLanguage, loadStoredTheme, storeLanguage, storeTheme, type AppLanguage, type AppThemePreference } from '../lib/storage';
 
 type AuthActionResult = {
   error?: string;
@@ -48,21 +37,18 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-function buildGuestUsername(displayName: string) {
-  const base =
-    displayName
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '') || 'guest-player';
+function isAnonymousUser(user: User | null) {
+  if (!user) {
+    return false;
+  }
 
-  return `guest-${base}`;
+  return user.app_metadata?.provider === 'anonymous';
 }
 
 export function AuthProvider({ children }: PropsWithChildren) {
   const [isReady, setIsReady] = useState(false);
   const [isBusy, setIsBusy] = useState(false);
   const [session, setSession] = useState<Session | null>(null);
-  const [guestProfile, setGuestProfile] = useState<GuestProfile | null>(null);
   const [profile, setProfile] = useState<ProfileRow | null>(null);
   const [settings, setSettings] = useState<UserSettingsRow | null>(null);
   const [language, setLanguage] = useState<AppLanguage>('es');
@@ -79,21 +65,17 @@ export function AuthProvider({ children }: PropsWithChildren) {
     setThemePreference(nextTheme);
   }
 
-  async function hydrateAccount(nextSession: Session | null, fallbackLanguage: AppLanguage, storedGuestProfile: GuestProfile | null) {
+  async function hydrateAccount(nextSession: Session | null, fallbackLanguage: AppLanguage) {
     setSession(nextSession);
 
     if (!nextSession?.user) {
       setProfile(null);
       setSettings(null);
-      setGuestProfile(storedGuestProfile);
       await applyLanguage(fallbackLanguage);
       return;
     }
 
     try {
-      setGuestProfile(null);
-      await clearStoredGuestProfile();
-
       const account = await ensureAccountRecords(nextSession.user, fallbackLanguage);
       setProfile(account.profile);
       setSettings(account.settings);
@@ -111,11 +93,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     let isMounted = true;
 
     async function bootstrap() {
-      const [storedLanguage, storedTheme, storedGuestProfile] = await Promise.all([
-        loadStoredLanguage(),
-        loadStoredTheme(),
-        loadStoredGuestProfile()
-      ]);
+      const [storedLanguage, storedTheme] = await Promise.all([loadStoredLanguage(), loadStoredTheme()]);
 
       await i18n.changeLanguage(storedLanguage);
 
@@ -127,7 +105,6 @@ export function AuthProvider({ children }: PropsWithChildren) {
       setThemePreference(storedTheme);
 
       if (!isSupabaseConfigured) {
-        setGuestProfile(storedGuestProfile);
         setIsReady(true);
         return;
       }
@@ -141,7 +118,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       }
 
       try {
-        await hydrateAccount(initialSession, storedLanguage, storedGuestProfile);
+        await hydrateAccount(initialSession, storedLanguage);
       } finally {
         if (isMounted) {
           setIsReady(true);
@@ -158,9 +135,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
         return;
       }
 
-      void Promise.all([loadStoredLanguage(), loadStoredGuestProfile()]).then(([storedLanguage, storedGuestProfile]) =>
-        hydrateAccount(nextSession, storedLanguage, storedGuestProfile)
-      );
+      void loadStoredLanguage().then((storedLanguage) => hydrateAccount(nextSession, storedLanguage));
     });
 
     return () => {
@@ -171,7 +146,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
   const value = useMemo<AuthContextValue>(() => {
     const user = session?.user ?? null;
-    const isGuest = !user && !!guestProfile;
+    const isGuest = isAnonymousUser(user);
     const linkedProviderLabel = settings?.linked_provider_label ?? (user ? providerLabelFromUser(user) : null);
 
     return {
@@ -185,8 +160,11 @@ export function AuthProvider({ children }: PropsWithChildren) {
       settings,
       language,
       themePreference,
-      displayName: profile?.display_name ?? guestProfile?.displayName ?? null,
-      username: profile?.username ?? guestProfile?.username ?? null,
+      displayName:
+        profile?.display_name ??
+        (typeof user?.user_metadata?.display_name === 'string' ? user.user_metadata.display_name : null) ??
+        null,
+      username: profile?.username ?? null,
       email: user?.email ?? null,
       linkedProviderLabel,
       signInWithEmail: async (email, password) => {
@@ -228,30 +206,23 @@ export function AuthProvider({ children }: PropsWithChildren) {
         return {};
       },
       continueAsGuest: async (displayName) => {
-        const trimmedName = displayName.trim() || 'Guest Player';
-        const nextGuestProfile = {
-          displayName: trimmedName,
-          username: buildGuestUsername(trimmedName)
-        };
-
-        await storeGuestProfile(nextGuestProfile);
-        setGuestProfile(nextGuestProfile);
-        setSession(null);
-        setProfile(null);
-        setSettings(null);
-
-        return {};
-      },
-      signOut: async () => {
-        if (isGuest) {
-          await clearStoredGuestProfile();
-          setGuestProfile(null);
-          setSession(null);
-          setProfile(null);
-          setSettings(null);
-          return;
+        if (!isSupabaseConfigured) {
+          return { error: 'SUPABASE_NOT_CONFIGURED' };
         }
 
+        setIsBusy(true);
+        const { error } = await supabase.auth.signInAnonymously({
+          options: {
+            data: {
+              display_name: displayName.trim() || 'Guest Player'
+            }
+          }
+        });
+        setIsBusy(false);
+
+        return error ? { error: error.message } : {};
+      },
+      signOut: async () => {
         if (!isSupabaseConfigured) {
           return;
         }
@@ -300,7 +271,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
         return { message: 'LINKING_REQUIRES_SETUP' };
       }
     };
-  }, [guestProfile, isBusy, isReady, language, profile, session, settings, themePreference]);
+  }, [isBusy, isReady, language, profile, session, settings, themePreference]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

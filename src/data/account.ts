@@ -8,7 +8,11 @@ export type ProfileRow = Database['public']['Tables']['profiles']['Row'];
 export type UserSettingsRow = Database['public']['Tables']['user_settings']['Row'];
 
 function buildUsername(user: User) {
-  const emailBase = user.email?.split('@')[0]?.replace(/[^a-zA-Z0-9_-]/g, '-').toLowerCase() || 'player';
+  const metadataName =
+    typeof user.user_metadata?.display_name === 'string'
+      ? user.user_metadata.display_name.replace(/[^a-zA-Z0-9_-]/g, '-').toLowerCase()
+      : null;
+  const emailBase = user.email?.split('@')[0]?.replace(/[^a-zA-Z0-9_-]/g, '-').toLowerCase() || metadataName || 'player';
 
   return `${emailBase}-${user.id.slice(0, 6)}`;
 }
@@ -22,6 +26,10 @@ export function providerLabelFromUser(user: User) {
 
   if (provider === 'apple') {
     return 'Apple';
+  }
+
+  if (provider === 'anonymous') {
+    return 'Guest';
   }
 
   return 'Email';

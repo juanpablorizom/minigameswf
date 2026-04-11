@@ -83,7 +83,7 @@ export function WelcomeScreen({ isBusy, isSupabaseConfigured, notice, onSignIn, 
           variant="secondary"
           disabled={!isSupabaseConfigured || isBusy}
         />
-        <AppButton label={t('auth.continueAsGuest')} onPress={() => onContinueAsGuest(displayName.trim())} variant="ghost" disabled={isBusy} />
+        <AppButton label={t('auth.continueAsGuest')} onPress={() => onContinueAsGuest(displayName.trim())} variant="ghost" disabled={!isSupabaseConfigured || isBusy} />
         <Text style={styles.helper}>{t('auth.guestHint')}</Text>
         {!isSupabaseConfigured ? <Text style={styles.notice}>{t('auth.supabaseMissing')}</Text> : null}
         {notice ? <Text style={styles.notice}>{notice}</Text> : null}

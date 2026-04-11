@@ -18,6 +18,7 @@ type AppFlowValue = {
   openSettings: () => void;
   openGamesTab: () => void;
   openRoom: () => void;
+  openJoinRoom: () => void;
   joinRoomByCode: () => void;
   continueRoom: () => void;
   inviteFriends: () => void;
@@ -26,6 +27,7 @@ type AppFlowValue = {
   openChooseGames: () => void;
   openRoomSettings: () => void;
   toggleGameSelection: (gameId: string) => void;
+  hydrateSelectedGame: (gameId: string | null) => void;
   saveGames: () => void;
   updateRoomSettings: (next: RoomSettings) => void;
   saveRoomSettings: () => void;
@@ -93,6 +95,10 @@ export function AppFlowProvider({ children }: PropsWithChildren) {
         setLobbyScenarioKey('activeRoom');
         setCurrentScreen('room');
       },
+      openJoinRoom: () => {
+        setActiveTab('games');
+        setCurrentScreen('joinRoom');
+      },
       joinRoomByCode: () => {
         setActiveTab('games');
         setLobbyScenarioKey('activeRoom');
@@ -111,7 +117,7 @@ export function AppFlowProvider({ children }: PropsWithChildren) {
       resumeLastActivity: () => {
         setActiveTab('games');
         setLobbyScenarioKey('returning');
-        setCurrentScreen('gameplay');
+        setCurrentScreen('room');
       },
       openQuickPlay: () => {
         setActiveTab('games');
@@ -129,6 +135,13 @@ export function AppFlowProvider({ children }: PropsWithChildren) {
         setSelectedGameIds((current) =>
           current.includes(gameId) ? current.filter((id) => id !== gameId) : [...current, gameId]
         );
+      },
+      hydrateSelectedGame: (gameId) => {
+        if (!gameId) {
+          return;
+        }
+
+        setSelectedGameIds((current) => [gameId, ...current.filter((id) => id !== gameId)]);
       },
       saveGames: () => setCurrentScreen('room'),
       updateRoomSettings: setRoomSettings,

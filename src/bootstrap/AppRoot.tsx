@@ -5,15 +5,18 @@ import { StatusBar } from 'expo-status-bar';
 import { AppNavigator } from '../navigation/AppNavigator';
 import { AppFlowProvider } from '../state/AppFlowContext';
 import { AuthProvider } from '../state/AuthContext';
+import { RoomProvider } from '../state/RoomContext';
 
 export function AppRoot() {
   return (
     <>
       <StatusBar style="light" />
       <AuthProvider>
-        <AppFlowProvider>
-          <AppNavigator />
-        </AppFlowProvider>
+        <RoomProvider>
+          <AppFlowProvider>
+            <AppNavigator />
+          </AppFlowProvider>
+        </RoomProvider>
       </AuthProvider>
     </>
   );

@@ -12,9 +12,10 @@ type LobbyScreenProps = {
   displayName: string;
   scenario: LobbyScenario;
   onAction: (actionId: LobbyActionId) => void;
+  notice?: string | null;
 };
 
-export function LobbyScreen({ displayName, scenario, onAction }: LobbyScreenProps) {
+export function LobbyScreen({ displayName, scenario, onAction, notice = null }: LobbyScreenProps) {
   const availableModes = featuredGames.filter((game) => scenario.modeIds.includes(game.id));
 
   return (
@@ -47,6 +48,7 @@ export function LobbyScreen({ displayName, scenario, onAction }: LobbyScreenProp
             <AppButton label="Quick play" onPress={() => onAction('quickPlay')} variant="ghost" />
           ) : null}
         </View>
+        {notice ? <Text style={styles.notice}>{notice}</Text> : null}
       </SurfaceCard>
 
       {scenario.roomSummary ? (
@@ -238,5 +240,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: spacing.sm
+  },
+  notice: {
+    color: colors.accentSoft,
+    fontSize: typography.caption,
+    lineHeight: 18
   }
 });

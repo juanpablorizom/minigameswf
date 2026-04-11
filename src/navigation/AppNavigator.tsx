@@ -1,14 +1,17 @@
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, Share, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
-import { featuredGames, lobbyScenarios, roomPlayers } from '../data/mockData';
-import type { AppTab, LobbyActionId } from './types';
+import { featuredGames, lobbyHighlights, lobbyScenarios } from '../data/mockData';
+import type { RoomDetails } from '../data/rooms';
+import type { AppTab, LobbyActionId, LobbyScenario, Player } from './types';
 import { useAppFlow } from '../state/AppFlowContext';
 import { useAuth } from '../state/AuthContext';
+import { useRoom } from '../state/RoomContext';
 import { AccountScreen } from '../ui/screens/AccountScreen';
 import { ChooseGamesScreen } from '../ui/screens/ChooseGamesScreen';
 import { GameplayScreen } from '../ui/screens/GameplayScreen';
+import { JoinRoomScreen } from '../ui/screens/JoinRoomScreen';
 import { LobbyScreen } from '../ui/screens/LobbyScreen';
 import { PrivateRoomScreen } from '../ui/screens/PrivateRoomScreen';
 import { ResultsScreen } from '../ui/screens/ResultsScreen';
@@ -16,6 +19,60 @@ import { RoomSettingsScreen } from '../ui/screens/RoomSettingsScreen';
 import { SettingsScreen } from '../ui/screens/SettingsScreen';
 import { WelcomeScreen } from '../ui/screens/WelcomeScreen';
 import { colors, radius, spacing, typography } from '../ui/theme';
+
+function mapRoomNotice(error?: string | null) {
+  if (error === 'ROOM_NOT_FOUND') {
+    return 'That code does not match any open party.';
+  }
+
+  if (error === 'ROOM_UNAVAILABLE') {
+    return 'That room is no longer available.';
+  }
+
+  if (error === 'AUTH_REQUIRED') {
+    return 'Open a guest or account session first.';
+  }
+
+  return error ?? null;
+}
+
+function buildLobbyScenario(activeRoom: RoomDetails | null, isGuest: boolean): LobbyScenario {
+  if (!activeRoom) {
+    return isGuest ? lobbyScenarios.guest : lobbyScenarios.noRoom;
+  }
+
+  const activeMembers = activeRoom.members.filter((member) => member.isActive);
+  const selectedGame = activeRoom.room.selected_game_id;
+  const activityItems =
+    activeRoom.activity.map((item) => ({
+      id: item.id,
+      title: item.title,
+      subtitle: item.subtitle
+    })) || [];
+
+  return {
+    key: 'activeRoom',
+    greeting: activeRoom.isHost ? 'Your party is live' : 'Your party is waiting',
+    statusLabel: activeRoom.room.status === 'active' ? 'Active room' : 'Waiting room',
+    title: `${activeRoom.room.code} is ready.`,
+    subtitle: activeRoom.isHost
+      ? 'The room is persisted and the member list is live. Share the code or continue setup.'
+      : 'Your room is still open. Jump back in and wait for the host to continue.',
+    primaryAction: { id: 'continueRoom', label: 'Continue room' },
+    secondaryAction: activeRoom.isHost ? { id: 'inviteFriends', label: 'Share code', variant: 'secondary' } : undefined,
+    roomSummary: {
+      title: `Private party ${activeRoom.room.code}`,
+      subtitle: `${activeMembers.length} active members · ${activeRoom.room.status}`,
+      meta: activeRoom.isHost ? 'You are hosting this party.' : 'You are a member of this party.',
+      code: activeRoom.room.code,
+      ctaLabel: 'Open room',
+      ctaAction: 'continueRoom'
+    },
+    socialItems: activityItems.length ? activityItems : lobbyHighlights,
+    recommendationItems: lobbyHighlights,
+    modeIds: selectedGame ? [selectedGame] : ['mentiroso-profesional', 'signal-drop', 'close-call']
+  };
+}
 
 export function AppNavigator() {
   const { t } = useTranslation();
@@ -25,7 +82,6 @@ export function AppNavigator() {
     isSupabaseConfigured,
     session,
     isGuest,
-    profile,
     displayName,
     username,
     email,
@@ -41,9 +97,17 @@ export function AppNavigator() {
     linkAccount
   } = useAuth();
   const {
+    isReady: roomsReady,
+    isBusy: roomBusy,
+    activeRoom,
+    createRoom,
+    joinRoomByCode,
+    saveSelectedGame,
+    markRoomActive
+  } = useRoom();
+  const {
     activeTab,
     currentScreen,
-    lobbyScenario,
     selectedGameIds,
     selectedGames,
     roomSettings,
@@ -53,14 +117,14 @@ export function AppNavigator() {
     openSettings,
     openGamesTab,
     openRoom,
-    joinRoomByCode,
+    openJoinRoom,
     continueRoom,
-    inviteFriends,
     resumeLastActivity,
     openQuickPlay,
     openChooseGames,
     openRoomSettings,
     toggleGameSelection,
+    hydrateSelectedGame,
     saveGames,
     updateRoomSettings,
     saveRoomSettings,
@@ -73,6 +137,8 @@ export function AppNavigator() {
   const [authNotice, setAuthNotice] = useState<string | null>(null);
   const [accountNotice, setAccountNotice] = useState<string | null>(null);
   const [settingsNotice, setSettingsNotice] = useState<string | null>(null);
+  const [roomNotice, setRoomNotice] = useState<string | null>(null);
+  const [joinNotice, setJoinNotice] = useState<string | null>(null);
 
   useEffect(() => {
     if (!session && !isGuest) {
@@ -80,13 +146,22 @@ export function AppNavigator() {
     }
   }, [isGuest, resetToLobby, session]);
 
-  if (!isReady || (!session && !isGuest)) {
+  useEffect(() => {
+    if (activeRoom?.room.selected_game_id) {
+      hydrateSelectedGame(activeRoom.room.selected_game_id);
+    }
+  }, [activeRoom?.room.selected_game_id, hydrateSelectedGame]);
+
+  const loadingShell = !isReady || !roomsReady;
+  const resolvedLobbyScenario = buildLobbyScenario(activeRoom, isGuest);
+
+  if (loadingShell || (!session && !isGuest)) {
     return (
       <View style={styles.container}>
         <WelcomeScreen
-          isBusy={isBusy || !isReady}
+          isBusy={isBusy || roomBusy || loadingShell}
           isSupabaseConfigured={isSupabaseConfigured}
-          notice={!isReady ? t('common.loading') : authNotice}
+          notice={loadingShell ? t('common.loading') : authNotice}
           onSignIn={(nextEmail, password) => {
             void signInWithEmail(nextEmail, password).then((result) => {
               setAuthNotice(result.error ?? null);
@@ -112,9 +187,7 @@ export function AppNavigator() {
     );
   }
 
-  const resolvedLobbyScenario = isGuest ? lobbyScenarios.guest : profile ? lobbyScenario : lobbyScenarios.noRoom;
-
-  function resolveNotice(message?: string) {
+  function resolveAccountNotice(message?: string) {
     if (message === 'LINKING_REQUIRES_SETUP') {
       return t('account.linkingRequiresSetup');
     }
@@ -126,22 +199,59 @@ export function AppNavigator() {
     return null;
   }
 
+  async function shareRoomCode() {
+    if (!activeRoom) {
+      setRoomNotice('No active room to share right now.');
+      return;
+    }
+
+    const shareMessage = `Join my JUNTADA party with code ${activeRoom.room.code}`;
+
+    try {
+      await Share.share({
+        message: shareMessage
+      });
+      setRoomNotice(`Room code ${activeRoom.room.code} ready to share.`);
+    } catch {
+      setRoomNotice(`Share this code with your group: ${activeRoom.room.code}`);
+    }
+  }
+
   function handleLobbyAction(actionId: LobbyActionId) {
     switch (actionId) {
       case 'createRoom':
-        openRoom();
+        void createRoom(selectedGameIds[0] ?? null).then((result) => {
+          if (result.error) {
+            setRoomNotice(mapRoomNotice(result.error));
+            return;
+          }
+
+          setRoomNotice(null);
+          openRoom();
+        });
         break;
       case 'joinByCode':
-        joinRoomByCode();
+        setJoinNotice(null);
+        openJoinRoom();
         break;
       case 'continueRoom':
-        continueRoom();
+        if (activeRoom) {
+          setRoomNotice(null);
+          continueRoom();
+          return;
+        }
+
+        setRoomNotice('No active room found to continue.');
         break;
       case 'inviteFriends':
-        inviteFriends();
+        void shareRoomCode();
         break;
       case 'resumeActivity':
-        resumeLastActivity();
+        if (activeRoom) {
+          resumeLastActivity();
+        } else {
+          setRoomNotice('No active room found to resume.');
+        }
         break;
       case 'quickPlay':
         openQuickPlay();
@@ -165,25 +275,105 @@ export function AppNavigator() {
 
   function renderGamesTab() {
     if (currentScreen === 'lobby') {
-      return <LobbyScreen displayName={displayName ?? email?.split('@')[0] ?? 'Player'} scenario={resolvedLobbyScenario} onAction={handleLobbyAction} />;
+      return (
+        <LobbyScreen
+          displayName={displayName ?? email?.split('@')[0] ?? 'Player'}
+          scenario={resolvedLobbyScenario}
+          onAction={handleLobbyAction}
+          notice={roomNotice}
+        />
+      );
     }
 
-    if (currentScreen === 'room') {
+    if (currentScreen === 'joinRoom') {
+      return (
+        <JoinRoomScreen
+          isBusy={roomBusy}
+          notice={joinNotice}
+          onJoin={(code) => {
+            void joinRoomByCode(code).then((result) => {
+              if (result.error) {
+                setJoinNotice(mapRoomNotice(result.error));
+                return;
+              }
+
+              setJoinNotice(null);
+              setRoomNotice(null);
+              continueRoom();
+            });
+          }}
+        />
+      );
+    }
+
+    if (currentScreen === 'room' && activeRoom) {
+      const selectedGame = featuredGames.find((game) => game.id === activeRoom.room.selected_game_id) ?? selectedGames[0] ?? null;
+
       return (
         <PrivateRoomScreen
-          players={roomPlayers}
-          selectedGames={selectedGames}
+          roomCode={activeRoom.room.code}
+          roomStatus={activeRoom.room.status}
+          members={activeRoom.members}
+          activity={activeRoom.activity}
+          selectedGame={selectedGame}
           settings={roomSettings}
-          onInviteFriends={inviteFriends}
+          canManageRoom={activeRoom.isHost}
+          isBusy={roomBusy}
+          notice={roomNotice}
+          onShareCode={() => {
+            void shareRoomCode();
+          }}
           onChooseGames={openChooseGames}
           onOpenSettings={openRoomSettings}
-          onStart={startGameplay}
+          onStart={() => {
+            if (!activeRoom.isHost) {
+              setRoomNotice('Only the host can continue the party flow.');
+              return;
+            }
+
+            void markRoomActive().then((result) => {
+              if (result.error) {
+                setRoomNotice(mapRoomNotice(result.error));
+                return;
+              }
+
+              setRoomNotice(null);
+              startGameplay();
+            });
+          }}
+        />
+      );
+    }
+
+    if (currentScreen === 'room' && !activeRoom) {
+      return (
+        <LobbyScreen
+          displayName={displayName ?? email?.split('@')[0] ?? 'Player'}
+          scenario={isGuest ? lobbyScenarios.guest : lobbyScenarios.noRoom}
+          onAction={handleLobbyAction}
+          notice="No active room found. Create one or join by code."
         />
       );
     }
 
     if (currentScreen === 'chooseGames') {
-      return <ChooseGamesScreen selectedGameIds={selectedGameIds} onToggleGame={toggleGameSelection} onSave={saveGames} />;
+      return (
+        <ChooseGamesScreen
+          selectedGameIds={selectedGameIds}
+          onToggleGame={toggleGameSelection}
+          onSave={() => {
+            void saveSelectedGame(selectedGameIds[0] ?? null).then((result) => {
+              if (result.error) {
+                setRoomNotice(mapRoomNotice(result.error));
+                return;
+              }
+
+              setRoomNotice(null);
+              saveGames();
+            });
+          }}
+        />
+      );
     }
 
     if (currentScreen === 'roomSettings') {
@@ -191,7 +381,15 @@ export function AppNavigator() {
     }
 
     if (currentScreen === 'gameplay') {
-      return <GameplayScreen players={roomPlayers} activeGame={selectedGames[0] ?? featuredGames[0]} onRevealResults={revealResults} />;
+      const gameplayPlayers: Player[] = (activeRoom?.members ?? []).map((member, index) => ({
+        id: member.id,
+        name: member.displayName,
+        status: member.role === 'host' ? 'host' : 'ready',
+        mood: member.isCurrentUser ? 'You are in this round' : `Joined #${index + 1}`,
+        score: 0
+      }));
+
+      return <GameplayScreen players={gameplayPlayers} activeGame={selectedGames[0] ?? featuredGames[0]} onRevealResults={revealResults} />;
     }
 
     return <ResultsScreen onPlayAgain={playAgain} onBackToLobby={backToLobby} />;
@@ -211,7 +409,7 @@ export function AppNavigator() {
           onLinkAccount={() => {
             void linkAccount().then((result) => {
               setAccountNotice(
-                resolveNotice(result.message) ??
+                resolveAccountNotice(result.message) ??
                   (result.error === 'SUPABASE_NOT_CONFIGURED' ? t('account.notConfigured') : result.error ?? null)
               );
             });
@@ -233,7 +431,7 @@ export function AppNavigator() {
           onChangeLanguage={(nextLanguage) => {
             void changeLanguage(nextLanguage).then((result) => {
               setSettingsNotice(
-                resolveNotice(result.message) ??
+                resolveAccountNotice(result.message) ??
                   (result.error === 'SUPABASE_NOT_CONFIGURED' ? t('account.notConfigured') : result.error ?? null)
               );
             });
@@ -247,6 +445,8 @@ export function AppNavigator() {
             setAccountNotice(null);
             setSettingsNotice(null);
             setAuthNotice(null);
+            setJoinNotice(null);
+            setRoomNotice(null);
             void signOut();
           }}
         />
