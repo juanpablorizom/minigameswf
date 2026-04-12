@@ -302,8 +302,7 @@ export function AppNavigator() {
       <View style={styles.container}>
         <WelcomeScreen
           isBusy={isBusy || roomBusy || loadingShell}
-          isSupabaseConfigured={isSupabaseConfigured}
-          notice={loadingShell ? t('common.loading') : authNotice}
+          notice={loadingShell ? t('common.loading') : authNotice ?? (!isSupabaseConfigured ? t('auth.supabaseMissing') : null)}
           onSignInWithGoogle={() => {
             void signInWithGoogle().then((result) => {
               setAuthNotice(result.error === 'SUPABASE_NOT_CONFIGURED' ? t('auth.supabaseMissing') : result.error ?? null);
