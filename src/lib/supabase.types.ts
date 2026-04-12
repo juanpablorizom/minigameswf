@@ -4,6 +4,7 @@ export type RoomStatus = 'waiting' | 'active' | 'finished';
 export type RoomVisibility = 'private';
 export type RoomMemberRole = 'host' | 'member';
 export type RoomRoundStatus = 'active' | 'finished';
+export type RoomRoundPhase = 'reveal' | 'voting' | 'result';
 
 export type Database = {
   public: {
@@ -156,10 +157,15 @@ export type Database = {
         Row: {
           id: string;
           room_id: string;
+          round_number: number;
           game_id: string;
           theme_category: string;
           secret_word: string;
           impostor_ids: string[];
+          eliminated_user_ids: string[];
+          expelled_user_id: string | null;
+          phase: RoomRoundPhase;
+          vote_deadline_at: string | null;
           started_by_user_id: string;
           status: RoomRoundStatus;
           created_at: string;
@@ -168,10 +174,15 @@ export type Database = {
         Insert: {
           id?: string;
           room_id: string;
+          round_number?: number;
           game_id?: string;
           theme_category: string;
           secret_word: string;
           impostor_ids: string[];
+          eliminated_user_ids?: string[];
+          expelled_user_id?: string | null;
+          phase?: RoomRoundPhase;
+          vote_deadline_at?: string | null;
           started_by_user_id: string;
           status?: RoomRoundStatus;
           created_at?: string;
@@ -180,14 +191,46 @@ export type Database = {
         Update: {
           id?: string;
           room_id?: string;
+          round_number?: number;
           game_id?: string;
           theme_category?: string;
           secret_word?: string;
           impostor_ids?: string[];
+          eliminated_user_ids?: string[];
+          expelled_user_id?: string | null;
+          phase?: RoomRoundPhase;
+          vote_deadline_at?: string | null;
           started_by_user_id?: string;
           status?: RoomRoundStatus;
           created_at?: string;
           updated_at?: string;
+        };
+        Relationships: [];
+      };
+      room_round_votes: {
+        Row: {
+          id: string;
+          room_id: string;
+          round_id: string;
+          voter_user_id: string;
+          target_user_id: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          room_id: string;
+          round_id: string;
+          voter_user_id: string;
+          target_user_id: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          room_id?: string;
+          round_id?: string;
+          voter_user_id?: string;
+          target_user_id?: string;
+          created_at?: string;
         };
         Relationships: [];
       };
@@ -218,6 +261,26 @@ export type Database = {
           p_room_id: string;
           p_theme_category: string;
           p_impostor_count: number;
+        };
+        Returns: Database['public']['Tables']['room_rounds']['Row'][];
+      };
+      start_impostor_vote: {
+        Args: {
+          p_room_id: string;
+          p_vote_duration_seconds?: number;
+        };
+        Returns: Database['public']['Tables']['room_rounds']['Row'][];
+      };
+      cast_impostor_vote: {
+        Args: {
+          p_room_id: string;
+          p_target_user_id: string;
+        };
+        Returns: Database['public']['Tables']['room_round_votes']['Row'][];
+      };
+      resolve_impostor_vote: {
+        Args: {
+          p_room_id: string;
         };
         Returns: Database['public']['Tables']['room_rounds']['Row'][];
       };

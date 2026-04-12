@@ -5,49 +5,9 @@ export const featuredGames: MiniGame[] = [
     id: 'impostor',
     name: 'Impostor',
     category: 'Social Deduction',
-    duration: '6 min',
+    duration: '1 modo',
     energy: 'Social',
-    description: 'One player is bluffing without the word. Choose between a free friends flow or a structured multiplayer round.'
-  },
-  {
-    id: 'signal-drop',
-    name: 'Signal Drop',
-    category: 'Warm Up',
-    duration: '4 min',
-    energy: 'Warm-up',
-    description: 'Everyone guesses the hidden word from half-finished clues and fake confidence.'
-  },
-  {
-    id: 'hot-seat',
-    name: 'Hot Seat',
-    category: 'Social Reads',
-    duration: '6 min',
-    energy: 'Social',
-    description: 'One player answers fast prompts while the room piles on the pressure.'
-  },
-  {
-    id: 'mentiroso-profesional',
-    name: 'Mentiroso Profesional',
-    category: 'Bluffing',
-    duration: '5 min',
-    energy: 'Chaotic',
-    description: 'Pick the most believable lie under pressure, then defend it like you meant it all along.'
-  },
-  {
-    id: 'after-hours',
-    name: 'After Hours',
-    category: 'Bluffing',
-    duration: '7 min',
-    energy: 'Chaotic',
-    description: 'Players bluff their way through impossible social scenarios and vote on the smoothest save.'
-  },
-  {
-    id: 'close-call',
-    name: 'Close Call',
-    category: 'Social Reads',
-    duration: '5 min',
-    energy: 'Social',
-    description: 'The room ranks wild choices, then fights over who really knows the group best.'
+    description: 'One or more players do not know the secret word. The room talks, votes, and tries to expel every impostor.'
   }
 ];
 
@@ -66,20 +26,20 @@ export const onlineFriends: ActivityItem[] = [
 
 export const lobbyHighlights: ActivityItem[] = [
   { id: 'a1', title: 'Quick table', subtitle: '3 short rounds are enough to get a room moving' },
-  { id: 'a2', title: 'Best opener', subtitle: 'Mentiroso Profesional keeps invites from stalling' },
+  { id: 'a2', title: 'Best opener', subtitle: 'Impostor starts fast when everyone already knows the rules' },
   { id: 'a3', title: 'Busy hour', subtitle: 'Most friend groups are forming between 9:00 and 11:00 PM' }
 ];
 
 export const roomActivity: ActivityItem[] = [
   { id: 'ra1', title: 'Mateo reacted to the invite', subtitle: 'Said he is joining with zero trust in Sofia' },
-  { id: 'ra2', title: 'Lineup updated', subtitle: 'Mentiroso Profesional moved to the first round' },
-  { id: 'ra3', title: 'Room mood', subtitle: 'Casual banter on, quick pace, private lobby' }
+  { id: 'ra2', title: 'Lineup updated', subtitle: 'Impostor is ready as soon as the host starts the round' },
+  { id: 'ra3', title: 'Room mood', subtitle: 'Private lobby, quick setup, direct vote flow' }
 ];
 
 export const recentLobbyActivity: ActivityItem[] = [
-  { id: 'rl1', title: 'Last session', subtitle: 'You ended on a 2-round bluff stack with Sofia, Mateo, and Camila' },
+  { id: 'rl1', title: 'Last session', subtitle: 'You closed a 2-round Impostor session with Sofia, Mateo, and Camila' },
   { id: 'rl2', title: 'Friend invite', subtitle: 'Ana is waiting in a private room with 2 seats open' },
-  { id: 'rl3', title: 'Ready to restart', subtitle: 'Your saved lineup still opens with Mentiroso Profesional' }
+  { id: 'rl3', title: 'Ready to restart', subtitle: 'Your saved room still has Impostor ready to start' }
 ];
 
 export const lobbyScenarios: Record<LobbyScenarioKey, LobbyScenario> = {
@@ -92,11 +52,8 @@ export const lobbyScenarios: Record<LobbyScenarioKey, LobbyScenario> = {
     primaryAction: { id: 'createRoom', label: 'Create room' },
     secondaryAction: { id: 'joinByCode', label: 'Join by code', variant: 'secondary' },
     socialItems: onlineFriends.slice(0, 2),
-    recommendationItems: [
-      { id: 'gr1', title: 'Best first game', subtitle: 'Mentiroso Profesional lands fast even with mixed groups' },
-      { id: 'gr2', title: 'Short stack', subtitle: 'Signal Drop + Hot Seat + Mentiroso Profesional' }
-    ],
-    modeIds: ['mentiroso-profesional', 'signal-drop', 'hot-seat']
+    recommendationItems: [],
+    modeIds: ['impostor']
   },
   noRoom: {
     key: 'noRoom',
@@ -107,8 +64,8 @@ export const lobbyScenarios: Record<LobbyScenarioKey, LobbyScenario> = {
     primaryAction: { id: 'createRoom', label: 'Create room' },
     secondaryAction: { id: 'joinByCode', label: 'Join by code', variant: 'secondary' },
     socialItems: onlineFriends,
-    recommendationItems: lobbyHighlights,
-    modeIds: ['mentiroso-profesional', 'close-call', 'signal-drop']
+    recommendationItems: [],
+    modeIds: ['impostor']
   },
   activeRoom: {
     key: 'activeRoom',
@@ -120,18 +77,15 @@ export const lobbyScenarios: Record<LobbyScenarioKey, LobbyScenario> = {
     secondaryAction: { id: 'inviteFriends', label: 'Invite friends', variant: 'secondary' },
     roomSummary: {
       title: 'Private room AX4N2',
-      subtitle: '4 players, 3 games selected, casual pacing',
-      meta: 'Sofia hosting • Mentiroso Profesional starts first',
+      subtitle: '4 players, Impostor listo para empezar',
+      meta: 'Sofia hosting • la ronda se prepara en cuanto la abras',
       code: 'AX4N2',
       ctaLabel: 'Open room',
       ctaAction: 'continueRoom'
     },
     socialItems: roomActivity,
-    recommendationItems: [
-      { id: 'ar1', title: 'Best next step', subtitle: 'Lock invites now so the first round starts clean' },
-      { id: 'ar2', title: 'Room tempo', subtitle: 'Current stack runs about 18 minutes with your settings' }
-    ],
-    modeIds: ['mentiroso-profesional', 'after-hours', 'close-call']
+    recommendationItems: [],
+    modeIds: ['impostor']
   },
   invited: {
     key: 'invited',
@@ -143,15 +97,15 @@ export const lobbyScenarios: Record<LobbyScenarioKey, LobbyScenario> = {
     secondaryAction: { id: 'createRoom', label: 'Create your room instead', variant: 'ghost' },
     invite: {
       title: 'Invite from Sofia',
-      subtitle: '3 players are in. First game starts with Mentiroso Profesional.',
+      subtitle: '3 players are in. The host left Impostor ready to start.',
       fromLabel: 'Starts when you join',
       code: 'AX4N2',
       ctaLabel: 'Join room',
       ctaAction: 'continueRoom'
     },
     socialItems: onlineFriends,
-    recommendationItems: recentLobbyActivity.slice(0, 2),
-    modeIds: ['mentiroso-profesional', 'hot-seat', 'close-call']
+    recommendationItems: [],
+    modeIds: ['impostor']
   },
   returning: {
     key: 'returning',
@@ -163,7 +117,7 @@ export const lobbyScenarios: Record<LobbyScenarioKey, LobbyScenario> = {
     secondaryAction: { id: 'createRoom', label: 'Start fresh', variant: 'secondary' },
     roomSummary: {
       title: 'Last room AX4N2',
-      subtitle: 'Same 4-player group, saved settings still active',
+      subtitle: 'Same 4-player group, same Impostor setup still active',
       meta: 'Finished 1 session • ready for replay',
       code: 'AX4N2',
       ctaLabel: 'Reopen room',
@@ -171,16 +125,13 @@ export const lobbyScenarios: Record<LobbyScenarioKey, LobbyScenario> = {
     },
     recentActivity: {
       title: 'Results are still fresh',
-      subtitle: 'Mateo took the last podium. Run it back before the room cools down.',
+      subtitle: 'The room can jump straight back into another Impostor round.',
       ctaLabel: 'Replay now',
       ctaAction: 'resumeActivity'
     },
     socialItems: recentLobbyActivity,
-    recommendationItems: [
-      { id: 'rr1', title: 'Fast rematch', subtitle: 'Keep the same stack and shorten the timer to 35 seconds' },
-      { id: 'rr2', title: 'Small change', subtitle: 'Swap After Hours for Signal Drop if the room wants a lighter start' }
-    ],
-    modeIds: ['mentiroso-profesional', 'signal-drop', 'after-hours']
+    recommendationItems: [],
+    modeIds: ['impostor']
   }
 };
 
@@ -190,7 +141,7 @@ export const sessionRecognitions: ActivityItem[] = [
   { id: 'sr3', title: 'Crowd favorite', subtitle: 'Camila kept the table moving every round' }
 ];
 
-export const initialSelectedGameIds = ['mentiroso-profesional', 'after-hours', 'close-call'];
+export const initialSelectedGameIds = ['impostor'];
 
 export const initialRoomSettings: RoomSettings = {
   maxPlayers: 8,

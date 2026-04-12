@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Linking, Modal, Pressable, Share, StyleSheet, Text, View } from 'react-native';
+import { Linking, Pressable, Share, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { featuredGames, lobbyScenarios } from '../data/mockData';
@@ -73,6 +73,22 @@ function mapRoomNotice(translate: (key: string, options?: Record<string, unknown
     return translate('room.themeUnavailable');
   }
 
+  if (error === 'ROUND_NOT_FOUND') {
+    return translate('gameplay.roundMissing');
+  }
+
+  if (error === 'ROUND_NOT_VOTING') {
+    return translate('gameplay.voteNotOpen');
+  }
+
+  if (error === 'ROUND_TARGET_NOT_FOUND') {
+    return translate('gameplay.voteTargetMissing');
+  }
+
+  if (error === 'ROUND_TARGET_ELIMINATED') {
+    return translate('gameplay.voteTargetGone');
+  }
+
   return error ?? null;
 }
 
@@ -132,7 +148,7 @@ function buildLobbyScenario(
     },
     socialItems: activityItems,
     recommendationItems: [],
-    modeIds: selectedGame ? [selectedGame] : ['mentiroso-profesional', 'signal-drop', 'close-call']
+    modeIds: selectedGame ? [selectedGame] : ['impostor']
   };
 }
 
@@ -170,7 +186,11 @@ export function AppNavigator() {
     createRoom,
     joinRoomByCode,
     removeMember,
+    leaveRoom,
     startImpostorRound,
+    startImpostorVote,
+    castImpostorVote,
+    resolveImpostorVote,
     saveSelectedGame,
     setRoomScreenActive
   } = useRoom();
@@ -211,9 +231,9 @@ export function AppNavigator() {
   const [joinNotice, setJoinNotice] = useState<string | null>(null);
   const [pendingJoinCode, setPendingJoinCode] = useState<string | null>(null);
   const [isAutoGuestingForJoin, setIsAutoGuestingForJoin] = useState(false);
-  const [showLeavePrompt, setShowLeavePrompt] = useState(false);
   const [resumeRoomReady, setResumeRoomReady] = useState(false);
   const [shouldResumeRoom, setShouldResumeRoom] = useState(false);
+  const autoAdvanceRoundRef = useRef<string | null>(null);
   const hadAccessRef = useRef(false);
   const attemptedRoomResumeRef = useRef(false);
 
@@ -331,6 +351,7 @@ export function AppNavigator() {
 
   useEffect(() => {
     if (!activeRoom?.round) {
+      autoAdvanceRoundRef.current = null;
       return;
     }
 
@@ -340,6 +361,49 @@ export function AppNavigator() {
 
     startGameplay();
   }, [activeRoom?.round?.roundId, currentScreen, startGameplay]);
+
+  useEffect(() => {
+    if (!activeRoom?.round || !activeRoom.isHost) {
+      autoAdvanceRoundRef.current = null;
+      return;
+    }
+
+    const round = activeRoom.round;
+    const shouldAdvance =
+      round.phase === 'result' &&
+      round.status === 'finished' &&
+      round.roundNumber < roomSettings.rounds;
+
+    if (!shouldAdvance) {
+      autoAdvanceRoundRef.current = null;
+      return;
+    }
+
+    const advanceKey = `${round.roundId}:${round.roundNumber}`;
+
+    if (autoAdvanceRoundRef.current === advanceKey) {
+      return;
+    }
+
+    autoAdvanceRoundRef.current = advanceKey;
+
+    const timeout = setTimeout(() => {
+      setRoomNotice(t('gameplay.nextRoundStarting'));
+      void startImpostorRound(roomSettings.themeCategory, roomSettings.impostorCount).then((result) => {
+        if (result.error) {
+          setRoomNotice(mapRoomNotice(t, result.error));
+          autoAdvanceRoundRef.current = null;
+          return;
+        }
+
+        setRoomNotice(null);
+      });
+    }, 2600);
+
+    return () => {
+      clearTimeout(timeout);
+    };
+  }, [activeRoom?.isHost, activeRoom?.round, roomSettings.impostorCount, roomSettings.rounds, roomSettings.themeCategory, startImpostorRound, t]);
 
   useEffect(() => {
     setRoomScreenActive(
@@ -546,7 +610,7 @@ export function AppNavigator() {
   function handleLobbyAction(actionId: LobbyActionId) {
     switch (actionId) {
       case 'createRoom':
-        void createRoom(selectedGameIds[0] ?? null).then((result) => {
+        void createRoom('impostor').then((result) => {
           if (result.error) {
             setRoomNotice(mapRoomNotice(t, result.error));
             return;
@@ -590,11 +654,6 @@ export function AppNavigator() {
   }
 
   function handleTabPress(tab: AppTab) {
-    if (activeTab === 'games' && ['room', 'chooseGames', 'roomSettings', 'gameplay', 'results'].includes(currentScreen) && tab !== 'games') {
-      setShowLeavePrompt(true);
-      return;
-    }
-
     if (tab === 'account') {
       openAccount();
       return;
@@ -609,12 +668,11 @@ export function AppNavigator() {
   }
 
   function handleBackPress() {
-    if (['room', 'chooseGames', 'roomSettings', 'gameplay', 'results'].includes(currentScreen)) {
-      setShowLeavePrompt(true);
-      return;
-    }
-
     goBack();
+  }
+
+  function handleExitPress() {
+    backToLobby();
   }
 
   function renderGamesTab() {
@@ -704,7 +762,7 @@ export function AppNavigator() {
     }
 
     if (currentScreen === 'room' && activeRoom) {
-      const selectedGame = featuredGames.find((game) => game.id === 'impostor') ?? selectedGames[0] ?? null;
+      const selectedGame = featuredGames[0] ?? null;
 
       return (
         <PrivateRoomScreen
@@ -751,6 +809,17 @@ export function AppNavigator() {
               setRoomNotice(t('room.memberRemoved'));
             });
           }}
+          onLeaveRoom={() => {
+            void leaveRoom().then((result) => {
+              if (result.error) {
+                setRoomNotice(mapRoomNotice(t, result.error));
+                return;
+              }
+
+              setRoomNotice(null);
+              backToLobby();
+            });
+          }}
         />
       );
     }
@@ -772,7 +841,7 @@ export function AppNavigator() {
           selectedGameIds={selectedGameIds}
           onToggleGame={toggleGameSelection}
           onSave={() => {
-            void saveSelectedGame(selectedGameIds[0] ?? null).then((result) => {
+            void saveSelectedGame('impostor').then((result) => {
               if (result.error) {
                 setRoomNotice(mapRoomNotice(t, result.error));
                 return;
@@ -803,9 +872,67 @@ export function AppNavigator() {
       return (
         <GameplayScreen
           players={gameplayPlayers}
-          activeGame={featuredGames.find((game) => game.id === 'impostor') ?? featuredGames[0]}
+          activeGame={featuredGames[0]}
           roomSettings={roomSettings}
           roundSetup={activeRoom?.round ?? null}
+          isHost={Boolean(activeRoom?.isHost)}
+          isBusy={roomBusy}
+          notice={roomNotice}
+          onStartVoting={() => {
+            if (!activeRoom?.isHost) {
+              setRoomNotice(t('room.hostOnlyContinue'));
+              return;
+            }
+
+            void startImpostorVote(roomSettings.turnSeconds).then((result) => {
+              if (result.error) {
+                setRoomNotice(mapRoomNotice(t, result.error));
+                return;
+              }
+
+              setRoomNotice(null);
+            });
+          }}
+          onCastVote={(targetUserId) => {
+            void castImpostorVote(targetUserId).then((result) => {
+              if (result.error) {
+                setRoomNotice(mapRoomNotice(t, result.error));
+                return;
+              }
+
+              setRoomNotice(t('gameplay.voteRegistered'));
+            });
+          }}
+          onResolveVote={() => {
+            if (!activeRoom?.isHost) {
+              return;
+            }
+
+            void resolveImpostorVote().then((result) => {
+              if (result.error) {
+                setRoomNotice(mapRoomNotice(t, result.error));
+                return;
+              }
+
+              setRoomNotice(null);
+            });
+          }}
+          onStartNextRound={() => {
+            if (!activeRoom?.isHost) {
+              setRoomNotice(t('room.hostOnlyContinue'));
+              return;
+            }
+
+            setRoomNotice(t('gameplay.nextRoundStarting'));
+            void startImpostorRound(roomSettings.themeCategory, roomSettings.impostorCount).then((result) => {
+              if (result.error) {
+                setRoomNotice(mapRoomNotice(t, result.error));
+                return;
+              }
+
+              setRoomNotice(null);
+            });
+          }}
           onPlayAgain={() => {
             if (!activeRoom?.isHost) {
               setRoomNotice(t('room.hostOnlyContinue'));
@@ -932,9 +1059,14 @@ export function AppNavigator() {
           <Text style={styles.brandSub}>{activeTab === 'games' ? t('common.games') : activeTab === 'account' ? t('common.account') : t('common.settings')}</Text>
         </View>
         {canGoBack ? (
-          <Pressable onPress={handleBackPress}>
-            <Text style={styles.back}>{t('common.back')}</Text>
-          </Pressable>
+          <View style={styles.topBarActions}>
+            <Pressable onPress={handleBackPress} style={styles.topBarAction}>
+              <Text style={styles.back}>{t('common.back')}</Text>
+            </Pressable>
+            <Pressable onPress={handleExitPress} style={styles.topBarAction}>
+              <Text style={styles.exit}>{t('common.exit')}</Text>
+            </Pressable>
+          </View>
         ) : (
           <View style={styles.statusPill}>
             <Text style={styles.statusPillLabel}>{isGuest ? t('account.accountStateGuest') : t('account.accountStateAuthenticated')}</Text>
@@ -949,26 +1081,6 @@ export function AppNavigator() {
         <TabButton label={t('navigation.gamesTab')} active={activeTab === 'games'} prominent onPress={() => handleTabPress('games')} />
         <TabButton label={t('navigation.settingsTab')} active={activeTab === 'settings'} onPress={() => handleTabPress('settings')} />
       </View>
-
-      <Modal visible={showLeavePrompt} transparent animationType="fade" onRequestClose={() => setShowLeavePrompt(false)}>
-        <View style={styles.modalBackdrop}>
-          <Pressable style={StyleSheet.absoluteFillObject} onPress={() => setShowLeavePrompt(false)} />
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>{t('room.leavePromptTitle')}</Text>
-            <Text style={styles.modalSubtitle}>{t('room.leavePromptSubtitle')}</Text>
-            <View style={styles.modalActions}>
-              <AppButton label={t('common.stay')} onPress={() => setShowLeavePrompt(false)} variant="secondary" />
-              <AppButton
-                label={t('common.continue')}
-                onPress={() => {
-                  setShowLeavePrompt(false);
-                  backToLobby();
-                }}
-              />
-            </View>
-          </View>
-        </View>
-      </Modal>
     </View>
   );
 }
@@ -1006,6 +1118,15 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
     alignItems: 'center',
     backgroundColor: theme.colors.background
   },
+  topBarActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm
+  },
+  topBarAction: {
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm
+  },
   content: {
     flex: 1
   },
@@ -1041,6 +1162,11 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
     fontSize: typography.body,
     fontWeight: '700'
   },
+  exit: {
+    color: theme.colors.textPrimary,
+    fontSize: typography.body,
+    fontWeight: '700'
+  },
   statusPill: {
     minHeight: 34,
     borderRadius: radius.pill,
@@ -1063,33 +1189,6 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
     paddingTop: spacing.sm,
     paddingBottom: spacing.lg,
     backgroundColor: theme.colors.background
-  },
-  modalBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    padding: spacing.lg,
-    justifyContent: 'center'
-  },
-  modalCard: {
-    borderRadius: radius.lg,
-    backgroundColor: theme.colors.surface,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    padding: spacing.lg,
-    gap: spacing.md
-  },
-  modalTitle: {
-    color: theme.colors.textPrimary,
-    fontSize: typography.title,
-    fontWeight: '800'
-  },
-  modalSubtitle: {
-    color: theme.colors.textSecondary,
-    fontSize: typography.body,
-    lineHeight: 22
-  },
-  modalActions: {
-    gap: spacing.sm
   },
   tabButton: {
     flex: 1,

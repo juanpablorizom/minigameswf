@@ -25,9 +25,15 @@ export function buildImpostorRound(players: Player[], settings: RoomSettings): I
   if (!safePlayers.length) {
     return {
       roundId: 'local-round',
+      roundNumber: 1,
       categoryId: settings.themeCategory,
       secretWord: randomItem(words),
       impostorIds: [],
+      eliminatedUserIds: [],
+      expelledUserId: null,
+      phase: 'reveal',
+      voteDeadlineAt: null,
+      votes: [],
       startedAt: new Date().toISOString(),
       status: 'active'
     };
@@ -40,9 +46,15 @@ export function buildImpostorRound(players: Player[], settings: RoomSettings): I
 
   return {
     roundId: 'local-round',
+    roundNumber: 1,
     categoryId: settings.themeCategory,
     secretWord: randomItem(words),
     impostorIds,
+    eliminatedUserIds: [],
+    expelledUserId: null,
+    phase: 'reveal',
+    voteDeadlineAt: null,
+    votes: [],
     startedAt: new Date().toISOString(),
     status: 'active'
   };

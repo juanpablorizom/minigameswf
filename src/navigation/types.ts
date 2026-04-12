@@ -117,9 +117,18 @@ export type RoomSettings = {
 
 export type ImpostorRoundSetup = {
   roundId: string;
+  roundNumber: number;
   categoryId: ImpostorCategoryId;
   secretWord: string;
   impostorIds: string[];
+  eliminatedUserIds: string[];
+  expelledUserId: string | null;
+  phase: 'reveal' | 'voting' | 'result';
+  voteDeadlineAt: string | null;
+  votes: Array<{
+    voterUserId: string;
+    targetUserId: string;
+  }>;
   startedAt: string;
   status: 'active' | 'finished';
 };

@@ -56,14 +56,29 @@ create table if not exists public.room_activity (
 create table if not exists public.room_rounds (
   id uuid primary key default gen_random_uuid(),
   room_id uuid not null unique references public.rooms (id) on delete cascade,
+  round_number integer not null default 1,
   game_id text not null default 'impostor',
   theme_category text not null check (theme_category in ('animals', 'countries', 'objects')),
   secret_word text not null,
   impostor_ids uuid[] not null default '{}'::uuid[],
+  eliminated_user_ids uuid[] not null default '{}'::uuid[],
+  expelled_user_id uuid references auth.users (id) on delete set null,
+  phase text not null default 'reveal' check (phase in ('reveal', 'voting', 'result')),
+  vote_deadline_at timestamptz,
   started_by_user_id uuid not null references auth.users (id) on delete cascade,
   status text not null default 'active' check (status in ('active', 'finished')),
   created_at timestamptz not null default timezone('utc', now()),
   updated_at timestamptz not null default timezone('utc', now())
+);
+
+create table if not exists public.room_round_votes (
+  id uuid primary key default gen_random_uuid(),
+  room_id uuid not null references public.rooms (id) on delete cascade,
+  round_id uuid not null references public.room_rounds (id) on delete cascade,
+  voter_user_id uuid not null references auth.users (id) on delete cascade,
+  target_user_id uuid not null references auth.users (id) on delete cascade,
+  created_at timestamptz not null default timezone('utc', now()),
+  unique (round_id, voter_user_id)
 );
 
 alter table public.profiles enable row level security;
@@ -72,6 +87,7 @@ alter table public.rooms enable row level security;
 alter table public.room_members enable row level security;
 alter table public.room_activity enable row level security;
 alter table public.room_rounds enable row level security;
+alter table public.room_round_votes enable row level security;
 
 create or replace function public.set_updated_at()
 returns trigger
@@ -346,6 +362,7 @@ declare
   target_room public.rooms;
   member_count integer := 0;
   total_impostors integer := 1;
+  previous_round_number integer := 0;
   theme_words text[];
   selected_word text;
   selected_impostor_ids uuid[];
@@ -382,6 +399,12 @@ begin
 
   total_impostors := least(greatest(coalesce(p_impostor_count, 1), 1), greatest(member_count - 1, 1));
 
+  select coalesce(room_rounds.round_number, 0)
+  into previous_round_number
+  from public.room_rounds
+  where room_id = p_room_id
+  limit 1;
+
   theme_words := case p_theme_category
     when 'animals' then array['Leon', 'Tigre', 'Elefante', 'Jirafa', 'Delfin', 'Lobo', 'Pinguino', 'Cebra', 'Koala', 'Zorro', 'Rinoceronte', 'Hipopotamo']
     when 'countries' then array['Mexico', 'Japon', 'Italia', 'Brasil', 'Canada', 'Argentina', 'Francia', 'India', 'Egipto', 'Australia', 'Portugal', 'Colombia']
@@ -407,32 +430,37 @@ begin
     ) as member_pick
   );
 
+  delete from public.room_rounds
+  where room_id = p_room_id;
+
   insert into public.room_rounds (
     room_id,
+    round_number,
     game_id,
     theme_category,
     secret_word,
     impostor_ids,
+    eliminated_user_ids,
+    expelled_user_id,
+    phase,
+    vote_deadline_at,
     started_by_user_id,
     status
   )
   values (
     p_room_id,
+    previous_round_number + 1,
     'impostor',
     p_theme_category,
     selected_word,
     selected_impostor_ids,
+    '{}'::uuid[],
+    null,
+    'reveal',
+    null,
     current_user_id,
     'active'
   )
-  on conflict (room_id) do update
-  set game_id = excluded.game_id,
-      theme_category = excluded.theme_category,
-      secret_word = excluded.secret_word,
-      impostor_ids = excluded.impostor_ids,
-      started_by_user_id = excluded.started_by_user_id,
-      status = 'active',
-      updated_at = timezone('utc', now())
   returning * into next_round;
 
   update public.rooms
@@ -453,6 +481,197 @@ begin
   );
 
   return next_round;
+end;
+$$;
+
+create or replace function public.start_impostor_vote(
+  p_room_id uuid,
+  p_vote_duration_seconds integer default 45
+)
+returns public.room_rounds
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  current_user_id uuid := auth.uid();
+  target_round public.room_rounds;
+begin
+  if current_user_id is null then
+    raise exception 'AUTH_REQUIRED';
+  end if;
+
+  if not private.is_room_host(p_room_id) then
+    raise exception 'ROUND_HOST_ONLY';
+  end if;
+
+  select *
+  into target_round
+  from public.room_rounds
+  where room_id = p_room_id
+  limit 1;
+
+  if target_round.id is null then
+    raise exception 'ROUND_NOT_FOUND';
+  end if;
+
+  update public.room_rounds
+  set phase = 'voting',
+      vote_deadline_at = timezone('utc', now()) + make_interval(secs => greatest(coalesce(p_vote_duration_seconds, 45), 10)),
+      expelled_user_id = null,
+      updated_at = timezone('utc', now())
+  where id = target_round.id
+  returning * into target_round;
+
+  delete from public.room_round_votes
+  where round_id = target_round.id;
+
+  insert into public.room_activity (room_id, actor_user_id, type, payload)
+  values (
+    p_room_id,
+    current_user_id,
+    'vote_started',
+    jsonb_build_object('round_id', target_round.id)
+  );
+
+  return target_round;
+end;
+$$;
+
+create or replace function public.cast_impostor_vote(
+  p_room_id uuid,
+  p_target_user_id uuid
+)
+returns public.room_round_votes
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  current_user_id uuid := auth.uid();
+  target_round public.room_rounds;
+  next_vote public.room_round_votes;
+begin
+  if current_user_id is null then
+    raise exception 'AUTH_REQUIRED';
+  end if;
+
+  if not private.is_room_member(p_room_id) then
+    raise exception 'AUTH_REQUIRED';
+  end if;
+
+  select *
+  into target_round
+  from public.room_rounds
+  where room_id = p_room_id
+  limit 1;
+
+  if target_round.id is null then
+    raise exception 'ROUND_NOT_FOUND';
+  end if;
+
+  if target_round.phase <> 'voting' then
+    raise exception 'ROUND_NOT_VOTING';
+  end if;
+
+  if p_target_user_id = any(target_round.eliminated_user_ids) then
+    raise exception 'ROUND_TARGET_ELIMINATED';
+  end if;
+
+  if not exists (
+    select 1
+    from public.room_members
+    where room_id = p_room_id
+      and user_id = p_target_user_id
+      and is_active = true
+  ) then
+    raise exception 'ROUND_TARGET_NOT_FOUND';
+  end if;
+
+  insert into public.room_round_votes (room_id, round_id, voter_user_id, target_user_id)
+  values (p_room_id, target_round.id, current_user_id, p_target_user_id)
+  on conflict (round_id, voter_user_id) do update
+  set target_user_id = excluded.target_user_id,
+      created_at = timezone('utc', now())
+  returning * into next_vote;
+
+  return next_vote;
+end;
+$$;
+
+create or replace function public.resolve_impostor_vote(p_room_id uuid)
+returns public.room_rounds
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  current_user_id uuid := auth.uid();
+  target_round public.room_rounds;
+  winning_target_id uuid;
+  next_eliminated_ids uuid[];
+  all_impostors_eliminated boolean := false;
+begin
+  if current_user_id is null then
+    raise exception 'AUTH_REQUIRED';
+  end if;
+
+  if not private.is_room_host(p_room_id) then
+    raise exception 'ROUND_HOST_ONLY';
+  end if;
+
+  select *
+  into target_round
+  from public.room_rounds
+  where room_id = p_room_id
+  limit 1;
+
+  if target_round.id is null then
+    raise exception 'ROUND_NOT_FOUND';
+  end if;
+
+  select vote_row.target_user_id
+  into winning_target_id
+  from public.room_round_votes vote_row
+  where vote_row.round_id = target_round.id
+  group by vote_row.target_user_id
+  order by count(*) desc, min(vote_row.created_at) asc
+  limit 1;
+
+  next_eliminated_ids := target_round.eliminated_user_ids;
+
+  if winning_target_id is not null then
+    next_eliminated_ids := (
+      select array_agg(distinct value_item)
+      from unnest(array_append(coalesce(target_round.eliminated_user_ids, '{}'::uuid[]), winning_target_id)) as value_item
+    );
+  end if;
+
+  all_impostors_eliminated := coalesce(target_round.impostor_ids <@ coalesce(next_eliminated_ids, '{}'::uuid[]), false);
+
+  update public.room_rounds
+  set phase = 'result',
+      vote_deadline_at = null,
+      expelled_user_id = winning_target_id,
+      eliminated_user_ids = coalesce(next_eliminated_ids, '{}'::uuid[]),
+      status = case when all_impostors_eliminated then 'finished' else 'active' end,
+      updated_at = timezone('utc', now())
+  where id = target_round.id
+  returning * into target_round;
+
+  insert into public.room_activity (room_id, actor_user_id, type, payload)
+  values (
+    p_room_id,
+    current_user_id,
+    'vote_resolved',
+    jsonb_build_object(
+      'round_id', target_round.id,
+      'expelled_user_id', winning_target_id,
+      'all_impostors_eliminated', all_impostors_eliminated
+    )
+  );
+
+  return target_round;
 end;
 $$;
 
@@ -589,6 +808,14 @@ using (
 drop policy if exists "Members can read room rounds" on public.room_rounds;
 create policy "Members can read room rounds"
 on public.room_rounds
+for select
+using (
+  private.is_room_member(room_id)
+);
+
+drop policy if exists "Members can read room round votes" on public.room_round_votes;
+create policy "Members can read room round votes"
+on public.room_round_votes
 for select
 using (
   private.is_room_member(room_id)

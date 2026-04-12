@@ -6,6 +6,7 @@ export type RoomRow = Database['public']['Tables']['rooms']['Row'];
 export type RoomMemberRow = Database['public']['Tables']['room_members']['Row'];
 export type RoomActivityRow = Database['public']['Tables']['room_activity']['Row'];
 export type RoomRoundRow = Database['public']['Tables']['room_rounds']['Row'];
+export type RoomRoundVoteRow = Database['public']['Tables']['room_round_votes']['Row'];
 export type ProfileRow = Database['public']['Tables']['profiles']['Row'];
 
 export type RoomMemberView = {
@@ -43,6 +44,7 @@ type SubscribeToRoomRealtimeOptions = {
   onRoomChange: () => void;
   onMembersChange: () => void;
   onRoundChange: () => void;
+  onVotesChange: () => void;
   onConnectionStateChange?: (state: RoomRealtimeState, message?: string | null) => void;
 };
 
@@ -55,6 +57,15 @@ function normalizeResult<T>(data: T | T[] | null) {
 }
 
 function buildRoomErrorMessage(message: string) {
+  if (
+    message.includes('column room_rounds.round_number does not exist') ||
+    message.includes('column "round_number" does not exist') ||
+    message.includes('column room_rounds.phase does not exist') ||
+    message.includes('relation "public.room_round_votes" does not exist')
+  ) {
+    return 'ROOMS_BACKEND_NOT_CONFIGURED';
+  }
+
   if (message.includes('ROOM_NOT_FOUND')) {
     return 'ROOM_NOT_FOUND';
   }
@@ -85,6 +96,22 @@ function buildRoomErrorMessage(message: string) {
 
   if (message.includes('ROUND_NO_MEMBERS')) {
     return 'ROUND_NO_MEMBERS';
+  }
+
+  if (message.includes('ROUND_NOT_FOUND')) {
+    return 'ROUND_NOT_FOUND';
+  }
+
+  if (message.includes('ROUND_NOT_VOTING')) {
+    return 'ROUND_NOT_VOTING';
+  }
+
+  if (message.includes('ROUND_TARGET_NOT_FOUND')) {
+    return 'ROUND_TARGET_NOT_FOUND';
+  }
+
+  if (message.includes('ROUND_TARGET_ELIMINATED')) {
+    return 'ROUND_TARGET_ELIMINATED';
   }
 
   if (message.includes('Failed to fetch') || message.includes('fetch failed') || message.includes('Network request failed')) {
@@ -251,16 +278,43 @@ async function getRoomRound(roomId: string) {
   return data;
 }
 
-function mapRoomRound(round: RoomRoundRow | null): ImpostorRoundSetup | null {
+async function getRoomRoundVotes(roundId: string | null) {
+  if (!roundId) {
+    return [];
+  }
+
+  const { data, error } = await supabase
+    .from('room_round_votes')
+    .select('*')
+    .eq('round_id', roundId)
+    .order('created_at', { ascending: true });
+
+  if (error) {
+    throw new Error(buildRoomErrorMessage(error.message));
+  }
+
+  return data ?? [];
+}
+
+function mapRoomRound(round: RoomRoundRow | null, votes: RoomRoundVoteRow[] = []): ImpostorRoundSetup | null {
   if (!round) {
     return null;
   }
 
   return {
     roundId: round.id,
+    roundNumber: round.round_number,
     categoryId: round.theme_category as ImpostorCategoryId,
     secretWord: round.secret_word,
     impostorIds: round.impostor_ids,
+    eliminatedUserIds: round.eliminated_user_ids,
+    expelledUserId: round.expelled_user_id,
+    phase: round.phase,
+    voteDeadlineAt: round.vote_deadline_at,
+    votes: votes.map((vote) => ({
+      voterUserId: vote.voter_user_id,
+      targetUserId: vote.target_user_id
+    })),
     startedAt: round.created_at,
     status: round.status
   };
@@ -277,6 +331,7 @@ export async function getRoomDetails(roomId: string, currentUserId: string): Pro
   const profiles = await getProfilesForUsers(members.map((member) => member.user_id));
   const activity = await getRoomActivity(roomId);
   const round = await getRoomRound(roomId);
+  const roundVotes = await getRoomRoundVotes(round?.id ?? null);
   const profilesById = new Map(profiles.map((profile) => [profile.id, profile]));
 
   const memberViews = members.map((member) => {
@@ -335,6 +390,24 @@ export async function getRoomDetails(roomId: string, currentUserId: string): Pro
       } satisfies RoomActivityView;
     }
 
+    if (entry.type === 'vote_started') {
+      return {
+        id: entry.id,
+        title: `${actorLabel} opened the vote`,
+        subtitle: 'The room can vote now.',
+        createdAt: entry.created_at
+      } satisfies RoomActivityView;
+    }
+
+    if (entry.type === 'vote_resolved') {
+      return {
+        id: entry.id,
+        title: `${actorLabel} closed the vote`,
+        subtitle: 'The room revealed who got expelled.',
+        createdAt: entry.created_at
+      } satisfies RoomActivityView;
+    }
+
     return {
       id: entry.id,
       title: entry.type,
@@ -349,7 +422,7 @@ export async function getRoomDetails(roomId: string, currentUserId: string): Pro
     room,
     members: memberViews,
     activity: activityViews,
-    round: mapRoomRound(round),
+    round: mapRoomRound(round, roundVotes),
     currentUserRole: currentMember?.role ?? null,
     isHost: currentMember?.role === 'host'
   };
@@ -391,6 +464,18 @@ export async function updateRoomMemberPresence(roomId: string, userId: string, i
   }
 }
 
+export async function leaveCurrentRoom(roomId: string, userId: string) {
+  const { error } = await supabase
+    .from('room_members')
+    .update({ is_active: false })
+    .eq('room_id', roomId)
+    .eq('user_id', userId);
+
+  if (error) {
+    throw new Error(buildRoomErrorMessage(error.message));
+  }
+}
+
 export async function removeRoomMember(roomId: string, memberUserId: string) {
   const { data, error } = await supabase.rpc('remove_room_member', {
     p_room_id: roomId,
@@ -418,11 +503,50 @@ export async function startImpostorRound(roomId: string, themeCategory: Impostor
   return mapRoomRound(normalizeResult(data as RoomRoundRow | RoomRoundRow[] | null));
 }
 
+export async function startImpostorVote(roomId: string, voteDurationSeconds: number) {
+  const { data, error } = await supabase.rpc('start_impostor_vote', {
+    p_room_id: roomId,
+    p_vote_duration_seconds: voteDurationSeconds
+  });
+
+  if (error) {
+    throw new Error(buildRoomErrorMessage(error.message));
+  }
+
+  return mapRoomRound(normalizeResult(data as RoomRoundRow | RoomRoundRow[] | null));
+}
+
+export async function castImpostorVote(roomId: string, targetUserId: string) {
+  const { data, error } = await supabase.rpc('cast_impostor_vote', {
+    p_room_id: roomId,
+    p_target_user_id: targetUserId
+  });
+
+  if (error) {
+    throw new Error(buildRoomErrorMessage(error.message));
+  }
+
+  return normalizeResult(data as RoomRoundVoteRow | RoomRoundVoteRow[] | null);
+}
+
+export async function resolveImpostorVote(roomId: string) {
+  const { data, error } = await supabase.rpc('resolve_impostor_vote', {
+    p_room_id: roomId
+  });
+
+  if (error) {
+    throw new Error(buildRoomErrorMessage(error.message));
+  }
+
+  return mapRoomRound(normalizeResult(data as RoomRoundRow | RoomRoundRow[] | null));
+}
+
 export function subscribeToRoomRealtime({
   roomId,
   onRoomChange,
   onMembersChange,
   onRoundChange,
+  onVotesChange,
   onConnectionStateChange
 }: SubscribeToRoomRealtimeOptions) {
   const channel = supabase
@@ -441,6 +565,11 @@ export function subscribeToRoomRealtime({
       'postgres_changes',
       { event: '*', schema: 'public', table: 'room_rounds', filter: `room_id=eq.${roomId}` },
       () => onRoundChange()
+    )
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'room_round_votes', filter: `room_id=eq.${roomId}` },
+      () => onVotesChange()
     )
     .subscribe((status) => {
       if (status === 'SUBSCRIBED') {

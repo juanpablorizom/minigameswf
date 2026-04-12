@@ -14,32 +14,24 @@ type RoomSettingsScreenProps = {
   onSave: () => void;
 };
 
-const maxPlayerOptions = [6, 8, 10];
 const impostorCountOptions = [1, 2, 3];
 const roundOptions = [2, 3, 4];
 const turnOptions = [30, 45, 60];
-const privacyOptions: RoomSettings['privacy'][] = ['Invite only', 'Friends of friends'];
-const vibeOptions: RoomSettings['vibe'][] = ['Balanced', 'Fast', 'Talkative'];
-const formatOptions: RoomSettings['format'][] = ['Casual', 'Competitive'];
 const themeOptions: RoomSettings['themeCategory'][] = ['animals', 'countries', 'objects'];
 
 export function RoomSettingsScreen({ settings, onChangeSettings, onSave }: RoomSettingsScreenProps) {
   const { t } = useTranslation();
   const theme = useTheme();
   const styles = createStyles(theme);
-  const formatLabel = t(`roomSettings.formatOptions.${settings.format}`);
-
   return (
     <AppScreen title={t('roomSettings.title')} subtitle={t('roomSettings.subtitle')}>
       <SurfaceCard>
         <View style={styles.summaryHeader}>
           <Text style={styles.sectionTitle}>{t('roomSettings.profileTitle')}</Text>
-          <Badge label={settings.chatEnabled ? t('roomSettings.chatOn') : t('roomSettings.chatOff')} tone={settings.chatEnabled ? 'success' : 'neutral'} />
+          <Badge label={t('gameMeta.names.impostor')} tone="accent" />
         </View>
         <Text style={styles.summaryCopy}>
           {t('roomSettings.summary', {
-            format: formatLabel.toLowerCase(),
-            maxPlayers: settings.maxPlayers,
             rounds: settings.rounds,
             turnSeconds: settings.turnSeconds,
             impostorCount: settings.impostorCount,
@@ -78,20 +70,6 @@ export function RoomSettingsScreen({ settings, onChangeSettings, onSave }: RoomS
       </SurfaceCard>
 
       <SurfaceCard>
-        <Text style={styles.sectionTitle}>{t('roomSettings.maxPlayers')}</Text>
-        <View style={styles.optionRow}>
-          {maxPlayerOptions.map((maxPlayers) => (
-            <OptionChip
-              key={maxPlayers}
-              label={`${maxPlayers}`}
-              active={settings.maxPlayers === maxPlayers}
-              onPress={() => onChangeSettings({ ...settings, maxPlayers })}
-            />
-          ))}
-        </View>
-      </SurfaceCard>
-
-      <SurfaceCard>
         <Text style={styles.sectionTitle}>{t('roomSettings.rounds')}</Text>
         <View style={styles.optionRow}>
           {roundOptions.map((rounds) => (
@@ -116,64 +94,6 @@ export function RoomSettingsScreen({ settings, onChangeSettings, onSave }: RoomS
               onPress={() => onChangeSettings({ ...settings, turnSeconds })}
             />
           ))}
-        </View>
-      </SurfaceCard>
-
-      <SurfaceCard>
-        <Text style={styles.sectionTitle}>{t('roomSettings.privacy')}</Text>
-        <View style={styles.optionColumn}>
-          {privacyOptions.map((privacy) => (
-            <OptionChip
-              key={privacy}
-              label={t(`roomSettings.privacyOptions.${privacy}`)}
-              active={settings.privacy === privacy}
-              onPress={() => onChangeSettings({ ...settings, privacy })}
-            />
-          ))}
-        </View>
-      </SurfaceCard>
-
-      <SurfaceCard>
-        <Text style={styles.sectionTitle}>{t('roomSettings.roomVibe')}</Text>
-        <View style={styles.optionColumn}>
-          {vibeOptions.map((vibe) => (
-            <OptionChip
-              key={vibe}
-              label={t(`roomSettings.vibeOptions.${vibe}`)}
-              active={settings.vibe === vibe}
-              onPress={() => onChangeSettings({ ...settings, vibe })}
-            />
-          ))}
-        </View>
-      </SurfaceCard>
-
-      <SurfaceCard>
-        <Text style={styles.sectionTitle}>{t('roomSettings.format')}</Text>
-        <View style={styles.optionRow}>
-          {formatOptions.map((format) => (
-            <OptionChip
-              key={format}
-              label={t(`roomSettings.formatOptions.${format}`)}
-              active={settings.format === format}
-              onPress={() => onChangeSettings({ ...settings, format })}
-            />
-          ))}
-        </View>
-      </SurfaceCard>
-
-      <SurfaceCard>
-        <Text style={styles.sectionTitle}>{t('roomSettings.roomChat')}</Text>
-        <View style={styles.optionRow}>
-          <OptionChip
-            label={t('roomSettings.chatOn')}
-            active={settings.chatEnabled}
-            onPress={() => onChangeSettings({ ...settings, chatEnabled: true })}
-          />
-          <OptionChip
-            label={t('roomSettings.chatOff')}
-            active={!settings.chatEnabled}
-            onPress={() => onChangeSettings({ ...settings, chatEnabled: false })}
-          />
         </View>
       </SurfaceCard>
 

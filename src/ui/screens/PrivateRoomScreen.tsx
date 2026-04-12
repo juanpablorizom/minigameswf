@@ -28,6 +28,7 @@ type PrivateRoomScreenProps = {
   onOpenSettings: () => void;
   onStart: () => void;
   onRemoveMember: (memberUserId: string) => void;
+  onLeaveRoom: () => void;
 };
 
 export function PrivateRoomScreen({
@@ -46,7 +47,8 @@ export function PrivateRoomScreen({
   onChooseGames,
   onOpenSettings,
   onStart,
-  onRemoveMember
+  onRemoveMember,
+  onLeaveRoom
 }: PrivateRoomScreenProps) {
   const { t } = useTranslation();
   const theme = useTheme();
@@ -67,22 +69,6 @@ export function PrivateRoomScreen({
 
   function gameName(id: string) {
     return t(`gameMeta.names.${id}`);
-  }
-
-  function gameEnergy(energy: string) {
-    return t(`gameMeta.energies.${energy}`);
-  }
-
-  function privacyLabel(value: RoomSettings['privacy']) {
-    return t(`roomSettings.privacyOptions.${value}`);
-  }
-
-  function vibeLabel(value: RoomSettings['vibe']) {
-    return t(`roomSettings.vibeOptions.${value}`);
-  }
-
-  function formatLabel(value: RoomSettings['format']) {
-    return t(`roomSettings.formatOptions.${value}`);
   }
 
   function themeLabel(value: RoomSettings['themeCategory']) {
@@ -116,6 +102,7 @@ export function PrivateRoomScreen({
           {canManageRoom ? (
             <AppButton label={roomStatus === 'active' ? t('room.returnToGame') : t('room.continueToGame')} onPress={onStart} disabled={isBusy} />
           ) : null}
+          <AppButton label={t('room.leaveRoom')} onPress={onLeaveRoom} variant="ghost" disabled={isBusy} />
         </View>
         <View style={styles.qrSection}>
           <View style={styles.qrCard}>
@@ -169,9 +156,7 @@ export function PrivateRoomScreen({
           <View style={styles.listRow}>
             <View style={styles.listMeta}>
               <Text style={styles.itemTitle}>{gameName(selectedGame.id)}</Text>
-              <Text style={styles.itemSubtitle}>
-                {selectedGame.duration} · {gameEnergy(selectedGame.energy)}
-              </Text>
+              <Text style={styles.itemSubtitle}>{t(`gameMeta.descriptions.${selectedGame.id}`)}</Text>
               {isImpostorMode ? (
                 <Text style={styles.supportingCopy}>{t('room.impostorHint')}</Text>
               ) : null}
@@ -188,14 +173,10 @@ export function PrivateRoomScreen({
           <Text style={styles.sectionTitle}>{t('room.partySetup')}</Text>
           {canManageRoom ? <AppButton label={t('room.adjust')} onPress={onOpenSettings} variant="ghost" /> : null}
         </View>
-        <Text style={styles.itemSubtitle}>{t('room.privacyLine', { value: privacyLabel(settings.privacy) })}</Text>
-        <Text style={styles.itemSubtitle}>{t('room.maxPlayersLine', { value: settings.maxPlayers })}</Text>
+        <Text style={styles.itemSubtitle}>{t('room.roundsLine', { value: settings.rounds })}</Text>
         <Text style={styles.itemSubtitle}>{t('room.impostorCountLine', { value: settings.impostorCount })}</Text>
         <Text style={styles.itemSubtitle}>{t('room.themeLine', { value: themeLabel(settings.themeCategory) })}</Text>
         <Text style={styles.itemSubtitle}>{t('room.turnTimerLine', { value: settings.turnSeconds })}</Text>
-        <Text style={styles.itemSubtitle}>{t('room.modeLine', { value: formatLabel(settings.format) })}</Text>
-        <Text style={styles.itemSubtitle}>{t('room.flowLine', { value: vibeLabel(settings.vibe) })}</Text>
-        <Text style={styles.itemSubtitle}>{t('room.chatLine', { value: settings.chatEnabled ? t('room.chatEnabled') : t('room.chatDisabled') })}</Text>
       </SurfaceCard>
 
       <SurfaceCard>
