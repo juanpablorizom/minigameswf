@@ -35,6 +35,7 @@ type AuthContextValue = {
   linkedProviderLabel: string | null;
   signInWithEmail: (email: string, password: string) => Promise<AuthActionResult>;
   signUpWithEmail: (email: string, password: string, displayName: string) => Promise<AuthActionResult>;
+  signInWithGoogle: () => Promise<AuthActionResult>;
   continueAsGuest: (displayName: string) => Promise<AuthActionResult>;
   signOut: () => Promise<void>;
   changeLanguage: (language: AppLanguage) => Promise<AuthActionResult>;
@@ -217,6 +218,13 @@ export function AuthProvider({ children }: PropsWithChildren) {
         }
 
         return {};
+      },
+      signInWithGoogle: async () => {
+        if (!isSupabaseConfigured) {
+          return { error: 'SUPABASE_NOT_CONFIGURED' };
+        }
+
+        return { message: 'GOOGLE_SIGN_IN_SETUP_REQUIRED' };
       },
       continueAsGuest: async (displayName) => {
         if (!isSupabaseConfigured) {

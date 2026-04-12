@@ -15,8 +15,8 @@ export function AppScreen({ children, title, subtitle, footer }: AppScreenProps)
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <View style={styles.backgroundGlowTop} />
-      <View style={styles.backgroundGlowBottom} />
+      <View pointerEvents="none" style={styles.backgroundGlowTop} />
+      <View pointerEvents="none" style={styles.backgroundGlowBottom} />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {title ? (
           <View style={styles.header}>

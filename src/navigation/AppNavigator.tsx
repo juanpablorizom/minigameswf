@@ -98,6 +98,7 @@ export function AppNavigator() {
     themePreference,
     signInWithEmail,
     signUpWithEmail,
+    signInWithGoogle,
     continueAsGuest,
     signOut,
     changeLanguage,
@@ -289,6 +290,16 @@ export function AppNavigator() {
           isBusy={isBusy || roomBusy || loadingShell}
           isSupabaseConfigured={isSupabaseConfigured}
           notice={loadingShell ? t('common.loading') : authNotice}
+          onSignInWithGoogle={() => {
+            void signInWithGoogle().then((result) => {
+              if (result.message === 'GOOGLE_SIGN_IN_SETUP_REQUIRED') {
+                setAuthNotice(t('auth.googleNotReady'));
+                return;
+              }
+
+              setAuthNotice(result.error === 'SUPABASE_NOT_CONFIGURED' ? t('auth.supabaseMissing') : result.error ?? null);
+            });
+          }}
           onSignIn={(nextEmail, password) => {
             void signInWithEmail(nextEmail, password).then((result) => {
               setAuthNotice(result.error ?? null);
@@ -315,6 +326,10 @@ export function AppNavigator() {
   }
 
   function resolveAccountNotice(message?: string) {
+    if (message === 'GOOGLE_SIGN_IN_SETUP_REQUIRED') {
+      return t('auth.googleNotReady');
+    }
+
     if (message === 'LINKING_REQUIRES_SETUP') {
       return t('account.linkingRequiresSetup');
     }
