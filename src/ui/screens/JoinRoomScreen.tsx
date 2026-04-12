@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import { AppButton } from '../components/AppButton';
 import { AppScreen } from '../components/AppScreen';
@@ -14,14 +15,15 @@ type JoinRoomScreenProps = {
 };
 
 export function JoinRoomScreen({ isBusy, notice, onJoin, onOpenScanner }: JoinRoomScreenProps) {
+  const { t } = useTranslation();
   const theme = useTheme();
   const styles = createStyles(theme);
   const [code, setCode] = useState('');
 
   return (
-    <AppScreen title="Join room" subtitle="Enter the code your host shared. If the room is still open, you will drop straight into the party.">
+    <AppScreen title={t('joinRoom.title')} subtitle={t('joinRoom.subtitle')}>
       <SurfaceCard>
-        <Text style={styles.sectionTitle}>Room code</Text>
+        <Text style={styles.sectionTitle}>{t('joinRoom.roomCode')}</Text>
         <TextInput
           value={code}
           onChangeText={(next) => setCode(next.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 5))}
@@ -32,10 +34,10 @@ export function JoinRoomScreen({ isBusy, notice, onJoin, onOpenScanner }: JoinRo
           autoCorrect={false}
           maxLength={5}
         />
-        <Text style={styles.helper}>Codes are short, private, and 5 characters long. Ask the host to share the latest code if this one does not work.</Text>
+        <Text style={styles.helper}>{t('joinRoom.helper')}</Text>
         <View style={styles.actionRow}>
-          <AppButton label="Join party" onPress={() => onJoin(code)} disabled={isBusy || code.trim().length < 5} />
-          <AppButton label="Scan QR instead" onPress={onOpenScanner} variant="secondary" disabled={isBusy} />
+          <AppButton label={t('joinRoom.joinParty')} onPress={() => onJoin(code)} disabled={isBusy || code.trim().length < 5} />
+          <AppButton label={t('joinRoom.scanInstead')} onPress={onOpenScanner} variant="secondary" disabled={isBusy} />
         </View>
         {notice ? <Text style={styles.notice}>{notice}</Text> : null}
       </SurfaceCard>

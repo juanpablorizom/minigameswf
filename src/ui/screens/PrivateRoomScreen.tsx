@@ -1,5 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
+import { useTranslation } from 'react-i18next';
 
 import type { RoomActivityView, RoomMemberView } from '../../data/rooms';
 import type { RoomRealtimeState } from '../../data/rooms';
@@ -45,35 +46,68 @@ export function PrivateRoomScreen({
   onOpenSettings,
   onStart
 }: PrivateRoomScreenProps) {
+  const { t } = useTranslation();
   const theme = useTheme();
   const styles = createStyles(theme);
   const activeMembers = members.filter((member) => member.isActive);
   const host = members.find((member) => member.role === 'host') ?? null;
   const isImpostorMode = selectedGame?.id === 'impostor';
+  const roomStatusLabel =
+    roomStatus === 'active' ? t('room.statusActive') : roomStatus === 'finished' ? t('room.statusFinished') : t('room.statusWaiting');
+  const syncStatusLabel =
+    syncState === 'live'
+      ? t('room.syncLive')
+      : syncState === 'connecting'
+        ? t('room.syncConnecting')
+        : syncState === 'error'
+          ? t('room.syncReconnect')
+          : t('room.syncIdle');
+
+  function gameName(id: string) {
+    return t(`gameMeta.names.${id}`);
+  }
+
+  function gameEnergy(energy: string) {
+    return t(`gameMeta.energies.${energy}`);
+  }
+
+  function privacyLabel(value: RoomSettings['privacy']) {
+    return t(`roomSettings.privacyOptions.${value}`);
+  }
+
+  function vibeLabel(value: RoomSettings['vibe']) {
+    return t(`roomSettings.vibeOptions.${value}`);
+  }
+
+  function formatLabel(value: RoomSettings['format']) {
+    return t(`roomSettings.formatOptions.${value}`);
+  }
 
   return (
-    <AppScreen title="Party room" subtitle={canManageRoom ? 'You are hosting this room. Keep members moving and lock the flow before the first round starts.' : 'The host controls setup. You can follow who is in and wait for the next step.'}>
+    <AppScreen title={t('room.title')} subtitle={canManageRoom ? t('room.subtitleHost') : t('room.subtitleMember')}>
       <SurfaceCard>
         <View style={styles.roomTop}>
           <View style={styles.codeBlock}>
-            <Text style={styles.codeLabel}>Room code</Text>
+            <Text style={styles.codeLabel}>{t('room.roomCode')}</Text>
             <Text style={styles.codeValue}>{roomCode}</Text>
           </View>
           <View style={styles.statusStack}>
-            <Badge label={roomStatus === 'active' ? 'In session' : roomStatus === 'finished' ? 'Finished' : 'Waiting'} tone={roomStatus === 'active' ? 'success' : 'accent'} />
+            <Badge label={roomStatusLabel} tone={roomStatus === 'active' ? 'success' : 'accent'} />
             <Badge
-              label={syncState === 'live' ? 'Live sync' : syncState === 'connecting' ? 'Syncing...' : syncState === 'error' ? 'Reconnect' : 'Idle'}
+              label={syncStatusLabel}
               tone={syncState === 'error' ? 'accent' : syncState === 'live' ? 'success' : 'neutral'}
             />
           </View>
         </View>
         <Text style={styles.sectionCopy}>
-          {host ? `${host.displayName} is hosting` : 'Host unavailable'} · {activeMembers.length} active members
+          {host
+            ? t('room.hostLine', { host: host.displayName, count: activeMembers.length })
+            : t('room.hostUnavailable')}
         </Text>
         <View style={styles.roomActions}>
-          <AppButton label="Share code" onPress={onShareCode} variant="secondary" />
+          <AppButton label={t('room.shareCode')} onPress={onShareCode} variant="secondary" />
           {canManageRoom ? (
-            <AppButton label={roomStatus === 'active' ? 'Return to game' : 'Continue to game'} onPress={onStart} disabled={isBusy} />
+            <AppButton label={roomStatus === 'active' ? t('room.returnToGame') : t('room.continueToGame')} onPress={onStart} disabled={isBusy} />
           ) : null}
         </View>
         <View style={styles.qrSection}>
@@ -81,9 +115,9 @@ export function PrivateRoomScreen({
             <QRCode value={roomUrl} size={164} color={theme.colors.background} backgroundColor="#FFFFFF" />
           </View>
           <View style={styles.qrMeta}>
-            <Text style={styles.qrTitle}>Scan to join instantly</Text>
+            <Text style={styles.qrTitle}>{t('room.qrTitle')}</Text>
             <Text style={styles.itemSubtitle}>{roomUrl}</Text>
-            <Text style={styles.supportingCopy}>Fallback code: {roomCode}</Text>
+            <Text style={styles.supportingCopy}>{t('room.fallbackCode', { code: roomCode })}</Text>
           </View>
         </View>
         {notice ? <Text style={styles.notice}>{notice}</Text> : null}
@@ -91,8 +125,8 @@ export function PrivateRoomScreen({
 
       <SurfaceCard>
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Members</Text>
-          <Badge label={`${activeMembers.length} active`} />
+          <Text style={styles.sectionTitle}>{t('room.members')}</Text>
+          <Badge label={t('room.activeCount', { count: activeMembers.length })} />
         </View>
         {members.map((member) => (
           <View key={member.id} style={styles.playerRow}>
@@ -102,57 +136,58 @@ export function PrivateRoomScreen({
             <View style={styles.playerMeta}>
               <View style={styles.playerTitleRow}>
                 <Text style={styles.playerName}>{member.displayName}</Text>
-                {member.isCurrentUser ? <Badge label="You" tone="neutral" /> : null}
+                {member.isCurrentUser ? <Badge label={t('room.you')} tone="neutral" /> : null}
               </View>
               <Text style={styles.playerMood}>@{member.username}</Text>
             </View>
-            <Badge label={member.role === 'host' ? 'Host' : member.isActive ? 'Joined' : 'Away'} tone={member.role === 'host' || member.isActive ? 'success' : 'neutral'} />
+            <Badge
+              label={member.role === 'host' ? t('room.memberHost') : member.isActive ? t('room.memberJoined') : t('room.memberAway')}
+              tone={member.role === 'host' || member.isActive ? 'success' : 'neutral'}
+            />
           </View>
         ))}
       </SurfaceCard>
 
       <SurfaceCard>
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Current mode</Text>
-          {canManageRoom ? <AppButton label="Change" onPress={onChooseGames} variant="ghost" /> : null}
+          <Text style={styles.sectionTitle}>{t('room.currentMode')}</Text>
+          {canManageRoom ? <AppButton label={t('room.change')} onPress={onChooseGames} variant="ghost" /> : null}
         </View>
         {selectedGame ? (
           <View style={styles.listRow}>
             <View style={styles.listMeta}>
-              <Text style={styles.itemTitle}>{selectedGame.name}</Text>
+              <Text style={styles.itemTitle}>{gameName(selectedGame.id)}</Text>
               <Text style={styles.itemSubtitle}>
-                {selectedGame.duration} · {selectedGame.energy}
+                {selectedGame.duration} · {gameEnergy(selectedGame.energy)}
               </Text>
               {isImpostorMode ? (
-                <Text style={styles.supportingCopy}>
-                  Choose Friends Mode or Multiplayer when the round starts.
-                </Text>
+                <Text style={styles.supportingCopy}>{t('room.impostorHint')}</Text>
               ) : null}
             </View>
-            <Badge label="Selected" tone="accent" />
+            <Badge label={t('room.selected')} tone="accent" />
           </View>
         ) : (
-          <Text style={styles.itemSubtitle}>{canManageRoom ? 'Choose the first mode before starting the party.' : 'The host has not selected the next mode yet.'}</Text>
+          <Text style={styles.itemSubtitle}>{canManageRoom ? t('room.noModeHost') : t('room.noModeMember')}</Text>
         )}
       </SurfaceCard>
 
       <SurfaceCard>
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Party setup</Text>
-          {canManageRoom ? <AppButton label="Adjust" onPress={onOpenSettings} variant="ghost" /> : null}
+          <Text style={styles.sectionTitle}>{t('room.partySetup')}</Text>
+          {canManageRoom ? <AppButton label={t('room.adjust')} onPress={onOpenSettings} variant="ghost" /> : null}
         </View>
-        <Text style={styles.itemSubtitle}>Privacy: {settings.privacy}</Text>
-        <Text style={styles.itemSubtitle}>Max players: {settings.maxPlayers}</Text>
-        <Text style={styles.itemSubtitle}>Turn timer: {settings.turnSeconds} seconds</Text>
-        <Text style={styles.itemSubtitle}>Mode: {settings.format}</Text>
-        <Text style={styles.itemSubtitle}>Flow: {settings.vibe}</Text>
-        <Text style={styles.itemSubtitle}>Chat: {settings.chatEnabled ? 'On' : 'Off'}</Text>
+        <Text style={styles.itemSubtitle}>{t('room.privacyLine', { value: privacyLabel(settings.privacy) })}</Text>
+        <Text style={styles.itemSubtitle}>{t('room.maxPlayersLine', { value: settings.maxPlayers })}</Text>
+        <Text style={styles.itemSubtitle}>{t('room.turnTimerLine', { value: settings.turnSeconds })}</Text>
+        <Text style={styles.itemSubtitle}>{t('room.modeLine', { value: formatLabel(settings.format) })}</Text>
+        <Text style={styles.itemSubtitle}>{t('room.flowLine', { value: vibeLabel(settings.vibe) })}</Text>
+        <Text style={styles.itemSubtitle}>{t('room.chatLine', { value: settings.chatEnabled ? t('room.chatEnabled') : t('room.chatDisabled') })}</Text>
       </SurfaceCard>
 
       <SurfaceCard>
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Party activity</Text>
-          <Badge label="Live" tone="success" />
+          <Text style={styles.sectionTitle}>{t('room.activityTitle')}</Text>
+          <Badge label={t('room.activityLive')} tone="success" />
         </View>
         {activity.length ? (
           activity.map((item) => (
@@ -165,7 +200,7 @@ export function PrivateRoomScreen({
             </View>
           ))
         ) : (
-          <Text style={styles.itemSubtitle}>Room activity will appear here as members join and the party moves forward.</Text>
+          <Text style={styles.itemSubtitle}>{t('room.activityEmpty')}</Text>
         )}
       </SurfaceCard>
     </AppScreen>

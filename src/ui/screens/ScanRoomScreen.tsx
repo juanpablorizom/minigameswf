@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
+import { useTranslation } from 'react-i18next';
 
 import { extractRoomCodeFromValue } from '../../lib/roomLinks';
 import { AppButton } from '../components/AppButton';
@@ -16,6 +17,7 @@ type ScanRoomScreenProps = {
 };
 
 export function ScanRoomScreen({ isBusy, notice, onScanCode, onFallbackToManual }: ScanRoomScreenProps) {
+  const { t } = useTranslation();
   const theme = useTheme();
   const styles = createStyles(theme);
   const [permission, requestPermission] = useCameraPermissions();
@@ -33,7 +35,7 @@ export function ScanRoomScreen({ isBusy, notice, onScanCode, onFallbackToManual 
 
     if (!code) {
       setIsPaused(true);
-      setLocalNotice('This QR is not a valid MiniGamesWF room link.');
+      setLocalNotice(t('scanRoom.invalidQr'));
       return;
     }
 
@@ -43,16 +45,14 @@ export function ScanRoomScreen({ isBusy, notice, onScanCode, onFallbackToManual 
   }
 
   return (
-    <AppScreen title="Scan QR" subtitle="Point the camera at a MiniGamesWF room QR and join the party instantly.">
+    <AppScreen title={t('scanRoom.title')} subtitle={t('scanRoom.subtitle')}>
       <SurfaceCard>
-        {!permission ? <Text style={styles.helper}>Checking camera access...</Text> : null}
+        {!permission ? <Text style={styles.helper}>{t('scanRoom.checkingCamera')}</Text> : null}
 
         {permission && !permission.granted ? (
           <>
-            <Text style={styles.helper}>
-              Camera access is required to scan a room QR. You can still join manually with the room code.
-            </Text>
-            <AppButton label="Allow camera" onPress={() => void requestPermission()} loading={isBusy} />
+            <Text style={styles.helper}>{t('scanRoom.cameraNeeded')}</Text>
+            <AppButton label={t('scanRoom.allowCamera')} onPress={() => void requestPermission()} loading={isBusy} />
           </>
         ) : null}
 
@@ -77,11 +77,11 @@ export function ScanRoomScreen({ isBusy, notice, onScanCode, onFallbackToManual 
             setIsPaused(false);
             setLocalNotice(null);
           }}>
-            <Text style={styles.resetLink}>Scan again</Text>
+            <Text style={styles.resetLink}>{t('scanRoom.scanAgain')}</Text>
           </Pressable>
         ) : null}
 
-        <AppButton label={Platform.OS === 'web' ? 'Join with code instead' : 'Enter code instead'} onPress={onFallbackToManual} variant="secondary" />
+        <AppButton label={t('scanRoom.joinWithCode')} onPress={onFallbackToManual} variant="secondary" />
       </SurfaceCard>
     </AppScreen>
   );

@@ -1,4 +1,5 @@
 import { StyleSheet, Text, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import { featuredGames } from '../../data/mockData';
 import type { LobbyActionId, LobbyScenario } from '../../navigation/types';
@@ -16,41 +17,68 @@ type LobbyScreenProps = {
 };
 
 export function LobbyScreen({ displayName, scenario, onAction, notice = null }: LobbyScreenProps) {
+  const { t } = useTranslation();
   const theme = useTheme();
   const styles = createStyles(theme);
   const availableModes = featuredGames.filter((game) => scenario.modeIds.includes(game.id));
+  const activeRoomBadge = scenario.roomSummary ? t('lobby.roomActive') : t('lobby.noActiveRoom');
+  const actionLabels: Record<LobbyActionId, string> = {
+    createRoom: t('lobby.createRoom'),
+    joinByCode: t('lobby.joinByCode'),
+    scanQr: t('lobby.scanQr'),
+    continueRoom: t('lobby.continueRoom'),
+    inviteFriends: t('lobby.shareCode'),
+    resumeActivity: t('lobby.resume'),
+    quickPlay: t('lobby.quickPlay')
+  };
+
+  function gameName(id: string) {
+    return t(`gameMeta.names.${id}`);
+  }
+
+  function gameDescription(id: string) {
+    return t(`gameMeta.descriptions.${id}`);
+  }
+
+  function gameCategory(category: string) {
+    return t(`gameMeta.categories.${category}`);
+  }
+
+  function gameEnergy(energy: string) {
+    return t(`gameMeta.energies.${energy}`);
+  }
 
   return (
     <AppScreen title={`${scenario.greeting}, ${displayName}`} subtitle={scenario.statusLabel}>
       <SurfaceCard>
         <View style={styles.heroTopRow}>
           <Badge label={scenario.statusLabel} tone="accent" />
-          <Text style={styles.stateHint}>Home</Text>
+          <Text style={styles.stateHint}>{t('lobby.home')}</Text>
         </View>
         <Text style={styles.heroTitle}>{scenario.title}</Text>
         <Text style={styles.copy}>{scenario.subtitle}</Text>
         <View style={styles.actionRow}>
           <AppButton
-            label={scenario.primaryAction.label}
+            label={actionLabels[scenario.primaryAction.id] ?? scenario.primaryAction.label}
             onPress={() => onAction(scenario.primaryAction.id)}
             variant={scenario.primaryAction.variant}
           />
           {scenario.secondaryAction ? (
             <AppButton
-              label={scenario.secondaryAction.label}
+              label={actionLabels[scenario.secondaryAction.id] ?? scenario.secondaryAction.label}
               onPress={() => onAction(scenario.secondaryAction!.id)}
               variant={scenario.secondaryAction.variant}
             />
           ) : null}
         </View>
         <View style={styles.pillRow}>
-          <Badge label={scenario.roomSummary ? 'Room active' : 'No active room'} tone={scenario.roomSummary ? 'success' : 'neutral'} />
-          <Badge label={`${availableModes.length} modes ready`} tone="neutral" />
+          <Badge label={activeRoomBadge} tone={scenario.roomSummary ? 'success' : 'neutral'} />
+          <Badge label={t('lobby.modesReady', { count: availableModes.length })} tone="neutral" />
           {(scenario.key === 'guest' || scenario.key === 'noRoom') ? (
-            <AppButton label="Quick play" onPress={() => onAction('quickPlay')} variant="ghost" />
+            <AppButton label={t('lobby.quickPlay')} onPress={() => onAction('quickPlay')} variant="ghost" />
           ) : null}
           {(scenario.key === 'guest' || scenario.key === 'noRoom') ? (
-            <AppButton label="Scan QR" onPress={() => onAction('scanQr')} variant="ghost" />
+            <AppButton label={t('lobby.scanQr')} onPress={() => onAction('scanQr')} variant="ghost" />
           ) : null}
         </View>
         {notice ? <Text style={styles.notice}>{notice}</Text> : null}
@@ -58,7 +86,7 @@ export function LobbyScreen({ displayName, scenario, onAction, notice = null }: 
 
       {scenario.roomSummary ? (
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Current room</Text>
+          <Text style={styles.sectionTitle}>{t('lobby.currentRoom')}</Text>
           <SurfaceCard>
             <View style={styles.detailHeader}>
               <View style={styles.detailMeta}>
@@ -71,7 +99,7 @@ export function LobbyScreen({ displayName, scenario, onAction, notice = null }: 
             </View>
             <Text style={styles.supportingCopy}>{scenario.roomSummary.meta}</Text>
             <AppButton
-              label={scenario.roomSummary.ctaLabel}
+              label={t('lobby.openRoom')}
               onPress={() => onAction(scenario.roomSummary!.ctaAction)}
               variant="secondary"
             />
@@ -81,7 +109,7 @@ export function LobbyScreen({ displayName, scenario, onAction, notice = null }: 
 
       {scenario.invite ? (
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Invite waiting</Text>
+          <Text style={styles.sectionTitle}>{t('lobby.inviteWaiting')}</Text>
           <SurfaceCard>
             <View style={styles.detailHeader}>
               <View style={styles.detailMeta}>
@@ -104,7 +132,7 @@ export function LobbyScreen({ displayName, scenario, onAction, notice = null }: 
 
       {scenario.recentActivity ? (
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Resume</Text>
+          <Text style={styles.sectionTitle}>{t('lobby.resume')}</Text>
           <SurfaceCard>
             <Text style={styles.itemTitle}>{scenario.recentActivity.title}</Text>
             <Text style={styles.itemSubtitle}>{scenario.recentActivity.subtitle}</Text>
@@ -119,7 +147,7 @@ export function LobbyScreen({ displayName, scenario, onAction, notice = null }: 
 
       {scenario.socialItems.length ? (
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Room activity</Text>
+          <Text style={styles.sectionTitle}>{t('lobby.roomActivity')}</Text>
           {scenario.socialItems.map((item) => (
             <SurfaceCard key={item.id}>
               <Text style={styles.itemTitle}>{item.title}</Text>
@@ -129,28 +157,28 @@ export function LobbyScreen({ displayName, scenario, onAction, notice = null }: 
         </View>
       ) : (
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Room activity</Text>
+          <Text style={styles.sectionTitle}>{t('lobby.roomActivity')}</Text>
           <SurfaceCard>
-            <Text style={styles.itemTitle}>No live activity yet</Text>
-            <Text style={styles.itemSubtitle}>Create a room or join one by code to start seeing real room updates here.</Text>
+            <Text style={styles.itemTitle}>{t('lobby.roomActivityEmptyTitle')}</Text>
+            <Text style={styles.itemSubtitle}>{t('lobby.roomActivityEmptySubtitle')}</Text>
           </SurfaceCard>
         </View>
       )}
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Modes ready for tonight</Text>
+        <Text style={styles.sectionTitle}>{t('lobby.modesReadyTonight')}</Text>
         {availableModes.map((game) => (
           <SurfaceCard key={game.id}>
             <View style={styles.detailHeader}>
               <View style={styles.detailMeta}>
-                <Text style={styles.itemTitle}>{game.name}</Text>
-                <Text style={styles.itemSubtitle}>{game.description}</Text>
+                <Text style={styles.itemTitle}>{gameName(game.id)}</Text>
+                <Text style={styles.itemSubtitle}>{gameDescription(game.id)}</Text>
               </View>
               <Badge label={game.duration} tone="neutral" />
             </View>
             <View style={styles.metaRow}>
-              <Badge label={game.category} />
-              <Badge label={game.energy} tone="success" />
+              <Badge label={gameCategory(game.category)} />
+              <Badge label={gameEnergy(game.energy)} tone="success" />
             </View>
           </SurfaceCard>
         ))}
@@ -158,7 +186,7 @@ export function LobbyScreen({ displayName, scenario, onAction, notice = null }: 
 
       {scenario.recommendationItems.length ? (
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Good next move</Text>
+          <Text style={styles.sectionTitle}>{t('lobby.goodNextMove')}</Text>
           {scenario.recommendationItems.map((item) => (
             <SurfaceCard key={item.id}>
               <Text style={styles.itemTitle}>{item.title}</Text>

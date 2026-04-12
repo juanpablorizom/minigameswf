@@ -1,4 +1,5 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import { featuredGames } from '../../data/mockData';
 import { AppButton } from '../components/AppButton';
@@ -14,6 +15,7 @@ type ChooseGamesScreenProps = {
 };
 
 export function ChooseGamesScreen({ selectedGameIds, onToggleGame, onSave }: ChooseGamesScreenProps) {
+  const { t } = useTranslation();
   const theme = useTheme();
   const styles = createStyles(theme);
   const groupedGames = featuredGames.reduce<Record<string, typeof featuredGames>>((groups, game) => {
@@ -22,16 +24,16 @@ export function ChooseGamesScreen({ selectedGameIds, onToggleGame, onSave }: Cho
   }, {});
 
   return (
-    <AppScreen title="Choose Mini Games" subtitle="Build a lineup with enough contrast to keep the room fresh without dragging the session.">
+    <AppScreen title={t('chooseGames.title')} subtitle={t('chooseGames.subtitle')}>
       <SurfaceCard>
-        <Text style={styles.selectionTitle}>Curated tonight</Text>
-        <Text style={styles.selectionCopy}>Select a tight mix of warm-up, social reads, and one strong bluffing closer.</Text>
-        <Badge label={`${selectedGameIds.length} games selected`} tone="success" />
+        <Text style={styles.selectionTitle}>{t('chooseGames.curatedTonight')}</Text>
+        <Text style={styles.selectionCopy}>{t('chooseGames.curatedCopy')}</Text>
+        <Badge label={t('chooseGames.selectedCount', { count: selectedGameIds.length })} tone="success" />
       </SurfaceCard>
 
       {Object.entries(groupedGames).map(([category, games]) => (
         <View key={category} style={styles.group}>
-          <Text style={styles.groupTitle}>{category}</Text>
+          <Text style={styles.groupTitle}>{t(`gameMeta.categories.${category}`)}</Text>
           {games.map((game) => {
             const selected = selectedGameIds.includes(game.id);
 
@@ -40,14 +42,14 @@ export function ChooseGamesScreen({ selectedGameIds, onToggleGame, onSave }: Cho
                 <SurfaceCard>
                   <View style={styles.header}>
                     <View style={styles.meta}>
-                      <Text style={styles.title}>{game.name}</Text>
-                      <Text style={styles.subtitle}>{game.description}</Text>
+                      <Text style={styles.title}>{t(`gameMeta.names.${game.id}`)}</Text>
+                      <Text style={styles.subtitle}>{t(`gameMeta.descriptions.${game.id}`)}</Text>
                     </View>
-                    <Badge label={selected ? 'Selected' : 'Tap to add'} tone={selected ? 'success' : 'neutral'} />
+                    <Badge label={selected ? t('chooseGames.selected') : t('chooseGames.tapToAdd')} tone={selected ? 'success' : 'neutral'} />
                   </View>
                   <View style={styles.badgesRow}>
                     <Badge label={game.duration} tone="accent" />
-                    <Badge label={game.energy} tone="neutral" />
+                    <Badge label={t(`gameMeta.energies.${game.energy}`)} tone="neutral" />
                   </View>
                 </SurfaceCard>
               </Pressable>
@@ -56,7 +58,7 @@ export function ChooseGamesScreen({ selectedGameIds, onToggleGame, onSave }: Cho
         </View>
       ))}
 
-      <AppButton label={`Save ${selectedGameIds.length} Games`} onPress={onSave} />
+      <AppButton label={t('chooseGames.save', { count: selectedGameIds.length })} onPress={onSave} />
     </AppScreen>
   );
 }

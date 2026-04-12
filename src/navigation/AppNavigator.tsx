@@ -22,40 +22,52 @@ import { SettingsScreen } from '../ui/screens/SettingsScreen';
 import { WelcomeScreen } from '../ui/screens/WelcomeScreen';
 import { radius, spacing, typography, useTheme } from '../ui/theme';
 
-function mapRoomNotice(error?: string | null) {
+function mapRoomNotice(translate: (key: string, options?: Record<string, unknown>) => string, error?: string | null) {
   if (error === 'ROOM_NOT_FOUND') {
-    return 'That code does not match any open party.';
+    return translate('lobby.errors.roomNotFound');
   }
 
   if (error === 'ROOM_UNAVAILABLE') {
-    return 'That room is no longer available.';
+    return translate('lobby.errors.roomUnavailable');
   }
 
   if (error === 'AUTH_REQUIRED') {
-    return 'Open a guest or account session first.';
+    return translate('lobby.errors.authRequired');
   }
 
   if (error === 'ROOM_FULL') {
-    return 'That room is full right now.';
+    return translate('lobby.errors.roomFull');
   }
 
   if (error === 'ROOMS_BACKEND_NOT_CONFIGURED') {
-    return 'Rooms are not configured in the backend yet.';
+    return translate('lobby.errors.backendNotConfigured');
   }
 
   if (error === 'BACKEND_UNREACHABLE') {
-    return 'The Supabase backend could not be reached right now.';
+    return translate('lobby.errors.backendUnreachable');
   }
 
   return error ?? null;
 }
 
-function buildLobbyScenario(activeRoom: RoomDetails | null, isGuest: boolean): LobbyScenario {
+function buildLobbyScenario(
+  activeRoom: RoomDetails | null,
+  isGuest: boolean,
+  translate: (key: string, options?: Record<string, unknown>) => string
+): LobbyScenario {
   if (!activeRoom) {
     const baseScenario = isGuest ? lobbyScenarios.guest : lobbyScenarios.noRoom;
 
     return {
       ...baseScenario,
+      greeting: isGuest ? translate('lobby.guestGreeting') : translate('lobby.noRoomGreeting'),
+      statusLabel: isGuest ? translate('lobby.guestStatus') : translate('lobby.noRoomStatus'),
+      title: isGuest ? translate('lobby.guestTitle') : translate('lobby.noRoomTitle'),
+      subtitle: isGuest ? translate('lobby.guestSubtitle') : translate('lobby.noRoomSubtitle'),
+      primaryAction: { ...baseScenario.primaryAction, label: translate('lobby.createRoom') },
+      secondaryAction: baseScenario.secondaryAction
+        ? { ...baseScenario.secondaryAction, label: translate('lobby.joinByCode') }
+        : undefined,
       socialItems: [],
       recommendationItems: []
     };
@@ -63,6 +75,12 @@ function buildLobbyScenario(activeRoom: RoomDetails | null, isGuest: boolean): L
 
   const activeMembers = activeRoom.members.filter((member) => member.isActive);
   const selectedGame = activeRoom.room.selected_game_id;
+  const roomStatusLabel =
+    activeRoom.room.status === 'active'
+      ? translate('room.statusActive')
+      : activeRoom.room.status === 'finished'
+        ? translate('room.statusFinished')
+        : translate('room.statusWaiting');
   const activityItems =
     activeRoom.activity.map((item) => ({
       id: item.id,
@@ -72,20 +90,18 @@ function buildLobbyScenario(activeRoom: RoomDetails | null, isGuest: boolean): L
 
   return {
     key: 'activeRoom',
-    greeting: activeRoom.isHost ? 'Your party is live' : 'Your party is waiting',
-    statusLabel: activeRoom.room.status === 'active' ? 'Active room' : 'Waiting room',
-    title: `${activeRoom.room.code} is ready.`,
-    subtitle: activeRoom.isHost
-      ? 'The room is persisted and the member list is live. Share the code or continue setup.'
-      : 'Your room is still open. Jump back in and wait for the host to continue.',
-    primaryAction: { id: 'continueRoom', label: 'Continue room' },
-    secondaryAction: activeRoom.isHost ? { id: 'inviteFriends', label: 'Share code', variant: 'secondary' } : undefined,
+    greeting: activeRoom.isHost ? translate('lobby.activeGreetingHost') : translate('lobby.activeGreetingMember'),
+    statusLabel: activeRoom.room.status === 'active' ? translate('lobby.activeStatusActive') : translate('lobby.activeStatusWaiting'),
+    title: translate('lobby.activeTitleReady', { code: activeRoom.room.code }),
+    subtitle: activeRoom.isHost ? translate('lobby.activeSubtitleHost') : translate('lobby.activeSubtitleMember'),
+    primaryAction: { id: 'continueRoom', label: translate('lobby.continueRoom') },
+    secondaryAction: activeRoom.isHost ? { id: 'inviteFriends', label: translate('lobby.shareCode'), variant: 'secondary' } : undefined,
     roomSummary: {
-      title: `Private party ${activeRoom.room.code}`,
-      subtitle: `${activeMembers.length} active members · ${activeRoom.room.status}`,
-      meta: activeRoom.isHost ? 'You are hosting this party.' : 'You are a member of this party.',
+      title: translate('lobby.privateParty', { code: activeRoom.room.code }),
+      subtitle: translate('lobby.activeMembersStatus', { count: activeMembers.length, status: roomStatusLabel }),
+      meta: activeRoom.isHost ? translate('lobby.hostingMeta') : translate('lobby.memberMeta'),
       code: activeRoom.room.code,
-      ctaLabel: 'Open room',
+      ctaLabel: translate('lobby.openRoom'),
       ctaAction: 'continueRoom'
     },
     socialItems: activityItems,
@@ -234,7 +250,7 @@ export function AppNavigator() {
 
       if (!code) {
         if (rawValue && /join/i.test(rawValue)) {
-          setAuthNotice('That room link is not valid.');
+          setAuthNotice(t('lobby.roomLinkInvalid'));
         }
         return;
       }
@@ -245,7 +261,11 @@ export function AppNavigator() {
 
       setPendingJoinCode(code);
       setJoinNotice(null);
-      setRoomNotice(activeRoom && activeRoom.room.code !== code ? `Leaving room ${activeRoom.room.code} and opening ${code}...` : `Opening room ${code}...`);
+      setRoomNotice(
+        activeRoom && activeRoom.room.code !== code
+          ? t('lobby.switchingRoom', { from: activeRoom.room.code, to: code })
+          : t('lobby.openingRoom', { code })
+      );
     }
 
     void Linking.getInitialURL().then(queueJoinFromLink);
@@ -267,7 +287,7 @@ export function AppNavigator() {
 
     if (!session && !isGuest) {
       if (!isSupabaseConfigured) {
-        setAuthNotice('Room links need backend auth configured first.');
+        setAuthNotice(t('lobby.roomLinkNeedsAuth'));
         setPendingJoinCode(null);
         return;
       }
@@ -277,7 +297,7 @@ export function AppNavigator() {
       }
 
       setIsAutoGuestingForJoin(true);
-      setAuthNotice(`Joining room ${pendingJoinCode} as guest...`);
+      setAuthNotice(t('lobby.joinAsGuest', { code: pendingJoinCode }));
 
       void continueAsGuest('Guest Player').then((result) => {
         if (result.error) {
@@ -295,7 +315,7 @@ export function AppNavigator() {
 
     void joinRoomByCode(pendingJoinCode).then((result) => {
       if (result.error) {
-        const nextNotice = mapRoomNotice(result.error);
+        const nextNotice = mapRoomNotice(t, result.error);
         setJoinNotice(nextNotice);
         setRoomNotice(nextNotice);
         setAuthNotice(nextNotice);
@@ -327,7 +347,7 @@ export function AppNavigator() {
   ]);
 
   const loadingShell = !isReady || !roomsReady;
-  const resolvedLobbyScenario = buildLobbyScenario(activeRoom, isGuest);
+  const resolvedLobbyScenario = buildLobbyScenario(activeRoom, isGuest, t);
 
   if (loadingShell || (!session && !isGuest)) {
     return (
@@ -383,7 +403,7 @@ export function AppNavigator() {
 
   async function shareRoomCode() {
     if (!activeRoom) {
-      setRoomNotice('No active room to share right now.');
+      setRoomNotice(t('lobby.noRoomToShare'));
       return;
     }
 
@@ -394,9 +414,9 @@ export function AppNavigator() {
       await Share.share({
         message: shareMessage
       });
-      setRoomNotice(`Room code ${activeRoom.room.code} ready to share.`);
+      setRoomNotice(t('lobby.shareReady', { code: activeRoom.room.code }));
     } catch {
-      setRoomNotice(`Share this code with your group: ${activeRoom.room.code}`);
+      setRoomNotice(t('lobby.shareReady', { code: activeRoom.room.code }));
     }
   }
 
@@ -405,7 +425,7 @@ export function AppNavigator() {
       case 'createRoom':
         void createRoom(selectedGameIds[0] ?? null).then((result) => {
           if (result.error) {
-            setRoomNotice(mapRoomNotice(result.error));
+            setRoomNotice(mapRoomNotice(t, result.error));
             return;
           }
 
@@ -428,7 +448,7 @@ export function AppNavigator() {
           return;
         }
 
-        setRoomNotice('No active room found to continue.');
+        setRoomNotice(t('lobby.noRoomToContinue'));
         break;
       case 'inviteFriends':
         void shareRoomCode();
@@ -437,7 +457,7 @@ export function AppNavigator() {
         if (activeRoom) {
           resumeLastActivity();
         } else {
-          setRoomNotice('No active room found to resume.');
+          setRoomNotice(t('lobby.noRoomToResume'));
         }
         break;
       case 'quickPlay':
@@ -464,7 +484,7 @@ export function AppNavigator() {
     if (currentScreen === 'lobby') {
       return (
         <LobbyScreen
-          displayName={displayName ?? email?.split('@')[0] ?? 'Player'}
+          displayName={displayName ?? email?.split('@')[0] ?? (isGuest ? t('common.guest') : t('common.player'))}
           scenario={resolvedLobbyScenario}
           onAction={handleLobbyAction}
           notice={roomNotice}
@@ -485,17 +505,17 @@ export function AppNavigator() {
             const normalizedCode = normalizeRoomCode(code);
 
             if (!normalizedCode || normalizedCode.length !== 5) {
-              setJoinNotice('Enter a valid 5-character room code.');
+              setJoinNotice(t('joinRoom.invalidCode'));
               return;
             }
 
             if (activeRoom && activeRoom.room.code !== normalizedCode) {
-              setRoomNotice(`Leaving room ${activeRoom.room.code} and opening ${normalizedCode}...`);
+              setRoomNotice(t('lobby.switchingRoom', { from: activeRoom.room.code, to: normalizedCode }));
             }
 
             void joinRoomByCode(normalizedCode).then((result) => {
               if (result.error) {
-                setJoinNotice(mapRoomNotice(result.error));
+                setJoinNotice(mapRoomNotice(t, result.error));
                 return;
               }
 
@@ -521,17 +541,17 @@ export function AppNavigator() {
             const normalizedCode = normalizeRoomCode(code);
 
             if (!normalizedCode) {
-              setJoinNotice('This QR does not contain a valid room code.');
+              setJoinNotice(t('scanRoom.invalidQr'));
               return;
             }
 
             if (activeRoom && activeRoom.room.code !== normalizedCode) {
-              setRoomNotice(`Leaving room ${activeRoom.room.code} and opening ${normalizedCode}...`);
+              setRoomNotice(t('lobby.switchingRoom', { from: activeRoom.room.code, to: normalizedCode }));
             }
 
             void joinRoomByCode(normalizedCode).then((result) => {
               if (result.error) {
-                setJoinNotice(mapRoomNotice(result.error));
+                setJoinNotice(mapRoomNotice(t, result.error));
                 return;
               }
 
@@ -567,13 +587,13 @@ export function AppNavigator() {
           onOpenSettings={openRoomSettings}
           onStart={() => {
             if (!activeRoom.isHost) {
-              setRoomNotice('Only the host can continue the party flow.');
+              setRoomNotice(t('room.hostOnlyContinue'));
               return;
             }
 
             void markRoomActive().then((result) => {
               if (result.error) {
-                setRoomNotice(mapRoomNotice(result.error));
+                setRoomNotice(mapRoomNotice(t, result.error));
                 return;
               }
 
@@ -588,10 +608,10 @@ export function AppNavigator() {
     if (currentScreen === 'room' && !activeRoom) {
       return (
         <LobbyScreen
-          displayName={displayName ?? email?.split('@')[0] ?? 'Player'}
-          scenario={isGuest ? lobbyScenarios.guest : lobbyScenarios.noRoom}
+          displayName={displayName ?? email?.split('@')[0] ?? (isGuest ? t('common.guest') : t('common.player'))}
+          scenario={resolvedLobbyScenario}
           onAction={handleLobbyAction}
-          notice="No active room found. Create one or join by code."
+          notice={t('lobby.errors.noActiveRoomFallback')}
         />
       );
     }
@@ -604,7 +624,7 @@ export function AppNavigator() {
           onSave={() => {
             void saveSelectedGame(selectedGameIds[0] ?? null).then((result) => {
               if (result.error) {
-                setRoomNotice(mapRoomNotice(result.error));
+                setRoomNotice(mapRoomNotice(t, result.error));
                 return;
               }
 
