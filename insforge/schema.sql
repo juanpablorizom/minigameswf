@@ -238,11 +238,24 @@ begin
 end;
 $$;
 
-drop trigger if exists on_auth_user_created on auth.users;
-create trigger on_auth_user_created
-after insert on auth.users
-for each row
-execute function public.handle_new_user();
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_trigger trigger_row
+    join pg_class class_row on class_row.oid = trigger_row.tgrelid
+    join pg_namespace namespace_row on namespace_row.oid = class_row.relnamespace
+    where trigger_row.tgname = 'on_auth_user_created'
+      and class_row.relname = 'users'
+      and namespace_row.nspname = 'auth'
+  ) then
+    create trigger on_auth_user_created
+    after insert on auth.users
+    for each row
+    execute function public.handle_new_user();
+  end if;
+end;
+$$;
 
 drop policy if exists "Users can read own profile" on public.profiles;
 create policy "Users can read own profile"
