@@ -47,15 +47,32 @@ const schemaPath = new URL('../insforge/schema.sql', import.meta.url);
 const sql = await readFile(schemaPath, 'utf8');
 const client = new Client({
   connectionString,
+  connectionTimeoutMillis: 8000,
+  query_timeout: 15000,
+  statement_timeout: 15000,
   ssl: {
     rejectUnauthorized: false
   }
 });
 
 try {
+  console.log('Connecting to InsForge database...');
   await client.connect();
+  console.log('Connected. Applying schema...');
   await client.query(sql);
   console.log('Schema applied successfully.');
+} catch (error) {
+  const message = error instanceof Error ? error.message : String(error);
+
+  if (/timeout expired/i.test(message)) {
+    console.error('Database connection timed out. This usually means network access to the InsForge Postgres host is blocked or not reachable from this machine.');
+  } else if (/ECONNREFUSED|ENOTFOUND|EHOSTUNREACH|ETIMEDOUT/i.test(message)) {
+    console.error(`Database connection failed: ${message}`);
+  } else {
+    console.error(`Schema import failed: ${message}`);
+  }
+
+  process.exit(1);
 } finally {
   await client.end().catch(() => {});
 }
