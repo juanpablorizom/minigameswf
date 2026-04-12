@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState, type PropsWithChildren } from 'react';
+import * as WebBrowser from 'expo-web-browser';
 import { Platform } from 'react-native';
 import type { Session, User } from '@supabase/supabase-js';
 
@@ -39,6 +40,8 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+WebBrowser.maybeCompleteAuthSession();
+
 function buildGuestUsername(displayName: string) {
   const base = displayName
     .trim()
@@ -71,6 +74,19 @@ function getGoogleRedirectUrl() {
   }
 
   return 'minigameswf://auth/callback';
+}
+
+function readAuthParamsFromUrl(url: string) {
+  const parsedUrl = new URL(url);
+  const hash = parsedUrl.hash.startsWith('#') ? parsedUrl.hash.slice(1) : parsedUrl.hash;
+  const hashParams = new URLSearchParams(hash);
+  const queryParams = parsedUrl.searchParams;
+
+  return {
+    accessToken: hashParams.get('access_token') ?? queryParams.get('access_token'),
+    refreshToken: hashParams.get('refresh_token') ?? queryParams.get('refresh_token'),
+    error: hashParams.get('error_description') ?? queryParams.get('error_description') ?? hashParams.get('error') ?? queryParams.get('error')
+  };
 }
 
 export function AuthProvider({ children }: PropsWithChildren) {
@@ -254,15 +270,63 @@ export function AuthProvider({ children }: PropsWithChildren) {
         }
 
         setIsBusy(true);
-        const { error } = await supabase.auth.signInWithOAuth({
+        const redirectTo = getGoogleRedirectUrl();
+        const { data, error } = await supabase.auth.signInWithOAuth({
           provider: 'google',
           options: {
-            redirectTo: getGoogleRedirectUrl()
+            redirectTo,
+            skipBrowserRedirect: Platform.OS !== 'web'
           }
         });
+
+        if (error) {
+          setIsBusy(false);
+          return { error: error.message };
+        }
+
+        if (Platform.OS === 'web') {
+          setIsBusy(false);
+          return {};
+        }
+
+        if (!data?.url) {
+          setIsBusy(false);
+          return { error: 'GOOGLE_SIGN_IN_SETUP_REQUIRED' };
+        }
+
+        const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+
+        if (result.type !== 'success') {
+          setIsBusy(false);
+          return { error: 'AUTH_CANCELLED' };
+        }
+
+        const { accessToken, refreshToken, error: callbackError } = readAuthParamsFromUrl(result.url);
+
+        if (callbackError) {
+          setIsBusy(false);
+          return { error: callbackError };
+        }
+
+        if (!accessToken || !refreshToken) {
+          setIsBusy(false);
+          return { error: 'AUTH_CALLBACK_INCOMPLETE' };
+        }
+
+        const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken
+        });
+
         setIsBusy(false);
 
-        return error ? { error: error.message } : {};
+        if (sessionError || !sessionData.session) {
+          return { error: sessionError?.message ?? 'AUTH_FAILED' };
+        }
+
+        setSession(sessionData.session);
+        await refreshAccountState(sessionData.session.user, language, themePreference);
+        return {};
       },
       continueAsGuest: async (displayNameInput) => {
         if (!isSupabaseConfigured) {

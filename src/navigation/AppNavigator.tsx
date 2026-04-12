@@ -169,6 +169,38 @@ export function AppNavigator() {
   const [pendingJoinCode, setPendingJoinCode] = useState<string | null>(null);
   const [isAutoGuestingForJoin, setIsAutoGuestingForJoin] = useState(false);
 
+  function mapAuthNotice(error?: string | null) {
+    if (!error) {
+      return null;
+    }
+
+    if (error === 'SUPABASE_NOT_CONFIGURED') {
+      return t('auth.supabaseMissing');
+    }
+
+    if (error === 'GOOGLE_SIGN_IN_SETUP_REQUIRED') {
+      return t('auth.googleNotReady');
+    }
+
+    if (error === 'AUTH_CANCELLED') {
+      return t('auth.authCancelled');
+    }
+
+    if (error === 'AUTH_CALLBACK_INCOMPLETE') {
+      return t('auth.authCallbackIncomplete');
+    }
+
+    if (/anonymous/i.test(error) && /disabled|enable|provider/i.test(error)) {
+      return t('auth.guestNotReady');
+    }
+
+    if (/provider/i.test(error) && /google|oauth/i.test(error)) {
+      return t('auth.googleNotReady');
+    }
+
+    return error;
+  }
+
   useEffect(() => {
     if (!session && !isGuest) {
       resetToLobby();
@@ -305,12 +337,12 @@ export function AppNavigator() {
           notice={loadingShell ? t('common.loading') : authNotice ?? (!isSupabaseConfigured ? t('auth.supabaseMissing') : null)}
           onSignInWithGoogle={() => {
             void signInWithGoogle().then((result) => {
-              setAuthNotice(result.error === 'SUPABASE_NOT_CONFIGURED' ? t('auth.supabaseMissing') : result.error ?? null);
+              setAuthNotice(mapAuthNotice(result.error));
             });
           }}
           onSignIn={(nextEmail, password) => {
             void signInWithEmail(nextEmail, password).then((result) => {
-              setAuthNotice(result.error ?? null);
+              setAuthNotice(mapAuthNotice(result.error));
             });
           }}
           onSignUp={(nextEmail, password, nextDisplayName) => {
@@ -320,12 +352,12 @@ export function AppNavigator() {
                 return;
               }
 
-              setAuthNotice(result.error ?? null);
+              setAuthNotice(mapAuthNotice(result.error));
             });
           }}
           onContinueAsGuest={(nextDisplayName) => {
             void continueAsGuest(nextDisplayName).then((result) => {
-              setAuthNotice(result.error ?? null);
+              setAuthNotice(mapAuthNotice(result.error));
             });
           }}
         />
