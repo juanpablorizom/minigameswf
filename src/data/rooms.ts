@@ -71,7 +71,27 @@ function buildRoomErrorMessage(message: string) {
     return 'ROOMS_BACKEND_NOT_CONFIGURED';
   }
 
+  if (message.includes('infinite recursion detected in policy')) {
+    return 'ROOMS_PERMISSION_DENIED';
+  }
+
+  if (message.includes('permission denied') || message.includes('42501')) {
+    return 'ROOMS_PERMISSION_DENIED';
+  }
+
   return message;
+}
+
+function getErrorMessage(error: unknown) {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  if (typeof error === 'object' && error && 'message' in error && typeof error.message === 'string') {
+    return error.message;
+  }
+
+  return 'UNKNOWN_ERROR';
 }
 
 export async function createPrivateRoom(selectedGameId: string | null) {
@@ -121,7 +141,7 @@ export async function getActiveRoomIdForUser(userId: string) {
     .limit(1);
 
   if (error) {
-    throw error;
+    throw new Error(buildRoomErrorMessage(error.message));
   }
 
   const activeMember = (data ?? []).find((entry) => {
@@ -140,7 +160,7 @@ async function getRoom(roomId: string) {
     .maybeSingle();
 
   if (error) {
-    throw error;
+    throw new Error(buildRoomErrorMessage(error.message));
   }
 
   return data;
@@ -154,7 +174,7 @@ async function getRoomMembers(roomId: string) {
     .order('joined_at', { ascending: true });
 
   if (error) {
-    throw error;
+    throw new Error(buildRoomErrorMessage(error.message));
   }
 
   return data ?? [];
@@ -171,7 +191,7 @@ async function getProfilesForUsers(userIds: string[]) {
     .in('id', userIds);
 
   if (error) {
-    throw error;
+    throw new Error(buildRoomErrorMessage(error.message));
   }
 
   return data ?? [];
@@ -186,7 +206,7 @@ async function getRoomActivity(roomId: string) {
     .limit(8);
 
   if (error) {
-    throw error;
+    throw new Error(buildRoomErrorMessage(error.message));
   }
 
   return data ?? [];
@@ -269,7 +289,7 @@ export async function updateRoomSelectedGame(roomId: string, hostUserId: string,
     .eq('host_user_id', hostUserId);
 
   if (error) {
-    throw error;
+    throw new Error(buildRoomErrorMessage(error.message));
   }
 }
 
@@ -281,7 +301,7 @@ export async function updateRoomStatus(roomId: string, hostUserId: string, statu
     .eq('host_user_id', hostUserId);
 
   if (error) {
-    throw error;
+    throw new Error(buildRoomErrorMessage(error.message));
   }
 }
 
@@ -335,3 +355,5 @@ export function subscribeToRoomRealtime({
     void supabase.removeChannel(channel);
   };
 }
+
+export { getErrorMessage };

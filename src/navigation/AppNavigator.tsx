@@ -47,6 +47,10 @@ function mapRoomNotice(translate: (key: string, options?: Record<string, unknown
     return translate('lobby.errors.backendUnreachable');
   }
 
+  if (error === 'ROOMS_PERMISSION_DENIED') {
+    return translate('lobby.errors.permissionDenied');
+  }
+
   return error ?? null;
 }
 

@@ -3,6 +3,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 
 import {
   createPrivateRoom,
+  getErrorMessage,
   getActiveRoomIdForUser,
   getRoomDetails,
   joinPrivateRoomByCode,
@@ -37,23 +38,25 @@ type RoomContextValue = {
 const RoomContext = createContext<RoomContextValue | null>(null);
 
 function mapRoomError(error: unknown) {
-  if (error instanceof Error) {
-    if (error.message === 'ROOM_NOT_FOUND') {
+  const message = getErrorMessage(error);
+
+  if (message === 'ROOM_NOT_FOUND') {
       return 'ROOM_NOT_FOUND';
-    }
-
-    if (error.message === 'ROOM_UNAVAILABLE') {
-      return 'ROOM_UNAVAILABLE';
-    }
-
-    if (error.message === 'AUTH_REQUIRED') {
-      return 'AUTH_REQUIRED';
-    }
-
-    return error.message;
   }
 
-  return 'UNKNOWN_ERROR';
+  if (message === 'ROOM_UNAVAILABLE') {
+      return 'ROOM_UNAVAILABLE';
+  }
+
+  if (message === 'AUTH_REQUIRED') {
+      return 'AUTH_REQUIRED';
+  }
+
+  if (message === 'ROOMS_PERMISSION_DENIED') {
+    return 'ROOMS_PERMISSION_DENIED';
+  }
+
+  return message;
 }
 
 export function RoomProvider({ children }: PropsWithChildren) {

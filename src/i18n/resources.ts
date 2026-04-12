@@ -158,6 +158,7 @@ export const resources = {
           roomFull: 'Esa sala está llena en este momento.',
           backendNotConfigured: 'Las salas todavía no están configuradas en el backend.',
           backendUnreachable: 'No se pudo conectar con Supabase en este momento.',
+          permissionDenied: 'Las policies de salas en Supabase todavía no permiten leer la sala recién creada. Vuelve a correr el schema actualizado.',
           noActiveRoomFallback: 'No se encontró una sala activa. Crea una o entra por código.'
         }
       },
@@ -454,6 +455,7 @@ export const resources = {
           roomFull: 'That room is full right now.',
           backendNotConfigured: 'Rooms are not configured in the backend yet.',
           backendUnreachable: 'The Supabase backend could not be reached right now.',
+          permissionDenied: 'Room policies in Supabase are still blocking reads for the newly created room. Re-run the updated schema.',
           noActiveRoomFallback: 'No active room found. Create one or join by code.'
         }
       },

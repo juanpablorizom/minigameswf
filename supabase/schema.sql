@@ -1,4 +1,5 @@
 create extension if not exists pgcrypto;
+create schema if not exists private;
 
 create table if not exists public.profiles (
   id uuid primary key references auth.users (id) on delete cascade,
@@ -66,6 +67,38 @@ begin
   new.updated_at = timezone('utc', now());
   return new;
 end;
+$$;
+
+create or replace function private.is_room_member(target_room_id uuid)
+returns boolean
+language sql
+security definer
+set search_path = ''
+as $$
+  select exists (
+    select 1
+    from public.room_members
+    where room_members.room_id = target_room_id
+      and room_members.user_id = auth.uid()
+      and room_members.is_active = true
+  );
+$$;
+
+create or replace function private.shares_active_room_with_user(target_user_id uuid)
+returns boolean
+language sql
+security definer
+set search_path = ''
+as $$
+  select exists (
+    select 1
+    from public.room_members viewer_membership
+    join public.room_members target_membership
+      on target_membership.room_id = viewer_membership.room_id
+    where viewer_membership.user_id = auth.uid()
+      and viewer_membership.is_active = true
+      and target_membership.user_id = target_user_id
+  );
 $$;
 
 drop trigger if exists set_profiles_updated_at on public.profiles;
@@ -268,15 +301,7 @@ on public.profiles
 for select
 using (
   auth.uid() = id
-  or exists (
-    select 1
-    from public.room_members viewer_membership
-    join public.room_members target_membership
-      on target_membership.room_id = viewer_membership.room_id
-    where viewer_membership.user_id = auth.uid()
-      and viewer_membership.is_active = true
-      and target_membership.user_id = profiles.id
-  )
+  or private.shares_active_room_with_user(id)
 );
 
 drop policy if exists "Users can insert own profile" on public.profiles;
@@ -315,13 +340,7 @@ on public.rooms
 for select
 using (
   auth.uid() = host_user_id
-  or exists (
-    select 1
-    from public.room_members
-    where room_members.room_id = rooms.id
-      and room_members.user_id = auth.uid()
-      and room_members.is_active = true
-  )
+  or private.is_room_member(id)
 );
 
 drop policy if exists "Hosts can update rooms" on public.rooms;
@@ -336,13 +355,7 @@ on public.room_members
 for select
 using (
   user_id = auth.uid()
-  or exists (
-    select 1
-    from public.room_members viewer_membership
-    where viewer_membership.room_id = room_members.room_id
-      and viewer_membership.user_id = auth.uid()
-      and viewer_membership.is_active = true
-  )
+  or private.is_room_member(room_id)
 );
 
 drop policy if exists "Users can update own room membership" on public.room_members;
@@ -356,11 +369,5 @@ create policy "Members can read room activity"
 on public.room_activity
 for select
 using (
-  exists (
-    select 1
-    from public.room_members viewer_membership
-    where viewer_membership.room_id = room_activity.room_id
-      and viewer_membership.user_id = auth.uid()
-      and viewer_membership.is_active = true
-  )
+  private.is_room_member(room_id)
 );
