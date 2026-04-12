@@ -229,7 +229,12 @@ begin
   values (
     new.id,
     'es',
-    initcap(coalesce(new.app_metadata ->> 'provider', 'email')),
+    initcap(
+      coalesce(
+        new.raw_app_meta_data ->> 'provider',
+        case when coalesce(new.is_anonymous, false) then 'guest' else 'email' end
+      )
+    ),
     'default'
   )
   on conflict (user_id) do nothing;
