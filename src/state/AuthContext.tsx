@@ -50,7 +50,7 @@ type AuthUser = UserSchema | GuestUser;
 type AuthContextValue = {
   isReady: boolean;
   isBusy: boolean;
-  isSupabaseConfigured: boolean;
+  isInsForgeConfigured: boolean;
   session: AuthSession | null;
   user: AuthUser | null;
   isGuest: boolean;
@@ -235,7 +235,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     return {
       isReady,
       isBusy,
-      isSupabaseConfigured: isInsForgeConfigured,
+      isInsForgeConfigured,
       session,
       user,
       isGuest,

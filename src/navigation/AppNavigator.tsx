@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Linking, Pressable, Share, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
-import { featuredGames, lobbyHighlights, lobbyScenarios } from '../data/mockData';
+import { featuredGames, lobbyScenarios } from '../data/mockData';
 import type { RoomDetails } from '../data/rooms';
 import { buildRoomJoinUrl, extractRoomCodeFromValue, normalizeRoomCode } from '../lib/roomLinks';
 import type { AppTab, LobbyActionId, LobbyScenario, Player } from './types';
@@ -39,12 +39,26 @@ function mapRoomNotice(error?: string | null) {
     return 'That room is full right now.';
   }
 
+  if (error === 'ROOMS_BACKEND_NOT_CONFIGURED') {
+    return 'Rooms are not configured in the backend yet.';
+  }
+
+  if (error === 'BACKEND_UNREACHABLE') {
+    return 'The InsForge backend could not be reached right now.';
+  }
+
   return error ?? null;
 }
 
 function buildLobbyScenario(activeRoom: RoomDetails | null, isGuest: boolean): LobbyScenario {
   if (!activeRoom) {
-    return isGuest ? lobbyScenarios.guest : lobbyScenarios.noRoom;
+    const baseScenario = isGuest ? lobbyScenarios.guest : lobbyScenarios.noRoom;
+
+    return {
+      ...baseScenario,
+      socialItems: [],
+      recommendationItems: []
+    };
   }
 
   const activeMembers = activeRoom.members.filter((member) => member.isActive);
@@ -74,8 +88,8 @@ function buildLobbyScenario(activeRoom: RoomDetails | null, isGuest: boolean): L
       ctaLabel: 'Open room',
       ctaAction: 'continueRoom'
     },
-    socialItems: activityItems.length ? activityItems : lobbyHighlights,
-    recommendationItems: lobbyHighlights,
+    socialItems: activityItems,
+    recommendationItems: [],
     modeIds: selectedGame ? [selectedGame] : ['mentiroso-profesional', 'signal-drop', 'close-call']
   };
 }
@@ -87,7 +101,7 @@ export function AppNavigator() {
   const {
     isReady,
     isBusy,
-    isSupabaseConfigured,
+    isInsForgeConfigured,
     session,
     isGuest,
     displayName,
@@ -220,7 +234,7 @@ export function AppNavigator() {
     }
 
     if (!session && !isGuest) {
-      if (!isSupabaseConfigured) {
+      if (!isInsForgeConfigured) {
         setAuthNotice('Room links need backend auth configured first.');
         setPendingJoinCode(null);
         return;
@@ -271,7 +285,7 @@ export function AppNavigator() {
     isBusy,
     isGuest,
     isReady,
-    isSupabaseConfigured,
+    isInsForgeConfigured,
     joinRoomByCode,
     openJoinRoom,
     pendingJoinCode,
@@ -288,11 +302,11 @@ export function AppNavigator() {
       <View style={styles.container}>
         <WelcomeScreen
           isBusy={isBusy || roomBusy || loadingShell}
-          isSupabaseConfigured={isSupabaseConfigured}
+          isInsForgeConfigured={isInsForgeConfigured}
           notice={loadingShell ? t('common.loading') : authNotice}
           onSignInWithGoogle={() => {
             void signInWithGoogle().then((result) => {
-              setAuthNotice(result.error === 'INSFORGE_NOT_CONFIGURED' ? t('auth.supabaseMissing') : result.error ?? null);
+              setAuthNotice(result.error === 'INSFORGE_NOT_CONFIGURED' ? t('auth.insforgeMissing') : result.error ?? null);
             });
           }}
           onSignIn={(nextEmail, password) => {

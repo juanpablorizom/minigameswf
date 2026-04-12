@@ -43,7 +43,7 @@ export const resources = {
         passwordPlaceholder: 'Tu contraseña',
         signIn: 'Iniciar sesión',
         signUp: 'Crear cuenta',
-        supabaseMissing: 'Falta configurar la conexión de InsForge para activar el acceso real.',
+        insforgeMissing: 'Falta configurar la conexión de InsForge para activar el acceso real.',
         signUpSuccess: 'Cuenta creada. Si tu proyecto exige confirmación por correo, revisa tu inbox antes de entrar.'
       },
       account: {
@@ -143,7 +143,7 @@ export const resources = {
         passwordPlaceholder: 'Your password',
         signIn: 'Sign in',
         signUp: 'Create account',
-        supabaseMissing: 'The InsForge connection is missing. Configure it to enable real sign-in.',
+        insforgeMissing: 'The InsForge connection is missing. Configure it to enable real sign-in.',
         signUpSuccess: 'Account created. If your project requires email confirmation, check your inbox before signing in.'
       },
       account: {

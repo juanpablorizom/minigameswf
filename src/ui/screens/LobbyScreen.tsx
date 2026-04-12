@@ -44,7 +44,7 @@ export function LobbyScreen({ displayName, scenario, onAction, notice = null }: 
           ) : null}
         </View>
         <View style={styles.pillRow}>
-          <Badge label={`${scenario.socialItems.length} live updates`} tone="success" />
+          <Badge label={scenario.roomSummary ? 'Room active' : 'No active room'} tone={scenario.roomSummary ? 'success' : 'neutral'} />
           <Badge label={`${availableModes.length} modes ready`} tone="neutral" />
           {(scenario.key === 'guest' || scenario.key === 'noRoom') ? (
             <AppButton label="Quick play" onPress={() => onAction('quickPlay')} variant="ghost" />
@@ -117,15 +117,25 @@ export function LobbyScreen({ displayName, scenario, onAction, notice = null }: 
         </View>
       ) : null}
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Friends and room activity</Text>
-        {scenario.socialItems.map((item) => (
-          <SurfaceCard key={item.id}>
-            <Text style={styles.itemTitle}>{item.title}</Text>
-            <Text style={styles.itemSubtitle}>{item.subtitle}</Text>
+      {scenario.socialItems.length ? (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Room activity</Text>
+          {scenario.socialItems.map((item) => (
+            <SurfaceCard key={item.id}>
+              <Text style={styles.itemTitle}>{item.title}</Text>
+              <Text style={styles.itemSubtitle}>{item.subtitle}</Text>
+            </SurfaceCard>
+          ))}
+        </View>
+      ) : (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Room activity</Text>
+          <SurfaceCard>
+            <Text style={styles.itemTitle}>No live activity yet</Text>
+            <Text style={styles.itemSubtitle}>Create a room or join one by code to start seeing real room updates here.</Text>
           </SurfaceCard>
-        ))}
-      </View>
+        </View>
+      )}
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Modes ready for tonight</Text>
@@ -146,15 +156,17 @@ export function LobbyScreen({ displayName, scenario, onAction, notice = null }: 
         ))}
       </View>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Good next move</Text>
-        {scenario.recommendationItems.map((item) => (
-          <SurfaceCard key={item.id}>
-            <Text style={styles.itemTitle}>{item.title}</Text>
-            <Text style={styles.itemSubtitle}>{item.subtitle}</Text>
-          </SurfaceCard>
-        ))}
-      </View>
+      {scenario.recommendationItems.length ? (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Good next move</Text>
+          {scenario.recommendationItems.map((item) => (
+            <SurfaceCard key={item.id}>
+              <Text style={styles.itemTitle}>{item.title}</Text>
+              <Text style={styles.itemSubtitle}>{item.subtitle}</Text>
+            </SurfaceCard>
+          ))}
+        </View>
+      ) : null}
     </AppScreen>
   );
 }

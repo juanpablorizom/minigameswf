@@ -9,7 +9,7 @@ import { radius, spacing, typography, useTheme } from '../theme';
 
 type WelcomeScreenProps = {
   isBusy: boolean;
-  isSupabaseConfigured: boolean;
+  isInsForgeConfigured: boolean;
   notice: string | null;
   onSignIn: (email: string, password: string) => void;
   onSignUp: (email: string, password: string, displayName: string) => void;
@@ -19,7 +19,7 @@ type WelcomeScreenProps = {
 
 export function WelcomeScreen({
   isBusy,
-  isSupabaseConfigured,
+  isInsForgeConfigured,
   notice,
   onSignIn,
   onSignUp,
@@ -127,7 +127,7 @@ export function WelcomeScreen({
 
         <Text style={styles.terms}>{t('auth.terms')}</Text>
         <Text style={styles.helper}>{t('auth.guestHint')}</Text>
-        {!isSupabaseConfigured ? <Text style={styles.notice}>{t('auth.supabaseMissing')}</Text> : null}
+        {!isInsForgeConfigured ? <Text style={styles.notice}>{t('auth.insforgeMissing')}</Text> : null}
         {notice ? <Text style={styles.notice}>{notice}</Text> : null}
       </View>
 
