@@ -292,12 +292,7 @@ export function AppNavigator() {
           notice={loadingShell ? t('common.loading') : authNotice}
           onSignInWithGoogle={() => {
             void signInWithGoogle().then((result) => {
-              if (result.message === 'GOOGLE_SIGN_IN_SETUP_REQUIRED') {
-                setAuthNotice(t('auth.googleNotReady'));
-                return;
-              }
-
-              setAuthNotice(result.error === 'SUPABASE_NOT_CONFIGURED' ? t('auth.supabaseMissing') : result.error ?? null);
+              setAuthNotice(result.error === 'INSFORGE_NOT_CONFIGURED' ? t('auth.supabaseMissing') : result.error ?? null);
             });
           }}
           onSignIn={(nextEmail, password) => {
@@ -327,7 +322,7 @@ export function AppNavigator() {
 
   function resolveAccountNotice(message?: string) {
     if (message === 'GOOGLE_SIGN_IN_SETUP_REQUIRED') {
-      return t('auth.googleNotReady');
+      return t('account.linkingRequiresSetup');
     }
 
     if (message === 'LINKING_REQUIRES_SETUP') {
@@ -611,7 +606,7 @@ export function AppNavigator() {
             void linkAccount().then((result) => {
               setAccountNotice(
                 resolveAccountNotice(result.message) ??
-                  (result.error === 'SUPABASE_NOT_CONFIGURED' ? t('account.notConfigured') : result.error ?? null)
+                  (result.error === 'INSFORGE_NOT_CONFIGURED' ? t('account.notConfigured') : result.error ?? null)
               );
             });
           }}
@@ -633,7 +628,7 @@ export function AppNavigator() {
             void changeLanguage(nextLanguage).then((result) => {
               setSettingsNotice(
                 resolveAccountNotice(result.message) ??
-                  (result.error === 'SUPABASE_NOT_CONFIGURED' ? t('account.notConfigured') : result.error ?? null)
+                  (result.error === 'INSFORGE_NOT_CONFIGURED' ? t('account.notConfigured') : result.error ?? null)
               );
             });
           }}

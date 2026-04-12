@@ -13,3 +13,6 @@
 .roo
 .trae
 .windsurf
+.env
+.env.local
+.env.*
