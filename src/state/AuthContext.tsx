@@ -1,7 +1,14 @@
 import { createContext, useContext, useEffect, useMemo, useState, type PropsWithChildren } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
 
-import { ensureAccountRecords, providerLabelFromUser, updateLanguagePreference, type ProfileRow, type UserSettingsRow } from '../data/account';
+import {
+  ensureAccountRecords,
+  providerLabelFromUser,
+  updateLanguagePreference,
+  updateThemePreference,
+  type ProfileRow,
+  type UserSettingsRow
+} from '../data/account';
 import i18n from '../i18n/i18n';
 import { isAccountLinkingEnabled, isSupabaseConfigured, supabase } from '../lib/supabase';
 import { loadStoredLanguage, loadStoredTheme, storeLanguage, storeTheme, type AppLanguage, type AppThemePreference } from '../lib/storage';
@@ -52,7 +59,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [profile, setProfile] = useState<ProfileRow | null>(null);
   const [settings, setSettings] = useState<UserSettingsRow | null>(null);
   const [language, setLanguage] = useState<AppLanguage>('es');
-  const [themePreference, setThemePreference] = useState<AppThemePreference>('warm-night');
+  const [themePreference, setThemePreference] = useState<AppThemePreference>('default');
 
   async function applyLanguage(nextLanguage: AppLanguage) {
     await i18n.changeLanguage(nextLanguage);
@@ -65,27 +72,31 @@ export function AuthProvider({ children }: PropsWithChildren) {
     setThemePreference(nextTheme);
   }
 
-  async function hydrateAccount(nextSession: Session | null, fallbackLanguage: AppLanguage) {
+  async function hydrateAccount(nextSession: Session | null, fallbackLanguage: AppLanguage, fallbackTheme: AppThemePreference) {
     setSession(nextSession);
 
     if (!nextSession?.user) {
       setProfile(null);
       setSettings(null);
       await applyLanguage(fallbackLanguage);
+      await applyTheme(fallbackTheme);
       return;
     }
 
     try {
-      const account = await ensureAccountRecords(nextSession.user, fallbackLanguage);
+      const account = await ensureAccountRecords(nextSession.user, fallbackLanguage, fallbackTheme);
       setProfile(account.profile);
       setSettings(account.settings);
 
       const resolvedLanguage = account.settings.language ?? account.profile.preferred_language ?? fallbackLanguage;
+      const resolvedTheme = account.settings.theme_preference ?? fallbackTheme;
       await applyLanguage(resolvedLanguage);
+      await applyTheme(resolvedTheme);
     } catch {
       setProfile(null);
       setSettings(null);
       await applyLanguage(fallbackLanguage);
+      await applyTheme(fallbackTheme);
     }
   }
 
@@ -118,7 +129,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       }
 
       try {
-        await hydrateAccount(initialSession, storedLanguage);
+        await hydrateAccount(initialSession, storedLanguage, storedTheme);
       } finally {
         if (isMounted) {
           setIsReady(true);
@@ -135,7 +146,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
         return;
       }
 
-      void loadStoredLanguage().then((storedLanguage) => hydrateAccount(nextSession, storedLanguage));
+      void Promise.all([loadStoredLanguage(), loadStoredTheme()]).then(([storedLanguage, storedTheme]) =>
+        hydrateAccount(nextSession, storedLanguage, storedTheme)
+      );
     });
 
     return () => {
@@ -241,7 +254,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
         setIsBusy(true);
 
         try {
-          await updateLanguagePreference(user.id, nextLanguage, linkedProviderLabel);
+          await updateLanguagePreference(user.id, nextLanguage, linkedProviderLabel, settings?.theme_preference ?? themePreference);
           setProfile((current) => (current ? { ...current, preferred_language: nextLanguage } : current));
           setSettings((current) => (current ? { ...current, language: nextLanguage } : current));
           return {};
@@ -253,7 +266,22 @@ export function AuthProvider({ children }: PropsWithChildren) {
       },
       changeTheme: async (nextTheme) => {
         await applyTheme(nextTheme);
-        return {};
+
+        if (!user) {
+          return {};
+        }
+
+        setIsBusy(true);
+
+        try {
+          await updateThemePreference(user.id, nextTheme, linkedProviderLabel);
+          setSettings((current) => (current ? { ...current, theme_preference: nextTheme } : current));
+          return {};
+        } catch (error) {
+          return { error: error instanceof Error ? error.message : 'UNKNOWN_ERROR' };
+        } finally {
+          setIsBusy(false);
+        }
       },
       linkAccount: async () => {
         if (isGuest) {

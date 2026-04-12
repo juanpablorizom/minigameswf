@@ -2,15 +2,15 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 
 export type AppLanguage = 'es' | 'en';
-export type AppThemePreference = 'warm-night' | 'sunset-pop' | 'olive-pulse';
+export type AppThemePreference = 'default' | 'geo-style';
 export type GuestProfile = {
   displayName: string;
   username: string;
 };
 
-const LANGUAGE_STORAGE_KEY = 'juntada.language';
-const THEME_STORAGE_KEY = 'juntada.theme';
-const GUEST_PROFILE_STORAGE_KEY = 'juntada.guest-profile';
+const LANGUAGE_STORAGE_KEY = 'minigameswf.language';
+const THEME_STORAGE_KEY = 'minigameswf.theme';
+const GUEST_PROFILE_STORAGE_KEY = 'minigameswf.guest-profile';
 
 type StorageAdapter = {
   getItem: (key: string) => Promise<string | null>;
@@ -57,11 +57,11 @@ export async function storeLanguage(language: AppLanguage) {
 export async function loadStoredTheme() {
   const value = await appStorage.getItem(THEME_STORAGE_KEY);
 
-  if (value === 'sunset-pop' || value === 'olive-pulse') {
+  if (value === 'geo-style') {
     return value;
   }
 
-  return 'warm-night';
+  return 'default';
 }
 
 export async function storeTheme(theme: AppThemePreference) {

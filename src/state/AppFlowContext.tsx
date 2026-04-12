@@ -19,6 +19,7 @@ type AppFlowValue = {
   openGamesTab: () => void;
   openRoom: () => void;
   openJoinRoom: () => void;
+  openScanRoom: () => void;
   joinRoomByCode: () => void;
   continueRoom: () => void;
   inviteFriends: () => void;
@@ -98,6 +99,10 @@ export function AppFlowProvider({ children }: PropsWithChildren) {
       openJoinRoom: () => {
         setActiveTab('games');
         setCurrentScreen('joinRoom');
+      },
+      openScanRoom: () => {
+        setActiveTab('games');
+        setCurrentScreen('scanRoom');
       },
       joinRoomByCode: () => {
         setActiveTab('games');

@@ -33,6 +33,15 @@ export type RoomDetails = {
   isHost: boolean;
 };
 
+export type RoomRealtimeState = 'idle' | 'connecting' | 'live' | 'error';
+
+type SubscribeToRoomRealtimeOptions = {
+  roomId: string;
+  onRoomChange: () => void;
+  onMembersChange: () => void;
+  onConnectionStateChange?: (state: RoomRealtimeState, message?: string | null) => void;
+};
+
 function normalizeRoomResult(data: RoomRow | RoomRow[] | null) {
   if (!data) {
     return null;
@@ -100,7 +109,6 @@ export async function getActiveRoomIdForUser(userId: string) {
     .from('room_members')
     .select('room_id, joined_at, rooms!inner(id, status)')
     .eq('user_id', userId)
-    .eq('is_active', true)
     .order('joined_at', { ascending: false })
     .limit(1);
 
@@ -267,4 +275,66 @@ export async function updateRoomStatus(roomId: string, hostUserId: string, statu
   if (error) {
     throw error;
   }
+}
+
+export async function updateRoomMemberPresence(roomId: string, userId: string, isActive: boolean) {
+  const { error } = await supabase
+    .from('room_members')
+    .update({ is_active: isActive })
+    .eq('room_id', roomId)
+    .eq('user_id', userId);
+
+  if (error) {
+    throw error;
+  }
+}
+
+export function subscribeToRoomRealtime({
+  roomId,
+  onRoomChange,
+  onMembersChange,
+  onConnectionStateChange
+}: SubscribeToRoomRealtimeOptions) {
+  onConnectionStateChange?.('connecting', 'Syncing live room updates...');
+
+  const channel = supabase
+    .channel(`room:${roomId}`)
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'room_members',
+        filter: `room_id=eq.${roomId}`
+      },
+      () => {
+        onMembersChange();
+      }
+    )
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'rooms',
+        filter: `id=eq.${roomId}`
+      },
+      () => {
+        onRoomChange();
+      }
+    )
+    .subscribe((status) => {
+      if (status === 'SUBSCRIBED') {
+        onConnectionStateChange?.('live', null);
+        return;
+      }
+
+      if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+        onConnectionStateChange?.('error', 'Live sync was interrupted. Trying to recover...');
+      }
+    });
+
+  return () => {
+    void supabase.removeChannel(channel);
+  };
 }

@@ -1,4 +1,4 @@
-import type { AppLanguage } from './storage';
+import type { AppLanguage, AppThemePreference } from './storage';
 
 export type RoomStatus = 'waiting' | 'active' | 'finished';
 export type RoomVisibility = 'private';
@@ -42,6 +42,7 @@ export type Database = {
           user_id: string;
           language: AppLanguage;
           linked_provider_label: string | null;
+          theme_preference: AppThemePreference;
           created_at: string;
           updated_at: string;
         };
@@ -49,6 +50,7 @@ export type Database = {
           user_id: string;
           language?: AppLanguage;
           linked_provider_label?: string | null;
+          theme_preference?: AppThemePreference;
           created_at?: string;
           updated_at?: string;
         };
@@ -56,6 +58,7 @@ export type Database = {
           user_id?: string;
           language?: AppLanguage;
           linked_provider_label?: string | null;
+          theme_preference?: AppThemePreference;
           created_at?: string;
           updated_at?: string;
         };

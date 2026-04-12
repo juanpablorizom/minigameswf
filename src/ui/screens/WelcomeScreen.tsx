@@ -6,7 +6,7 @@ import { AppButton } from '../components/AppButton';
 import { AppScreen } from '../components/AppScreen';
 import { Badge } from '../components/Badge';
 import { SurfaceCard } from '../components/SurfaceCard';
-import { colors, radius, spacing, typography } from '../theme';
+import { radius, spacing, typography, useTheme } from '../theme';
 
 type WelcomeScreenProps = {
   isBusy: boolean;
@@ -19,6 +19,8 @@ type WelcomeScreenProps = {
 
 export function WelcomeScreen({ isBusy, isSupabaseConfigured, notice, onSignIn, onSignUp, onContinueAsGuest }: WelcomeScreenProps) {
   const { t } = useTranslation();
+  const theme = useTheme();
+  const styles = createStyles(theme);
   const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -55,14 +57,14 @@ export function WelcomeScreen({ isBusy, isSupabaseConfigured, notice, onSignIn, 
           value={displayName}
           onChangeText={setDisplayName}
           placeholder={t('auth.displayNamePlaceholder')}
-          placeholderTextColor={colors.textMuted}
+          placeholderTextColor={theme.colors.textMuted}
           style={styles.input}
         />
         <TextInput
           value={email}
           onChangeText={setEmail}
           placeholder={t('auth.emailPlaceholder')}
-          placeholderTextColor={colors.textMuted}
+          placeholderTextColor={theme.colors.textMuted}
           style={styles.input}
           autoCapitalize="none"
           keyboardType="email-address"
@@ -71,7 +73,7 @@ export function WelcomeScreen({ isBusy, isSupabaseConfigured, notice, onSignIn, 
           value={password}
           onChangeText={setPassword}
           placeholder={t('auth.passwordPlaceholder')}
-          placeholderTextColor={colors.textMuted}
+          placeholderTextColor={theme.colors.textMuted}
           style={styles.input}
           autoCapitalize="none"
           secureTextEntry
@@ -102,27 +104,28 @@ export function WelcomeScreen({ isBusy, isSupabaseConfigured, notice, onSignIn, 
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(theme: ReturnType<typeof useTheme>) {
+  return StyleSheet.create({
   hero: {
     gap: spacing.md,
     paddingTop: spacing.md
   },
   eyebrow: {
-    color: colors.accentSoft,
+    color: theme.colors.highlight,
     fontSize: typography.caption,
     fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 1.5
   },
   title: {
-    color: colors.textPrimary,
+    color: theme.colors.textPrimary,
     fontSize: typography.hero,
     fontWeight: '800',
     lineHeight: 44,
     letterSpacing: -1.4
   },
   subtitle: {
-    color: colors.textSecondary,
+    color: theme.colors.textSecondary,
     fontSize: typography.body,
     lineHeight: 24
   },
@@ -137,9 +140,9 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 150,
     borderRadius: 26,
-    backgroundColor: colors.panel,
+    backgroundColor: theme.colors.surface,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: theme.colors.border,
     padding: spacing.lg,
     justifyContent: 'space-between'
   },
@@ -150,51 +153,51 @@ const styles = StyleSheet.create({
   visualCardSmall: {
     flex: 1,
     borderRadius: 22,
-    backgroundColor: colors.backgroundElevated,
+    backgroundColor: theme.colors.backgroundElevated,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: theme.colors.border,
     padding: spacing.md,
     justifyContent: 'flex-end'
   },
   visualCardSuccess: {
-    backgroundColor: '#263028',
-    borderColor: '#465544'
+    backgroundColor: theme.colors.successMuted,
+    borderColor: theme.colors.success
   },
   visualLabel: {
-    color: colors.textMuted,
+    color: theme.colors.textMuted,
     fontSize: typography.caption,
     textTransform: 'uppercase',
     letterSpacing: 1.2
   },
   visualValue: {
-    color: colors.textPrimary,
+    color: theme.colors.textPrimary,
     fontSize: typography.section,
     fontWeight: '700',
     lineHeight: 24
   },
   visualTiny: {
-    color: colors.textPrimary,
+    color: theme.colors.textPrimary,
     fontSize: typography.caption,
     fontWeight: '700',
     lineHeight: 18
   },
   sectionTitle: {
-    color: colors.textPrimary,
+    color: theme.colors.textPrimary,
     fontSize: typography.section,
     fontWeight: '700'
   },
   cardCopy: {
-    color: colors.textSecondary,
+    color: theme.colors.textSecondary,
     fontSize: typography.body,
     lineHeight: 22
   },
   input: {
     minHeight: 54,
     borderRadius: radius.md,
-    backgroundColor: colors.backgroundElevated,
+    backgroundColor: theme.colors.backgroundElevated,
     borderWidth: 1,
-    borderColor: colors.border,
-    color: colors.textPrimary,
+    borderColor: theme.colors.border,
+    color: theme.colors.textPrimary,
     paddingHorizontal: spacing.md,
     fontSize: typography.body
   },
@@ -208,18 +211,19 @@ const styles = StyleSheet.create({
     gap: spacing.sm
   },
   featureItem: {
-    color: colors.textSecondary,
+    color: theme.colors.textSecondary,
     fontSize: typography.body,
     lineHeight: 22
   },
   notice: {
-    color: colors.accentSoft,
+    color: theme.colors.highlight,
     fontSize: typography.caption,
     lineHeight: 18
   },
   helper: {
-    color: colors.textSecondary,
+    color: theme.colors.textSecondary,
     fontSize: typography.body,
     lineHeight: 22
   }
-});
+  });
+}

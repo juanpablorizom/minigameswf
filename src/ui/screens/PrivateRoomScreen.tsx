@@ -1,15 +1,18 @@
 import { StyleSheet, Text, View } from 'react-native';
+import QRCode from 'react-native-qrcode-svg';
 
 import type { RoomActivityView, RoomMemberView } from '../../data/rooms';
+import type { RoomRealtimeState } from '../../data/rooms';
 import type { MiniGame, RoomSettings } from '../../navigation/types';
 import { AppButton } from '../components/AppButton';
 import { AppScreen } from '../components/AppScreen';
 import { Badge } from '../components/Badge';
 import { SurfaceCard } from '../components/SurfaceCard';
-import { colors, spacing, typography } from '../theme';
+import { spacing, typography, useTheme } from '../theme';
 
 type PrivateRoomScreenProps = {
   roomCode: string;
+  roomUrl: string;
   roomStatus: 'waiting' | 'active' | 'finished';
   members: RoomMemberView[];
   activity: RoomActivityView[];
@@ -18,6 +21,7 @@ type PrivateRoomScreenProps = {
   canManageRoom: boolean;
   isBusy: boolean;
   notice: string | null;
+  syncState: RoomRealtimeState;
   onShareCode: () => void;
   onChooseGames: () => void;
   onOpenSettings: () => void;
@@ -26,6 +30,7 @@ type PrivateRoomScreenProps = {
 
 export function PrivateRoomScreen({
   roomCode,
+  roomUrl,
   roomStatus,
   members,
   activity,
@@ -34,13 +39,17 @@ export function PrivateRoomScreen({
   canManageRoom,
   isBusy,
   notice,
+  syncState,
   onShareCode,
   onChooseGames,
   onOpenSettings,
   onStart
 }: PrivateRoomScreenProps) {
+  const theme = useTheme();
+  const styles = createStyles(theme);
   const activeMembers = members.filter((member) => member.isActive);
   const host = members.find((member) => member.role === 'host') ?? null;
+  const isImpostorMode = selectedGame?.id === 'impostor';
 
   return (
     <AppScreen title="Party room" subtitle={canManageRoom ? 'You are hosting this room. Keep members moving and lock the flow before the first round starts.' : 'The host controls setup. You can follow who is in and wait for the next step.'}>
@@ -50,7 +59,13 @@ export function PrivateRoomScreen({
             <Text style={styles.codeLabel}>Room code</Text>
             <Text style={styles.codeValue}>{roomCode}</Text>
           </View>
-          <Badge label={roomStatus === 'active' ? 'In session' : roomStatus === 'finished' ? 'Finished' : 'Waiting'} tone={roomStatus === 'active' ? 'success' : 'accent'} />
+          <View style={styles.statusStack}>
+            <Badge label={roomStatus === 'active' ? 'In session' : roomStatus === 'finished' ? 'Finished' : 'Waiting'} tone={roomStatus === 'active' ? 'success' : 'accent'} />
+            <Badge
+              label={syncState === 'live' ? 'Live sync' : syncState === 'connecting' ? 'Syncing...' : syncState === 'error' ? 'Reconnect' : 'Idle'}
+              tone={syncState === 'error' ? 'accent' : syncState === 'live' ? 'success' : 'neutral'}
+            />
+          </View>
         </View>
         <Text style={styles.sectionCopy}>
           {host ? `${host.displayName} is hosting` : 'Host unavailable'} · {activeMembers.length} active members
@@ -60,6 +75,16 @@ export function PrivateRoomScreen({
           {canManageRoom ? (
             <AppButton label={roomStatus === 'active' ? 'Return to game' : 'Continue to game'} onPress={onStart} disabled={isBusy} />
           ) : null}
+        </View>
+        <View style={styles.qrSection}>
+          <View style={styles.qrCard}>
+            <QRCode value={roomUrl} size={164} color={theme.colors.background} backgroundColor="#FFFFFF" />
+          </View>
+          <View style={styles.qrMeta}>
+            <Text style={styles.qrTitle}>Scan to join instantly</Text>
+            <Text style={styles.itemSubtitle}>{roomUrl}</Text>
+            <Text style={styles.supportingCopy}>Fallback code: {roomCode}</Text>
+          </View>
         </View>
         {notice ? <Text style={styles.notice}>{notice}</Text> : null}
       </SurfaceCard>
@@ -98,6 +123,11 @@ export function PrivateRoomScreen({
               <Text style={styles.itemSubtitle}>
                 {selectedGame.duration} · {selectedGame.energy}
               </Text>
+              {isImpostorMode ? (
+                <Text style={styles.supportingCopy}>
+                  Choose Friends Mode or Multiplayer when the round starts.
+                </Text>
+              ) : null}
             </View>
             <Badge label="Selected" tone="accent" />
           </View>
@@ -142,36 +172,61 @@ export function PrivateRoomScreen({
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(theme: ReturnType<typeof useTheme>) {
+  return StyleSheet.create({
   roomTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: spacing.md
+  },
+  statusStack: {
+    gap: spacing.xs,
+    alignItems: 'flex-end'
   },
   codeBlock: {
     gap: spacing.xs
   },
   codeLabel: {
-    color: colors.textMuted,
+    color: theme.colors.textMuted,
     fontSize: typography.caption
   },
   codeValue: {
-    color: colors.accentSoft,
+    color: theme.colors.highlight,
     fontSize: 34,
     fontWeight: '800',
     letterSpacing: 3
   },
   sectionCopy: {
-    color: colors.textSecondary,
+    color: theme.colors.textSecondary,
     fontSize: typography.body,
     lineHeight: 22
   },
   roomActions: {
     gap: spacing.sm
   },
+  qrSection: {
+    gap: spacing.md,
+    alignItems: 'center'
+  },
+  qrCard: {
+    padding: spacing.md,
+    borderRadius: 20,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.border
+  },
+  qrMeta: {
+    gap: spacing.xs,
+    alignItems: 'center'
+  },
+  qrTitle: {
+    color: theme.colors.textPrimary,
+    fontSize: typography.body,
+    fontWeight: '700'
+  },
   notice: {
-    color: colors.accentSoft,
+    color: theme.colors.highlight,
     fontSize: typography.caption,
     lineHeight: 18
   },
@@ -182,7 +237,7 @@ const styles = StyleSheet.create({
     gap: spacing.md
   },
   sectionTitle: {
-    color: colors.textPrimary,
+    color: theme.colors.textPrimary,
     fontSize: typography.section,
     fontWeight: '700'
   },
@@ -195,12 +250,12 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: colors.backgroundElevated,
+    backgroundColor: theme.colors.backgroundElevated,
     alignItems: 'center',
     justifyContent: 'center'
   },
   avatarLabel: {
-    color: colors.accentSoft,
+    color: theme.colors.highlight,
     fontWeight: '800'
   },
   playerMeta: {
@@ -214,12 +269,12 @@ const styles = StyleSheet.create({
     alignItems: 'center'
   },
   playerName: {
-    color: colors.textPrimary,
+    color: theme.colors.textPrimary,
     fontSize: typography.body,
     fontWeight: '700'
   },
   playerMood: {
-    color: colors.textSecondary,
+    color: theme.colors.textSecondary,
     fontSize: typography.caption
   },
   listRow: {
@@ -233,14 +288,19 @@ const styles = StyleSheet.create({
     gap: 2
   },
   itemTitle: {
-    color: colors.textPrimary,
+    color: theme.colors.textPrimary,
     fontSize: typography.body,
     fontWeight: '700'
   },
   itemSubtitle: {
-    color: colors.textSecondary,
+    color: theme.colors.textSecondary,
     fontSize: typography.body,
     lineHeight: 22
+  },
+  supportingCopy: {
+    color: theme.colors.textMuted,
+    fontSize: typography.caption,
+    lineHeight: 18
   },
   activityRow: {
     flexDirection: 'row',
@@ -251,7 +311,8 @@ const styles = StyleSheet.create({
     width: 10,
     height: 10,
     borderRadius: 999,
-    backgroundColor: colors.success,
+    backgroundColor: theme.colors.success,
     marginTop: 6
   }
-});
+  });
+}

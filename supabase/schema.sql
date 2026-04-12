@@ -14,9 +14,13 @@ create table if not exists public.user_settings (
   user_id uuid primary key references auth.users (id) on delete cascade,
   language text not null default 'es' check (language in ('es', 'en')),
   linked_provider_label text,
+  theme_preference text not null default 'default' check (theme_preference in ('default', 'geo-style')),
   created_at timestamptz not null default timezone('utc', now()),
   updated_at timestamptz not null default timezone('utc', now())
 );
+
+alter table public.user_settings
+add column if not exists theme_preference text not null default 'default';
 
 create table if not exists public.rooms (
   id uuid primary key default gen_random_uuid(),
@@ -221,11 +225,12 @@ begin
   )
   on conflict (id) do nothing;
 
-  insert into public.user_settings (user_id, language, linked_provider_label)
+  insert into public.user_settings (user_id, language, linked_provider_label, theme_preference)
   values (
     new.id,
     'es',
-    initcap(coalesce(new.app_metadata ->> 'provider', 'email'))
+    initcap(coalesce(new.app_metadata ->> 'provider', 'email')),
+    'default'
   )
   on conflict (user_id) do nothing;
 

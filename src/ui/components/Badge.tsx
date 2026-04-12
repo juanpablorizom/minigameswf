@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 
-import { colors, radius, spacing, typography } from '../theme';
+import { radius, spacing, typography, useTheme } from '../theme';
 
 type BadgeProps = {
   label: string;
@@ -8,6 +8,9 @@ type BadgeProps = {
 };
 
 export function Badge({ label, tone = 'neutral' }: BadgeProps) {
+  const theme = useTheme();
+  const styles = createStyles(theme);
+
   return (
     <View style={[styles.badge, styles[`${tone}Badge`]]}>
       <Text style={[styles.label, styles[`${tone}Label`]]}>{label}</Text>
@@ -15,33 +18,35 @@ export function Badge({ label, tone = 'neutral' }: BadgeProps) {
   );
 }
 
-const styles = StyleSheet.create({
-  badge: {
-    alignSelf: 'flex-start',
-    borderRadius: radius.pill,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs
-  },
-  label: {
-    fontSize: typography.caption,
-    fontWeight: '700'
-  },
-  accentBadge: {
-    backgroundColor: '#3d3125'
-  },
-  accentLabel: {
-    color: colors.accentSoft
-  },
-  successBadge: {
-    backgroundColor: colors.successMuted
-  },
-  successLabel: {
-    color: '#d4e5ca'
-  },
-  neutralBadge: {
-    backgroundColor: colors.backgroundElevated
-  },
-  neutralLabel: {
-    color: colors.textSecondary
-  }
-});
+function createStyles(theme: ReturnType<typeof useTheme>) {
+  return StyleSheet.create({
+    badge: {
+      alignSelf: 'flex-start',
+      borderRadius: radius.pill,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.xs
+    },
+    label: {
+      fontSize: typography.caption,
+      fontWeight: '700'
+    },
+    accentBadge: {
+      backgroundColor: theme.colors.badgeAccentBackground
+    },
+    accentLabel: {
+      color: theme.colors.highlight
+    },
+    successBadge: {
+      backgroundColor: theme.colors.successMuted
+    },
+    successLabel: {
+      color: theme.colors.successText
+    },
+    neutralBadge: {
+      backgroundColor: theme.colors.badgeNeutralBackground
+    },
+    neutralLabel: {
+      color: theme.colors.textSecondary
+    }
+  });
+}

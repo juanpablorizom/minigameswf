@@ -3,6 +3,7 @@ export type AppTab = 'account' | 'games' | 'settings';
 export type ScreenName =
   | 'lobby'
   | 'joinRoom'
+  | 'scanRoom'
   | 'room'
   | 'chooseGames'
   | 'roomSettings'
@@ -15,16 +16,20 @@ export type Player = {
   status: 'host' | 'ready' | 'invited' | 'playing';
   mood: string;
   score: number;
+  isCurrentUser?: boolean;
 };
 
 export type MiniGame = {
   id: string;
   name: string;
-  category: 'Warm Up' | 'Social Reads' | 'Bluffing';
+  category: 'Warm Up' | 'Social Reads' | 'Bluffing' | 'Social Deduction';
   duration: string;
   energy: 'Warm-up' | 'Social' | 'Chaotic';
   description: string;
 };
+
+export type ImpostorMode = 'friends' | 'multiplayer';
+export type ImpostorCategoryId = 'animals' | 'countries' | 'objects';
 
 export type ActivityItem = {
   id: string;
@@ -37,6 +42,7 @@ export type LobbyScenarioKey = 'guest' | 'noRoom' | 'activeRoom' | 'invited' | '
 export type LobbyActionId =
   | 'createRoom'
   | 'joinByCode'
+  | 'scanQr'
   | 'continueRoom'
   | 'inviteFriends'
   | 'resumeActivity'

@@ -1,7 +1,7 @@
 import type { User } from '@supabase/supabase-js';
 
 import { supabase } from '../lib/supabase';
-import type { AppLanguage } from '../lib/storage';
+import type { AppLanguage, AppThemePreference } from '../lib/storage';
 import type { Database } from '../lib/supabase.types';
 
 export type ProfileRow = Database['public']['Tables']['profiles']['Row'];
@@ -35,7 +35,7 @@ export function providerLabelFromUser(user: User) {
   return 'Email';
 }
 
-export async function ensureAccountRecords(user: User, fallbackLanguage: AppLanguage) {
+export async function ensureAccountRecords(user: User, fallbackLanguage: AppLanguage, fallbackTheme: AppThemePreference) {
   const { data: existingProfile, error: profileFetchError } = await supabase
     .from('profiles')
     .select('*')
@@ -78,7 +78,8 @@ export async function ensureAccountRecords(user: User, fallbackLanguage: AppLang
   const nextSettings = {
     user_id: user.id,
     language: existingSettings?.language ?? profile.preferred_language ?? fallbackLanguage,
-    linked_provider_label: existingSettings?.linked_provider_label ?? providerLabelFromUser(user)
+    linked_provider_label: existingSettings?.linked_provider_label ?? providerLabelFromUser(user),
+    theme_preference: existingSettings?.theme_preference ?? fallbackTheme
   };
 
   const { data: settings, error: settingsError } = await supabase
@@ -94,7 +95,12 @@ export async function ensureAccountRecords(user: User, fallbackLanguage: AppLang
   return { profile, settings };
 }
 
-export async function updateLanguagePreference(userId: string, language: AppLanguage, linkedProviderLabel: string | null) {
+export async function updateLanguagePreference(
+  userId: string,
+  language: AppLanguage,
+  linkedProviderLabel: string | null,
+  themePreference?: AppThemePreference
+) {
   const { error: profileError } = await supabase
     .from('profiles')
     .update({ preferred_language: language })
@@ -108,12 +114,28 @@ export async function updateLanguagePreference(userId: string, language: AppLang
     {
       user_id: userId,
       language,
-      linked_provider_label: linkedProviderLabel
+      linked_provider_label: linkedProviderLabel,
+      theme_preference: themePreference
     },
     { onConflict: 'user_id' }
   );
 
   if (settingsError) {
     throw settingsError;
+  }
+}
+
+export async function updateThemePreference(userId: string, themePreference: AppThemePreference, linkedProviderLabel: string | null) {
+  const { error } = await supabase.from('user_settings').upsert(
+    {
+      user_id: userId,
+      linked_provider_label: linkedProviderLabel,
+      theme_preference: themePreference
+    },
+    { onConflict: 'user_id' }
+  );
+
+  if (error) {
+    throw error;
   }
 }

@@ -1,20 +1,25 @@
 import type { PropsWithChildren } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { colors, radius, shadows, spacing } from '../theme';
+import { radius, shadows, spacing, useTheme } from '../theme';
 
 export function SurfaceCard({ children }: PropsWithChildren) {
+  const theme = useTheme();
+  const styles = createStyles(theme);
+
   return <View style={styles.card}>{children}</View>;
 }
 
-const styles = StyleSheet.create({
-  card: {
-    backgroundColor: colors.panel,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.lg,
-    gap: spacing.md,
-    ...shadows.card
-  }
-});
+function createStyles(theme: ReturnType<typeof useTheme>) {
+  return StyleSheet.create({
+    card: {
+      backgroundColor: theme.colors.surface,
+      borderRadius: radius.lg,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      padding: spacing.lg,
+      gap: spacing.md,
+      ...shadows.card
+    }
+  });
+}

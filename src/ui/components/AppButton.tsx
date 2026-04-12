@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { colors, radius, spacing, typography } from '../theme';
+import { radius, spacing, typography, useTheme } from '../theme';
 
 type AppButtonProps = {
   label: string;
@@ -9,66 +9,74 @@ type AppButtonProps = {
   variant?: 'primary' | 'secondary' | 'ghost';
   leftSlot?: ReactNode;
   disabled?: boolean;
+  loading?: boolean;
 };
 
-export function AppButton({ label, onPress, variant = 'primary', leftSlot, disabled = false }: AppButtonProps) {
+export function AppButton({ label, onPress, variant = 'primary', leftSlot, disabled = false, loading = false }: AppButtonProps) {
+  const theme = useTheme();
+  const styles = createStyles(theme);
+  const isDisabled = disabled || loading;
+
   return (
     <Pressable
       onPress={onPress}
-      disabled={disabled}
-      style={({ pressed }) => [styles.base, styles[variant], disabled && styles.disabled, pressed && !disabled && styles.pressed]}
+      disabled={isDisabled}
+      style={({ pressed }) => [styles.base, styles[variant], isDisabled && styles.disabled, pressed && !isDisabled && styles.pressed]}
     >
+      {loading ? <ActivityIndicator color={styles[`${variant}Label`].color} /> : null}
       {leftSlot ? <View style={styles.leftSlot}>{leftSlot}</View> : null}
       <Text style={[styles.label, styles[`${variant}Label`]]}>{label}</Text>
     </Pressable>
   );
 }
 
-const styles = StyleSheet.create({
-  base: {
-    minHeight: 54,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.lg,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm
-  },
-  pressed: {
-    opacity: 0.88,
-    transform: [{ scale: 0.99 }]
-  },
-  disabled: {
-    opacity: 0.45
-  },
-  primary: {
-    backgroundColor: colors.accent
-  },
-  secondary: {
-    backgroundColor: colors.panel,
-    borderWidth: 1,
-    borderColor: colors.border
-  },
-  ghost: {
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: '#5a4d44'
-  },
-  label: {
-    fontSize: typography.body,
-    fontWeight: '700'
-  },
-  primaryLabel: {
-    color: '#221912'
-  },
-  secondaryLabel: {
-    color: colors.textPrimary
-  },
-  ghostLabel: {
-    color: colors.textSecondary
-  },
-  leftSlot: {
-    alignItems: 'center',
-    justifyContent: 'center'
-  }
-});
+function createStyles(theme: ReturnType<typeof useTheme>) {
+  return StyleSheet.create({
+    base: {
+      minHeight: 54,
+      borderRadius: radius.md,
+      paddingHorizontal: spacing.lg,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: spacing.sm
+    },
+    pressed: {
+      opacity: 0.88,
+      transform: [{ scale: 0.99 }]
+    },
+    disabled: {
+      opacity: 0.45
+    },
+    primary: {
+      backgroundColor: theme.colors.primary
+    },
+    secondary: {
+      backgroundColor: theme.colors.surface,
+      borderWidth: 1,
+      borderColor: theme.colors.border
+    },
+    ghost: {
+      backgroundColor: 'transparent',
+      borderWidth: 1,
+      borderColor: theme.colors.borderStrong
+    },
+    label: {
+      fontSize: typography.body,
+      fontWeight: '700'
+    },
+    primaryLabel: {
+      color: theme.colors.primaryText
+    },
+    secondaryLabel: {
+      color: theme.colors.textPrimary
+    },
+    ghostLabel: {
+      color: theme.colors.textSecondary
+    },
+    leftSlot: {
+      alignItems: 'center',
+      justifyContent: 'center'
+    }
+  });
+}

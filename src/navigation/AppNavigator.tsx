@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Pressable, Share, StyleSheet, Text, View } from 'react-native';
+import { Linking, Pressable, Share, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { featuredGames, lobbyHighlights, lobbyScenarios } from '../data/mockData';
 import type { RoomDetails } from '../data/rooms';
+import { buildRoomJoinUrl, extractRoomCodeFromValue, normalizeRoomCode } from '../lib/roomLinks';
 import type { AppTab, LobbyActionId, LobbyScenario, Player } from './types';
 import { useAppFlow } from '../state/AppFlowContext';
 import { useAuth } from '../state/AuthContext';
@@ -16,9 +17,10 @@ import { LobbyScreen } from '../ui/screens/LobbyScreen';
 import { PrivateRoomScreen } from '../ui/screens/PrivateRoomScreen';
 import { ResultsScreen } from '../ui/screens/ResultsScreen';
 import { RoomSettingsScreen } from '../ui/screens/RoomSettingsScreen';
+import { ScanRoomScreen } from '../ui/screens/ScanRoomScreen';
 import { SettingsScreen } from '../ui/screens/SettingsScreen';
 import { WelcomeScreen } from '../ui/screens/WelcomeScreen';
-import { colors, radius, spacing, typography } from '../ui/theme';
+import { radius, spacing, typography, useTheme } from '../ui/theme';
 
 function mapRoomNotice(error?: string | null) {
   if (error === 'ROOM_NOT_FOUND') {
@@ -31,6 +33,10 @@ function mapRoomNotice(error?: string | null) {
 
   if (error === 'AUTH_REQUIRED') {
     return 'Open a guest or account session first.';
+  }
+
+  if (error === 'ROOM_FULL') {
+    return 'That room is full right now.';
   }
 
   return error ?? null;
@@ -76,6 +82,8 @@ function buildLobbyScenario(activeRoom: RoomDetails | null, isGuest: boolean): L
 
 export function AppNavigator() {
   const { t } = useTranslation();
+  const theme = useTheme();
+  const styles = createStyles(theme);
   const {
     isReady,
     isBusy,
@@ -100,10 +108,13 @@ export function AppNavigator() {
     isReady: roomsReady,
     isBusy: roomBusy,
     activeRoom,
+    syncState,
+    syncNotice,
     createRoom,
     joinRoomByCode,
     saveSelectedGame,
-    markRoomActive
+    markRoomActive,
+    setRoomScreenActive
   } = useRoom();
   const {
     activeTab,
@@ -123,6 +134,7 @@ export function AppNavigator() {
     openQuickPlay,
     openChooseGames,
     openRoomSettings,
+    openScanRoom,
     toggleGameSelection,
     hydrateSelectedGame,
     saveGames,
@@ -139,6 +151,8 @@ export function AppNavigator() {
   const [settingsNotice, setSettingsNotice] = useState<string | null>(null);
   const [roomNotice, setRoomNotice] = useState<string | null>(null);
   const [joinNotice, setJoinNotice] = useState<string | null>(null);
+  const [pendingJoinCode, setPendingJoinCode] = useState<string | null>(null);
+  const [isAutoGuestingForJoin, setIsAutoGuestingForJoin] = useState(false);
 
   useEffect(() => {
     if (!session && !isGuest) {
@@ -151,6 +165,119 @@ export function AppNavigator() {
       hydrateSelectedGame(activeRoom.room.selected_game_id);
     }
   }, [activeRoom?.room.selected_game_id, hydrateSelectedGame]);
+
+  useEffect(() => {
+    setRoomScreenActive(
+      activeTab === 'games' &&
+        ['room', 'chooseGames', 'roomSettings', 'gameplay', 'results'].includes(currentScreen)
+    );
+  }, [activeTab, currentScreen, setRoomScreenActive]);
+
+  useEffect(() => {
+    if (session || isGuest) {
+      setIsAutoGuestingForJoin(false);
+    }
+  }, [isGuest, session]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    function queueJoinFromLink(rawValue: string | null | undefined) {
+      const code = extractRoomCodeFromValue(rawValue);
+
+      if (!code) {
+        if (rawValue && /join/i.test(rawValue)) {
+          setAuthNotice('That room link is not valid.');
+        }
+        return;
+      }
+
+      if (!isMounted) {
+        return;
+      }
+
+      setPendingJoinCode(code);
+      setJoinNotice(null);
+      setRoomNotice(activeRoom && activeRoom.room.code !== code ? `Leaving room ${activeRoom.room.code} and opening ${code}...` : `Opening room ${code}...`);
+    }
+
+    void Linking.getInitialURL().then(queueJoinFromLink);
+
+    const subscription = Linking.addEventListener('url', ({ url }) => {
+      queueJoinFromLink(url);
+    });
+
+    return () => {
+      isMounted = false;
+      subscription.remove();
+    };
+  }, [activeRoom]);
+
+  useEffect(() => {
+    if (!pendingJoinCode || !isReady || !roomsReady) {
+      return;
+    }
+
+    if (!session && !isGuest) {
+      if (!isSupabaseConfigured) {
+        setAuthNotice('Room links need backend auth configured first.');
+        setPendingJoinCode(null);
+        return;
+      }
+
+      if (isBusy || isAutoGuestingForJoin) {
+        return;
+      }
+
+      setIsAutoGuestingForJoin(true);
+      setAuthNotice(`Joining room ${pendingJoinCode} as guest...`);
+
+      void continueAsGuest('Guest Player').then((result) => {
+        if (result.error) {
+          setAuthNotice(result.error);
+          setPendingJoinCode(null);
+          setIsAutoGuestingForJoin(false);
+        }
+      });
+      return;
+    }
+
+    if (roomBusy) {
+      return;
+    }
+
+    void joinRoomByCode(pendingJoinCode).then((result) => {
+      if (result.error) {
+        const nextNotice = mapRoomNotice(result.error);
+        setJoinNotice(nextNotice);
+        setRoomNotice(nextNotice);
+        setAuthNotice(nextNotice);
+        setPendingJoinCode(null);
+        openJoinRoom();
+        return;
+      }
+
+      setAuthNotice(null);
+      setJoinNotice(null);
+      setRoomNotice(null);
+      setPendingJoinCode(null);
+      continueRoom();
+    });
+  }, [
+    continueAsGuest,
+    continueRoom,
+    isAutoGuestingForJoin,
+    isBusy,
+    isGuest,
+    isReady,
+    isSupabaseConfigured,
+    joinRoomByCode,
+    openJoinRoom,
+    pendingJoinCode,
+    roomBusy,
+    roomsReady,
+    session
+  ]);
 
   const loadingShell = !isReady || !roomsReady;
   const resolvedLobbyScenario = buildLobbyScenario(activeRoom, isGuest);
@@ -205,7 +332,8 @@ export function AppNavigator() {
       return;
     }
 
-    const shareMessage = `Join my JUNTADA party with code ${activeRoom.room.code}`;
+    const roomUrl = buildRoomJoinUrl(activeRoom.room.code);
+    const shareMessage = `Join my MiniGamesWF room with code ${activeRoom.room.code}\n${roomUrl}`;
 
     try {
       await Share.share({
@@ -233,6 +361,10 @@ export function AppNavigator() {
       case 'joinByCode':
         setJoinNotice(null);
         openJoinRoom();
+        break;
+      case 'scanQr':
+        setJoinNotice(null);
+        openScanRoom();
         break;
       case 'continueRoom':
         if (activeRoom) {
@@ -290,8 +422,59 @@ export function AppNavigator() {
         <JoinRoomScreen
           isBusy={roomBusy}
           notice={joinNotice}
+          onOpenScanner={() => {
+            setJoinNotice(null);
+            openScanRoom();
+          }}
           onJoin={(code) => {
-            void joinRoomByCode(code).then((result) => {
+            const normalizedCode = normalizeRoomCode(code);
+
+            if (!normalizedCode || normalizedCode.length !== 5) {
+              setJoinNotice('Enter a valid 5-character room code.');
+              return;
+            }
+
+            if (activeRoom && activeRoom.room.code !== normalizedCode) {
+              setRoomNotice(`Leaving room ${activeRoom.room.code} and opening ${normalizedCode}...`);
+            }
+
+            void joinRoomByCode(normalizedCode).then((result) => {
+              if (result.error) {
+                setJoinNotice(mapRoomNotice(result.error));
+                return;
+              }
+
+              setJoinNotice(null);
+              setRoomNotice(null);
+              continueRoom();
+            });
+          }}
+        />
+      );
+    }
+
+    if (currentScreen === 'scanRoom') {
+      return (
+        <ScanRoomScreen
+          isBusy={roomBusy}
+          notice={joinNotice}
+          onFallbackToManual={() => {
+            setJoinNotice(null);
+            openJoinRoom();
+          }}
+          onScanCode={(code) => {
+            const normalizedCode = normalizeRoomCode(code);
+
+            if (!normalizedCode) {
+              setJoinNotice('This QR does not contain a valid room code.');
+              return;
+            }
+
+            if (activeRoom && activeRoom.room.code !== normalizedCode) {
+              setRoomNotice(`Leaving room ${activeRoom.room.code} and opening ${normalizedCode}...`);
+            }
+
+            void joinRoomByCode(normalizedCode).then((result) => {
               if (result.error) {
                 setJoinNotice(mapRoomNotice(result.error));
                 return;
@@ -312,6 +495,7 @@ export function AppNavigator() {
       return (
         <PrivateRoomScreen
           roomCode={activeRoom.room.code}
+          roomUrl={buildRoomJoinUrl(activeRoom.room.code)}
           roomStatus={activeRoom.room.status}
           members={activeRoom.members}
           activity={activeRoom.activity}
@@ -319,7 +503,8 @@ export function AppNavigator() {
           settings={roomSettings}
           canManageRoom={activeRoom.isHost}
           isBusy={roomBusy}
-          notice={roomNotice}
+          notice={roomNotice ?? syncNotice}
+          syncState={syncState}
           onShareCode={() => {
             void shareRoomCode();
           }}
@@ -386,7 +571,8 @@ export function AppNavigator() {
         name: member.displayName,
         status: member.role === 'host' ? 'host' : 'ready',
         mood: member.isCurrentUser ? 'You are in this round' : `Joined #${index + 1}`,
-        score: 0
+        score: 0,
+        isCurrentUser: member.isCurrentUser
       }));
 
       return <GameplayScreen players={gameplayPlayers} activeGame={selectedGames[0] ?? featuredGames[0]} onRevealResults={revealResults} />;
@@ -460,7 +646,7 @@ export function AppNavigator() {
     <View style={styles.container}>
       <View style={styles.topBar}>
         <View>
-          <Text style={styles.brand}>JUNTADA</Text>
+          <Text style={styles.brand}>MiniGamesWF</Text>
           <Text style={styles.brandSub}>{activeTab === 'games' ? t('common.games') : activeTab === 'account' ? t('common.account') : t('common.settings')}</Text>
         </View>
         {canGoBack ? (
@@ -493,6 +679,9 @@ type TabButtonProps = {
 };
 
 function TabButton({ label, active, prominent = false, onPress }: TabButtonProps) {
+  const theme = useTheme();
+  const styles = createStyles(theme);
+
   return (
     <Pressable onPress={onPress} style={[styles.tabButton, prominent && styles.tabButtonProminent, active && styles.tabButtonActive]}>
       <Text style={[styles.tabLabel, active && styles.tabLabelActive]}>{label}</Text>
@@ -500,10 +689,11 @@ function TabButton({ label, active, prominent = false, onPress }: TabButtonProps
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(theme: ReturnType<typeof useTheme>) {
+  return StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background
+    backgroundColor: theme.colors.background
   },
   topBar: {
     paddingTop: 18,
@@ -512,24 +702,24 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: colors.background
+    backgroundColor: theme.colors.background
   },
   content: {
     flex: 1
   },
   brand: {
-    color: colors.textPrimary,
+    color: theme.colors.textPrimary,
     fontSize: typography.section,
     fontWeight: '800'
   },
   brandSub: {
-    color: colors.textMuted,
+    color: theme.colors.textMuted,
     fontSize: typography.caption,
     textTransform: 'uppercase',
     letterSpacing: 1.2
   },
   back: {
-    color: colors.accentSoft,
+    color: theme.colors.highlight,
     fontSize: typography.body,
     fontWeight: '700'
   },
@@ -538,12 +728,12 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     paddingHorizontal: spacing.md,
     justifyContent: 'center',
-    backgroundColor: colors.panel,
+    backgroundColor: theme.colors.surface,
     borderWidth: 1,
-    borderColor: colors.border
+    borderColor: theme.colors.border
   },
   statusPillLabel: {
-    color: colors.textSecondary,
+    color: theme.colors.textSecondary,
     fontSize: typography.caption,
     fontWeight: '700',
     letterSpacing: 0.8
@@ -554,32 +744,33 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.sm,
     paddingBottom: spacing.lg,
-    backgroundColor: colors.background
+    backgroundColor: theme.colors.background
   },
   tabButton: {
     flex: 1,
     minHeight: 54,
     borderRadius: radius.md,
-    backgroundColor: colors.panel,
+    backgroundColor: theme.colors.surface,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: theme.colors.border,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: spacing.sm
   },
   tabButtonProminent: {
-    backgroundColor: colors.backgroundElevated
+    backgroundColor: theme.colors.backgroundElevated
   },
   tabButtonActive: {
-    borderColor: colors.accent,
-    backgroundColor: colors.panelMuted
+    borderColor: theme.colors.primary,
+    backgroundColor: theme.colors.surfaceMuted
   },
   tabLabel: {
-    color: colors.textSecondary,
+    color: theme.colors.textSecondary,
     fontSize: typography.body,
     fontWeight: '700'
   },
   tabLabelActive: {
-    color: colors.textPrimary
+    color: theme.colors.textPrimary
   }
-});
+  });
+}

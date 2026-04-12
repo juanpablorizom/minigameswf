@@ -9,9 +9,9 @@ export const resources = {
         loading: 'Cargando'
       },
       auth: {
-        badge: 'JUNTADA',
+        badge: 'MiniGamesWF',
         eyebrow: 'Noche social de juegos',
-        title: 'Entra a la juntada y deja lista tu cuenta.',
+        title: 'Entra a MiniGamesWF y deja lista tu cuenta.',
         subtitle:
           'Usa tu correo para iniciar sesión o crear cuenta. El acceso queda listo para móvil y web con la misma base.',
         primaryCardTitle: 'Acceso',
@@ -91,7 +91,7 @@ export const resources = {
         loading: 'Loading'
       },
       auth: {
-        badge: 'JUNTADA',
+        badge: 'MiniGamesWF',
         eyebrow: 'Social game night',
         title: 'Join the hangout and set up your account.',
         subtitle:

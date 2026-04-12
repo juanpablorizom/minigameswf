@@ -1,4 +1,4 @@
-# JUNTADA MVP Architecture
+# MiniGamesWF MVP Architecture
 
 ## Folder structure
 

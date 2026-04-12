@@ -5,7 +5,7 @@ import { AppButton } from '../components/AppButton';
 import { AppScreen } from '../components/AppScreen';
 import { Badge } from '../components/Badge';
 import { SurfaceCard } from '../components/SurfaceCard';
-import { colors, spacing, typography } from '../theme';
+import { spacing, typography, useTheme } from '../theme';
 
 type ResultsScreenProps = {
   onPlayAgain: () => void;
@@ -13,6 +13,8 @@ type ResultsScreenProps = {
 };
 
 export function ResultsScreen({ onPlayAgain, onBackToLobby }: ResultsScreenProps) {
+  const theme = useTheme();
+  const styles = createStyles(theme);
   const topThree = podium.slice(0, 3);
 
   return (
@@ -66,7 +68,8 @@ export function ResultsScreen({ onPlayAgain, onBackToLobby }: ResultsScreenProps
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(theme: ReturnType<typeof useTheme>) {
+  return StyleSheet.create({
   podiumRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
@@ -76,37 +79,37 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 150,
     borderRadius: 20,
-    backgroundColor: colors.backgroundElevated,
+    backgroundColor: theme.colors.backgroundElevated,
     padding: spacing.md,
     justifyContent: 'flex-end',
     gap: spacing.xs
   },
   winnerCard: {
     minHeight: 190,
-    backgroundColor: '#352c25'
+    backgroundColor: theme.colors.badgeAccentBackground
   },
   place: {
-    color: colors.accentSoft,
+    color: theme.colors.highlight,
     fontSize: typography.caption,
     fontWeight: '800'
   },
   name: {
-    color: colors.textPrimary,
+    color: theme.colors.textPrimary,
     fontSize: typography.section,
     fontWeight: '700'
   },
   points: {
-    color: colors.textPrimary,
+    color: theme.colors.textPrimary,
     fontSize: typography.title,
     fontWeight: '800'
   },
   change: {
-    color: '#d1e3c6',
+    color: theme.colors.successText,
     fontSize: typography.caption,
     fontWeight: '700'
   },
   sectionTitle: {
-    color: colors.textPrimary,
+    color: theme.colors.textPrimary,
     fontSize: typography.section,
     fontWeight: '700'
   },
@@ -116,7 +119,7 @@ const styles = StyleSheet.create({
     gap: spacing.md
   },
   scoreRank: {
-    color: colors.textMuted,
+    color: theme.colors.textMuted,
     width: 26
   },
   scoreMeta: {
@@ -124,16 +127,16 @@ const styles = StyleSheet.create({
     gap: 2
   },
   scoreName: {
-    color: colors.textPrimary,
+    color: theme.colors.textPrimary,
     fontSize: typography.body,
     fontWeight: '700'
   },
   scoreBadge: {
-    color: colors.textSecondary,
+    color: theme.colors.textSecondary,
     fontSize: typography.caption
   },
   scoreValue: {
-    color: colors.accentSoft,
+    color: theme.colors.highlight,
     fontSize: typography.body,
     fontWeight: '800'
   },
@@ -149,4 +152,5 @@ const styles = StyleSheet.create({
   actions: {
     gap: spacing.sm
   }
-});
+  });
+}

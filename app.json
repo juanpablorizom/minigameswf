@@ -1,7 +1,8 @@
 {
   "expo": {
-    "name": "JUNTADA",
-    "slug": "juntada",
+    "name": "MiniGamesWF",
+    "slug": "minigameswf",
+    "scheme": "minigameswf",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
@@ -10,15 +11,47 @@
       "backgroundColor": "#171311"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "associatedDomains": [
+        "applinks:minigameswf.app"
+      ]
     },
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#171311"
-      }
+      },
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "minigameswf.app",
+              "pathPrefix": "/join"
+            },
+            {
+              "scheme": "minigameswf",
+              "host": "join"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
+      ]
     },
     "web": {
       "bundler": "metro"
-    }
+    },
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow MiniGamesWF to scan room QR codes."
+        }
+      ]
+    ]
   }
 }

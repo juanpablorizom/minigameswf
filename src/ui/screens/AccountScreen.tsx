@@ -5,7 +5,7 @@ import { AppButton } from '../components/AppButton';
 import { AppScreen } from '../components/AppScreen';
 import { Badge } from '../components/Badge';
 import { SurfaceCard } from '../components/SurfaceCard';
-import { colors, spacing, typography } from '../theme';
+import { spacing, typography, useTheme } from '../theme';
 
 type AccountScreenProps = {
   isGuest: boolean;
@@ -31,6 +31,8 @@ export function AccountScreen({
   onManageBilling
 }: AccountScreenProps) {
   const { t } = useTranslation();
+  const theme = useTheme();
+  const styles = createStyles(theme);
   const initials = (displayName ?? username ?? email ?? '?').slice(0, 2).toUpperCase();
   const accountStateLabel = isGuest ? t('account.accountStateGuest') : t('account.accountStateAuthenticated');
 
@@ -93,6 +95,9 @@ type DetailRowProps = {
 };
 
 function DetailRow({ label, value }: DetailRowProps) {
+  const theme = useTheme();
+  const styles = createStyles(theme);
+
   return (
     <View style={styles.detailRow}>
       <Text style={styles.detailLabel}>{label}</Text>
@@ -101,7 +106,8 @@ function DetailRow({ label, value }: DetailRowProps) {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(theme: ReturnType<typeof useTheme>) {
+  return StyleSheet.create({
   profileHeader: {
     flexDirection: 'row',
     gap: spacing.md,
@@ -111,14 +117,14 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: colors.backgroundElevated,
+    backgroundColor: theme.colors.backgroundElevated,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: colors.border
+    borderColor: theme.colors.border
   },
   avatarLabel: {
-    color: colors.accentSoft,
+    color: theme.colors.highlight,
     fontSize: typography.section,
     fontWeight: '800'
   },
@@ -139,23 +145,23 @@ const styles = StyleSheet.create({
     gap: spacing.md
   },
   sectionTitle: {
-    color: colors.textPrimary,
+    color: theme.colors.textPrimary,
     fontSize: typography.section,
     fontWeight: '700'
   },
   profileValue: {
-    color: colors.textPrimary,
+    color: theme.colors.textPrimary,
     fontSize: typography.body,
     lineHeight: 22,
     fontWeight: '700'
   },
   profileSubvalue: {
-    color: colors.textSecondary,
+    color: theme.colors.textSecondary,
     fontSize: typography.body,
     lineHeight: 22
   },
   helper: {
-    color: colors.textSecondary,
+    color: theme.colors.textSecondary,
     fontSize: typography.body,
     lineHeight: 22
   },
@@ -163,20 +169,21 @@ const styles = StyleSheet.create({
     gap: spacing.xs
   },
   detailLabel: {
-    color: colors.textMuted,
+    color: theme.colors.textMuted,
     fontSize: typography.caption,
     textTransform: 'uppercase',
     letterSpacing: 1.1
   },
   detailValue: {
-    color: colors.textPrimary,
+    color: theme.colors.textPrimary,
     fontSize: typography.body,
     lineHeight: 22
   },
   notice: {
-    color: colors.accentSoft,
+    color: theme.colors.highlight,
     fontSize: typography.caption,
     lineHeight: 18,
     paddingHorizontal: spacing.lg
   }
-});
+  });
+}

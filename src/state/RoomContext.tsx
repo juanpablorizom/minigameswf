@@ -1,6 +1,18 @@
-import { createContext, useContext, useEffect, useMemo, useState, type PropsWithChildren } from 'react';
+import { AppState, type AppStateStatus } from 'react-native';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type PropsWithChildren } from 'react';
 
-import { createPrivateRoom, getActiveRoomIdForUser, getRoomDetails, joinPrivateRoomByCode, updateRoomSelectedGame, updateRoomStatus, type RoomDetails } from '../data/rooms';
+import {
+  createPrivateRoom,
+  getActiveRoomIdForUser,
+  getRoomDetails,
+  joinPrivateRoomByCode,
+  subscribeToRoomRealtime,
+  updateRoomMemberPresence,
+  updateRoomSelectedGame,
+  updateRoomStatus,
+  type RoomDetails,
+  type RoomRealtimeState
+} from '../data/rooms';
 import { useAuth } from './AuthContext';
 
 type RoomActionResult = {
@@ -12,11 +24,14 @@ type RoomContextValue = {
   isReady: boolean;
   isBusy: boolean;
   activeRoom: RoomDetails | null;
+  syncState: RoomRealtimeState;
+  syncNotice: string | null;
   refreshActiveRoom: () => Promise<void>;
   createRoom: (selectedGameId: string | null) => Promise<RoomActionResult>;
   joinRoomByCode: (code: string) => Promise<RoomActionResult>;
   saveSelectedGame: (selectedGameId: string | null) => Promise<RoomActionResult>;
   markRoomActive: () => Promise<RoomActionResult>;
+  setRoomScreenActive: (isActive: boolean) => void;
 };
 
 const RoomContext = createContext<RoomContextValue | null>(null);
@@ -46,6 +61,32 @@ export function RoomProvider({ children }: PropsWithChildren) {
   const [isReady, setIsReady] = useState(false);
   const [isBusy, setIsBusy] = useState(false);
   const [activeRoom, setActiveRoom] = useState<RoomDetails | null>(null);
+  const [syncState, setSyncState] = useState<RoomRealtimeState>('idle');
+  const [syncNotice, setSyncNotice] = useState<string | null>(null);
+  const [roomScreenActive, setRoomScreenActive] = useState(false);
+  const appStateRef = useRef<AppStateStatus>(AppState.currentState);
+  const lastPresenceRef = useRef<boolean | null>(null);
+
+  const refreshResolvedActiveRoom = useCallback(async () => {
+    if (!user) {
+      setActiveRoom(null);
+      setSyncState('idle');
+      setSyncNotice(null);
+      return;
+    }
+
+    const activeRoomId = await getActiveRoomIdForUser(user.id);
+
+    if (!activeRoomId) {
+      setActiveRoom(null);
+      setSyncState('idle');
+      setSyncNotice(null);
+      return;
+    }
+
+    const roomDetails = await getRoomDetails(activeRoomId, user.id);
+    setActiveRoom(roomDetails);
+  }, [user]);
 
   useEffect(() => {
     let isMounted = true;
@@ -58,33 +99,28 @@ export function RoomProvider({ children }: PropsWithChildren) {
       if (!user) {
         if (isMounted) {
           setActiveRoom(null);
+          setSyncState('idle');
+          setSyncNotice(null);
           setIsReady(true);
         }
         return;
       }
 
       try {
-        const activeRoomId = await getActiveRoomIdForUser(user.id);
-
         if (!isMounted) {
           return;
         }
 
-        if (!activeRoomId) {
-          setActiveRoom(null);
-          setIsReady(true);
-          return;
-        }
-
-        const roomDetails = await getRoomDetails(activeRoomId, user.id);
+        await refreshResolvedActiveRoom();
 
         if (isMounted) {
-          setActiveRoom(roomDetails);
           setIsReady(true);
         }
       } catch {
         if (isMounted) {
           setActiveRoom(null);
+          setSyncState('idle');
+          setSyncNotice(null);
           setIsReady(true);
         }
       }
@@ -96,28 +132,93 @@ export function RoomProvider({ children }: PropsWithChildren) {
     return () => {
       isMounted = false;
     };
-  }, [authReady, user]);
+  }, [authReady, refreshResolvedActiveRoom, user]);
+
+  useEffect(() => {
+    if (!activeRoom?.room.id || !user) {
+      setSyncState('idle');
+      setSyncNotice(null);
+      return;
+    }
+
+    const unsubscribe = subscribeToRoomRealtime({
+      roomId: activeRoom.room.id,
+      onRoomChange: () => {
+        void refreshResolvedActiveRoom();
+      },
+      onMembersChange: () => {
+        void refreshResolvedActiveRoom();
+      },
+      onConnectionStateChange: (nextState, message) => {
+        setSyncState(nextState);
+        setSyncNotice(message ?? null);
+
+        if (nextState === 'error') {
+          void refreshResolvedActiveRoom();
+        }
+      }
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, [activeRoom?.room.id, refreshResolvedActiveRoom, user]);
+
+  useEffect(() => {
+    if (!activeRoom?.room.id || !user) {
+      lastPresenceRef.current = null;
+      return;
+    }
+
+    let isMounted = true;
+    const roomId = activeRoom.room.id;
+    const userId = user.id;
+
+    async function pushPresence(nextPresence: boolean) {
+      if (!isMounted || lastPresenceRef.current === nextPresence) {
+        return;
+      }
+
+      lastPresenceRef.current = nextPresence;
+
+      try {
+        await updateRoomMemberPresence(roomId, userId, nextPresence);
+      } catch {
+        // Keep realtime presence non-blocking.
+      }
+    }
+
+    function resolvePresence(nextAppState: AppStateStatus) {
+      const nextPresence = nextAppState === 'active' && roomScreenActive;
+      void pushPresence(nextPresence);
+    }
+
+    resolvePresence(appStateRef.current);
+
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      appStateRef.current = nextAppState;
+      resolvePresence(nextAppState);
+    });
+
+    return () => {
+      isMounted = false;
+      subscription.remove();
+      void updateRoomMemberPresence(roomId, userId, false).catch(() => {
+        // Cleanup best effort only.
+      });
+      lastPresenceRef.current = null;
+    };
+  }, [activeRoom?.room.id, roomScreenActive, user]);
 
   const value = useMemo<RoomContextValue>(
     () => ({
       isReady,
       isBusy,
       activeRoom,
+      syncState,
+      syncNotice,
       refreshActiveRoom: async () => {
-        if (!user) {
-          setActiveRoom(null);
-          return;
-        }
-
-        const activeRoomId = await getActiveRoomIdForUser(user.id);
-
-        if (!activeRoomId) {
-          setActiveRoom(null);
-          return;
-        }
-
-        const roomDetails = await getRoomDetails(activeRoomId, user.id);
-        setActiveRoom(roomDetails);
+        await refreshResolvedActiveRoom();
       },
       createRoom: async (selectedGameId) => {
         if (!user) {
@@ -190,9 +291,10 @@ export function RoomProvider({ children }: PropsWithChildren) {
         } finally {
           setIsBusy(false);
         }
-      }
+      },
+      setRoomScreenActive
     }),
-    [activeRoom, isBusy, isReady, user]
+    [activeRoom, isBusy, isReady, refreshResolvedActiveRoom, syncNotice, syncState, user]
   );
 
   return <RoomContext.Provider value={value}>{children}</RoomContext.Provider>;

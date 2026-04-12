@@ -1,6 +1,14 @@
-import type { ActivityItem, LobbyScenario, LobbyScenarioKey, MiniGame, Player, ResultEntry, RoomSettings } from '../navigation/types';
+import type { ActivityItem, ImpostorCategoryId, LobbyScenario, LobbyScenarioKey, MiniGame, Player, ResultEntry, RoomSettings } from '../navigation/types';
 
 export const featuredGames: MiniGame[] = [
+  {
+    id: 'impostor',
+    name: 'Impostor',
+    category: 'Social Deduction',
+    duration: '6 min',
+    energy: 'Social',
+    description: 'One player is bluffing without the word. Choose between a free friends flow or a structured multiplayer round.'
+  },
   {
     id: 'signal-drop',
     name: 'Signal Drop',
@@ -200,3 +208,32 @@ export const podium: ResultEntry[] = [
   { id: 'r3', name: 'Camila', points: 1360, change: '+255', badge: 'Crowd Control' },
   { id: 'r4', name: 'Diego', points: 1120, change: '+140', badge: 'Late Hero' }
 ];
+
+export const impostorCategories: Record<
+  ImpostorCategoryId,
+  {
+    label: string;
+    prompt: string;
+    secretWord: string;
+    answerSuggestions: string[];
+  }
+> = {
+  animals: {
+    label: 'Animals',
+    prompt: 'Describe this animal in one word.',
+    secretWord: 'Dolphin',
+    answerSuggestions: ['Smart', 'Friendly', 'Fast', 'Playful']
+  },
+  countries: {
+    label: 'Countries',
+    prompt: 'Describe the gastronomy of this country.',
+    secretWord: 'Mexico',
+    answerSuggestions: ['Spicy', 'Colorful', 'Comforting', 'Street-food heavy']
+  },
+  objects: {
+    label: 'Objects',
+    prompt: 'How would you use this object in real life?',
+    secretWord: 'Compass',
+    answerSuggestions: ['Navigation', 'Backup tool', 'Travel essential', 'Useful outdoors']
+  }
+};

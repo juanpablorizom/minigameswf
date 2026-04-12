@@ -5,7 +5,7 @@ import { AppButton } from '../components/AppButton';
 import { AppScreen } from '../components/AppScreen';
 import { Badge } from '../components/Badge';
 import { SurfaceCard } from '../components/SurfaceCard';
-import { colors, spacing, typography } from '../theme';
+import { spacing, typography, useTheme } from '../theme';
 
 type ChooseGamesScreenProps = {
   selectedGameIds: string[];
@@ -14,6 +14,8 @@ type ChooseGamesScreenProps = {
 };
 
 export function ChooseGamesScreen({ selectedGameIds, onToggleGame, onSave }: ChooseGamesScreenProps) {
+  const theme = useTheme();
+  const styles = createStyles(theme);
   const groupedGames = featuredGames.reduce<Record<string, typeof featuredGames>>((groups, game) => {
     groups[game.category] = [...(groups[game.category] ?? []), game];
     return groups;
@@ -59,18 +61,19 @@ export function ChooseGamesScreen({ selectedGameIds, onToggleGame, onSave }: Cho
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(theme: ReturnType<typeof useTheme>) {
+  return StyleSheet.create({
   pressed: {
     opacity: 0.92,
     transform: [{ scale: 0.99 }]
   },
   selectionTitle: {
-    color: colors.textPrimary,
+    color: theme.colors.textPrimary,
     fontSize: typography.section,
     fontWeight: '700'
   },
   selectionCopy: {
-    color: colors.textSecondary,
+    color: theme.colors.textSecondary,
     fontSize: typography.body,
     lineHeight: 22
   },
@@ -78,7 +81,7 @@ const styles = StyleSheet.create({
     gap: spacing.md
   },
   groupTitle: {
-    color: colors.accentSoft,
+    color: theme.colors.highlight,
     fontSize: typography.caption,
     fontWeight: '700',
     textTransform: 'uppercase',
@@ -93,12 +96,12 @@ const styles = StyleSheet.create({
     gap: spacing.xs
   },
   title: {
-    color: colors.textPrimary,
+    color: theme.colors.textPrimary,
     fontSize: typography.section,
     fontWeight: '700'
   },
   subtitle: {
-    color: colors.textSecondary,
+    color: theme.colors.textSecondary,
     fontSize: typography.body,
     lineHeight: 22
   },
@@ -107,4 +110,5 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: spacing.sm
   }
-});
+  });
+}

@@ -5,7 +5,7 @@ import { AppButton } from '../components/AppButton';
 import { AppScreen } from '../components/AppScreen';
 import { Badge } from '../components/Badge';
 import { SurfaceCard } from '../components/SurfaceCard';
-import { colors, radius, spacing, typography } from '../theme';
+import { radius, spacing, typography, useTheme } from '../theme';
 
 type RoomSettingsScreenProps = {
   settings: RoomSettings;
@@ -21,6 +21,9 @@ const vibeOptions: RoomSettings['vibe'][] = ['Balanced', 'Fast', 'Talkative'];
 const formatOptions: RoomSettings['format'][] = ['Casual', 'Competitive'];
 
 export function RoomSettingsScreen({ settings, onChangeSettings, onSave }: RoomSettingsScreenProps) {
+  const theme = useTheme();
+  const styles = createStyles(theme);
+
   return (
     <AppScreen title="Room Settings" subtitle="Keep the session easy to join, quick to understand, and tightly paced for mobile play.">
       <SurfaceCard>
@@ -143,6 +146,9 @@ type OptionChipProps = {
 };
 
 function OptionChip({ label, active, onPress }: OptionChipProps) {
+  const theme = useTheme();
+  const styles = createStyles(theme);
+
   return (
     <Pressable onPress={onPress} style={[styles.optionChip, active && styles.optionChipActive]}>
       <Text style={[styles.optionLabel, active && styles.optionLabelActive]}>{label}</Text>
@@ -150,9 +156,10 @@ function OptionChip({ label, active, onPress }: OptionChipProps) {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(theme: ReturnType<typeof useTheme>) {
+  return StyleSheet.create({
   sectionTitle: {
-    color: colors.textPrimary,
+    color: theme.colors.textPrimary,
     fontSize: typography.section,
     fontWeight: '700'
   },
@@ -163,7 +170,7 @@ const styles = StyleSheet.create({
     gap: spacing.md
   },
   summaryCopy: {
-    color: colors.textSecondary,
+    color: theme.colors.textSecondary,
     fontSize: typography.body,
     lineHeight: 22
   },
@@ -180,20 +187,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     borderRadius: radius.pill,
     borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.backgroundElevated,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.backgroundElevated,
     justifyContent: 'center'
   },
   optionChipActive: {
-    backgroundColor: colors.successMuted,
-    borderColor: '#6f8164'
+    backgroundColor: theme.colors.successMuted,
+    borderColor: theme.colors.success
   },
   optionLabel: {
-    color: colors.textSecondary,
+    color: theme.colors.textSecondary,
     fontSize: typography.body,
     fontWeight: '600'
   },
   optionLabelActive: {
-    color: '#e3eddc'
+    color: theme.colors.successText
   }
-});
+  });
+}

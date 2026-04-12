@@ -6,7 +6,7 @@ import { AppButton } from '../components/AppButton';
 import { AppScreen } from '../components/AppScreen';
 import { Badge } from '../components/Badge';
 import { SurfaceCard } from '../components/SurfaceCard';
-import { colors, radius, spacing, typography } from '../theme';
+import { radius, spacing, typography, useTheme } from '../theme';
 
 type LobbyScreenProps = {
   displayName: string;
@@ -16,6 +16,8 @@ type LobbyScreenProps = {
 };
 
 export function LobbyScreen({ displayName, scenario, onAction, notice = null }: LobbyScreenProps) {
+  const theme = useTheme();
+  const styles = createStyles(theme);
   const availableModes = featuredGames.filter((game) => scenario.modeIds.includes(game.id));
 
   return (
@@ -46,6 +48,9 @@ export function LobbyScreen({ displayName, scenario, onAction, notice = null }: 
           <Badge label={`${availableModes.length} modes ready`} tone="neutral" />
           {(scenario.key === 'guest' || scenario.key === 'noRoom') ? (
             <AppButton label="Quick play" onPress={() => onAction('quickPlay')} variant="ghost" />
+          ) : null}
+          {(scenario.key === 'guest' || scenario.key === 'noRoom') ? (
+            <AppButton label="Scan QR" onPress={() => onAction('scanQr')} variant="ghost" />
           ) : null}
         </View>
         {notice ? <Text style={styles.notice}>{notice}</Text> : null}
@@ -154,7 +159,8 @@ export function LobbyScreen({ displayName, scenario, onAction, notice = null }: 
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(theme: ReturnType<typeof useTheme>) {
+  return StyleSheet.create({
   heroTopRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -162,20 +168,20 @@ const styles = StyleSheet.create({
     gap: spacing.sm
   },
   stateHint: {
-    color: colors.textMuted,
+    color: theme.colors.textMuted,
     fontSize: typography.caption,
     textTransform: 'uppercase',
     letterSpacing: 1.1
   },
   heroTitle: {
-    color: colors.textPrimary,
+    color: theme.colors.textPrimary,
     fontSize: typography.title,
     fontWeight: '700',
     lineHeight: 34,
     letterSpacing: -0.8
   },
   copy: {
-    color: colors.textSecondary,
+    color: theme.colors.textSecondary,
     fontSize: typography.body,
     lineHeight: 22
   },
@@ -192,12 +198,12 @@ const styles = StyleSheet.create({
     gap: spacing.md
   },
   sectionTitle: {
-    color: colors.textPrimary,
+    color: theme.colors.textPrimary,
     fontSize: typography.section,
     fontWeight: '700'
   },
   itemTitle: {
-    color: colors.textPrimary,
+    color: theme.colors.textPrimary,
     fontSize: typography.body,
     fontWeight: '700'
   },
@@ -211,12 +217,12 @@ const styles = StyleSheet.create({
     gap: spacing.xs
   },
   itemSubtitle: {
-    color: colors.textSecondary,
+    color: theme.colors.textSecondary,
     fontSize: typography.body,
     lineHeight: 22
   },
   supportingCopy: {
-    color: colors.textMuted,
+    color: theme.colors.textMuted,
     fontSize: typography.caption,
     lineHeight: 18
   },
@@ -225,13 +231,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderRadius: radius.pill,
-    backgroundColor: colors.backgroundElevated,
+    backgroundColor: theme.colors.backgroundElevated,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: theme.colors.border,
     alignItems: 'center'
   },
   codeLabel: {
-    color: colors.accentSoft,
+    color: theme.colors.highlight,
     fontSize: typography.caption,
     fontWeight: '800',
     letterSpacing: 1.2
@@ -242,8 +248,9 @@ const styles = StyleSheet.create({
     gap: spacing.sm
   },
   notice: {
-    color: colors.accentSoft,
+    color: theme.colors.highlight,
     fontSize: typography.caption,
     lineHeight: 18
   }
-});
+  });
+}
