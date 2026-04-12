@@ -1,7 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
-import { featuredGames } from '../../data/mockData';
 import type { LobbyActionId, LobbyScenario } from '../../navigation/types';
 import { AppButton } from '../components/AppButton';
 import { AppScreen } from '../components/AppScreen';
@@ -20,7 +19,6 @@ export function LobbyScreen({ displayName, scenario, onAction, notice = null }: 
   const { t } = useTranslation();
   const theme = useTheme();
   const styles = createStyles(theme);
-  const availableModes = featuredGames.filter((game) => scenario.modeIds.includes(game.id));
   const activeRoomBadge = scenario.roomSummary ? t('lobby.roomActive') : t('lobby.noActiveRoom');
   const actionLabels: Record<LobbyActionId, string> = {
     createRoom: t('lobby.createRoom'),
@@ -31,22 +29,6 @@ export function LobbyScreen({ displayName, scenario, onAction, notice = null }: 
     resumeActivity: t('lobby.resume'),
     quickPlay: t('lobby.quickPlay')
   };
-
-  function gameName(id: string) {
-    return t(`gameMeta.names.${id}`);
-  }
-
-  function gameDescription(id: string) {
-    return t(`gameMeta.descriptions.${id}`);
-  }
-
-  function gameCategory(category: string) {
-    return t(`gameMeta.categories.${category}`);
-  }
-
-  function gameEnergy(energy: string) {
-    return t(`gameMeta.energies.${energy}`);
-  }
 
   return (
     <AppScreen title={`${scenario.greeting}, ${displayName}`} subtitle={scenario.statusLabel}>
@@ -73,7 +55,7 @@ export function LobbyScreen({ displayName, scenario, onAction, notice = null }: 
         </View>
         <View style={styles.pillRow}>
           <Badge label={activeRoomBadge} tone={scenario.roomSummary ? 'success' : 'neutral'} />
-          <Badge label={t('lobby.modesReady', { count: availableModes.length })} tone="neutral" />
+          <Badge label={t('lobby.modesReady', { count: scenario.modeIds.length })} tone="neutral" />
           {(scenario.key === 'guest' || scenario.key === 'noRoom') ? (
             <AppButton label={t('lobby.quickPlay')} onPress={() => onAction('quickPlay')} variant="ghost" />
           ) : null}
@@ -164,25 +146,6 @@ export function LobbyScreen({ displayName, scenario, onAction, notice = null }: 
           </SurfaceCard>
         </View>
       )}
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>{t('lobby.modesReadyTonight')}</Text>
-        {availableModes.map((game) => (
-          <SurfaceCard key={game.id}>
-            <View style={styles.detailHeader}>
-              <View style={styles.detailMeta}>
-                <Text style={styles.itemTitle}>{gameName(game.id)}</Text>
-                <Text style={styles.itemSubtitle}>{gameDescription(game.id)}</Text>
-              </View>
-              <Badge label={game.duration} tone="neutral" />
-            </View>
-            <View style={styles.metaRow}>
-              <Badge label={gameCategory(game.category)} />
-              <Badge label={gameEnergy(game.energy)} tone="success" />
-            </View>
-          </SurfaceCard>
-        ))}
-      </View>
 
       {scenario.recommendationItems.length ? (
         <View style={styles.section}>
