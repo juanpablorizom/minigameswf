@@ -6,8 +6,9 @@ import {
   getErrorMessage,
   getActiveRoomIdForUser,
   getRoomDetails,
-  joinPrivateRoomByCode,
-  subscribeToRoomRealtime,
+    joinPrivateRoomByCode,
+    removeRoomMember,
+    subscribeToRoomRealtime,
   updateRoomMemberPresence,
   updateRoomSelectedGame,
   updateRoomStatus,
@@ -30,6 +31,7 @@ type RoomContextValue = {
   refreshActiveRoom: () => Promise<void>;
   createRoom: (selectedGameId: string | null) => Promise<RoomActionResult>;
   joinRoomByCode: (code: string) => Promise<RoomActionResult>;
+  removeMember: (memberUserId: string) => Promise<RoomActionResult>;
   saveSelectedGame: (selectedGameId: string | null) => Promise<RoomActionResult>;
   markRoomActive: () => Promise<RoomActionResult>;
   setRoomScreenActive: (isActive: boolean) => void;
@@ -253,6 +255,24 @@ export function RoomProvider({ children }: PropsWithChildren) {
           const roomDetails = await getRoomDetails(room.id, user.id);
           setActiveRoom(roomDetails);
           return { roomId: room.id };
+        } catch (error) {
+          return { error: mapRoomError(error) };
+        } finally {
+          setIsBusy(false);
+        }
+      },
+      removeMember: async (memberUserId) => {
+        if (!user || !activeRoom) {
+          return { error: 'AUTH_REQUIRED' };
+        }
+
+        setIsBusy(true);
+
+        try {
+          await removeRoomMember(activeRoom.room.id, memberUserId);
+          const roomDetails = await getRoomDetails(activeRoom.room.id, user.id);
+          setActiveRoom(roomDetails);
+          return { roomId: activeRoom.room.id };
         } catch (error) {
           return { error: mapRoomError(error) };
         } finally {

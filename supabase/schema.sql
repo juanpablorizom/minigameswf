@@ -242,6 +242,61 @@ begin
 end;
 $$;
 
+create or replace function public.remove_room_member(p_room_id uuid, p_member_user_id uuid)
+returns public.room_members
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  current_user_id uuid := auth.uid();
+  target_room public.rooms;
+  target_membership public.room_members;
+begin
+  if current_user_id is null then
+    raise exception 'AUTH_REQUIRED';
+  end if;
+
+  select *
+  into target_room
+  from public.rooms
+  where id = p_room_id
+  limit 1;
+
+  if target_room.id is null then
+    raise exception 'ROOM_NOT_FOUND';
+  end if;
+
+  if target_room.host_user_id <> current_user_id then
+    raise exception 'ROOMS_PERMISSION_DENIED';
+  end if;
+
+  if p_member_user_id = current_user_id then
+    raise exception 'CANNOT_REMOVE_HOST';
+  end if;
+
+  update public.room_members
+  set is_active = false
+  where room_id = p_room_id
+    and user_id = p_member_user_id
+  returning * into target_membership;
+
+  if target_membership.id is null then
+    raise exception 'ROOM_MEMBER_NOT_FOUND';
+  end if;
+
+  insert into public.room_activity (room_id, actor_user_id, type, payload)
+  values (
+    p_room_id,
+    current_user_id,
+    'member_removed',
+    jsonb_build_object('member_user_id', p_member_user_id)
+  );
+
+  return target_membership;
+end;
+$$;
+
 create or replace function public.handle_new_user()
 returns trigger
 language plpgsql

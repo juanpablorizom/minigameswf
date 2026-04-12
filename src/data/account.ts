@@ -7,7 +7,21 @@ import type { AppLanguage, AppThemePreference } from '../lib/storage';
 export type ProfileRow = Database['public']['Tables']['profiles']['Row'];
 export type UserSettingsRow = Database['public']['Tables']['user_settings']['Row'];
 
+export function buildGuestUsername(seed: string) {
+  let hash = 0;
+
+  for (const character of seed) {
+    hash = (hash * 31 + character.charCodeAt(0)) % 100000;
+  }
+
+  return `guess${String(hash).padStart(5, '0')}`;
+}
+
 function resolveUsername(user: User) {
+  if (isGuestUser(user)) {
+    return buildGuestUsername(user.id);
+  }
+
   const metadataUsername = typeof user.user_metadata?.username === 'string' ? user.user_metadata.username : null;
   const metadataDisplayName =
     typeof user.user_metadata?.display_name === 'string'
@@ -35,7 +49,9 @@ export async function ensureAccountRecords(user: User, fallbackLanguage: AppLang
       ? user.user_metadata.display_name
       : typeof user.user_metadata?.name === 'string'
         ? user.user_metadata.name
-        : null;
+        : isGuestUser(user)
+          ? resolveUsername(user)
+          : null;
 
   const username = resolveUsername(user);
 
@@ -68,6 +84,10 @@ export async function ensureAccountRecords(user: User, fallbackLanguage: AppLang
     profile: profile ?? null,
     settings: settings ?? null
   };
+}
+
+export async function updateDisplayName(userId: string, displayName: string) {
+  await supabase.from('profiles').update({ display_name: displayName }).eq('id', userId);
 }
 
 export async function updateLanguagePreference(userId: string, language: AppLanguage) {

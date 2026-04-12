@@ -27,6 +27,7 @@ type PrivateRoomScreenProps = {
   onChooseGames: () => void;
   onOpenSettings: () => void;
   onStart: () => void;
+  onRemoveMember: (memberUserId: string) => void;
 };
 
 export function PrivateRoomScreen({
@@ -44,7 +45,8 @@ export function PrivateRoomScreen({
   onShareCode,
   onChooseGames,
   onOpenSettings,
-  onStart
+  onStart,
+  onRemoveMember
 }: PrivateRoomScreenProps) {
   const { t } = useTranslation();
   const theme = useTheme();
@@ -138,12 +140,17 @@ export function PrivateRoomScreen({
                 <Text style={styles.playerName}>{member.displayName}</Text>
                 {member.isCurrentUser ? <Badge label={t('room.you')} tone="neutral" /> : null}
               </View>
-              <Text style={styles.playerMood}>@{member.username}</Text>
+                <Text style={styles.playerMood}>@{member.username}</Text>
+              </View>
+            <View style={styles.playerActions}>
+              <Badge
+                label={member.role === 'host' ? t('room.memberHost') : member.isActive ? t('room.memberJoined') : t('room.memberAway')}
+                tone={member.role === 'host' || member.isActive ? 'success' : 'neutral'}
+              />
+              {canManageRoom && !member.isCurrentUser && member.role !== 'host' ? (
+                <AppButton label={t('room.removeMember')} onPress={() => onRemoveMember(member.userId)} variant="ghost" disabled={isBusy} />
+              ) : null}
             </View>
-            <Badge
-              label={member.role === 'host' ? t('room.memberHost') : member.isActive ? t('room.memberJoined') : t('room.memberAway')}
-              tone={member.role === 'host' || member.isActive ? 'success' : 'neutral'}
-            />
           </View>
         ))}
       </SurfaceCard>
@@ -311,6 +318,10 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
   playerMood: {
     color: theme.colors.textSecondary,
     fontSize: typography.caption
+  },
+  playerActions: {
+    gap: spacing.sm,
+    alignItems: 'flex-end'
   },
   listRow: {
     flexDirection: 'row',

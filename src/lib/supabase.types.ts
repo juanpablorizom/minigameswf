@@ -166,6 +166,13 @@ export type Database = {
         };
         Returns: Database['public']['Tables']['rooms']['Row'][];
       };
+      remove_room_member: {
+        Args: {
+          p_room_id: string;
+          p_member_user_id: string;
+        };
+        Returns: Database['public']['Tables']['room_members']['Row'][];
+      };
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;

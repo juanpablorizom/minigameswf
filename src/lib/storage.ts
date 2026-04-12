@@ -11,6 +11,7 @@ export type GuestProfile = {
 const LANGUAGE_STORAGE_KEY = 'minigameswf.language';
 const THEME_STORAGE_KEY = 'minigameswf.theme';
 const GUEST_PROFILE_STORAGE_KEY = 'minigameswf.guest-profile';
+const ROOM_RESUME_STORAGE_KEY = 'minigameswf.room-resume';
 
 type StorageAdapter = {
   getItem: (key: string) => Promise<string | null>;
@@ -97,4 +98,19 @@ export async function storeGuestProfile(profile: GuestProfile) {
 
 export async function clearStoredGuestProfile() {
   await appStorage.removeItem(GUEST_PROFILE_STORAGE_KEY);
+}
+
+export async function loadStoredRoomResume() {
+  const value = await appStorage.getItem(ROOM_RESUME_STORAGE_KEY);
+
+  return value === '1';
+}
+
+export async function storeRoomResume(shouldResume: boolean) {
+  if (shouldResume) {
+    await appStorage.setItem(ROOM_RESUME_STORAGE_KEY, '1');
+    return;
+  }
+
+  await appStorage.removeItem(ROOM_RESUME_STORAGE_KEY);
 }

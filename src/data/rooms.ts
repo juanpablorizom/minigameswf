@@ -42,7 +42,7 @@ type SubscribeToRoomRealtimeOptions = {
   onConnectionStateChange?: (state: RoomRealtimeState, message?: string | null) => void;
 };
 
-function normalizeRoomResult(data: RoomRow | RoomRow[] | null) {
+function normalizeResult<T>(data: T | T[] | null) {
   if (!data) {
     return null;
   }
@@ -61,6 +61,14 @@ function buildRoomErrorMessage(message: string) {
 
   if (message.includes('AUTH_REQUIRED')) {
     return 'AUTH_REQUIRED';
+  }
+
+  if (message.includes('ROOM_MEMBER_NOT_FOUND')) {
+    return 'ROOM_MEMBER_NOT_FOUND';
+  }
+
+  if (message.includes('CANNOT_REMOVE_HOST')) {
+    return 'CANNOT_REMOVE_HOST';
   }
 
   if (message.includes('Failed to fetch') || message.includes('fetch failed') || message.includes('Network request failed')) {
@@ -103,7 +111,7 @@ export async function createPrivateRoom(selectedGameId: string | null) {
     throw new Error(buildRoomErrorMessage(error.message));
   }
 
-  const room = normalizeRoomResult(data as RoomRow | RoomRow[] | null);
+  const room = normalizeResult(data as RoomRow | RoomRow[] | null);
 
   if (!room) {
     throw new Error('ROOM_CREATE_FAILED');
@@ -123,7 +131,7 @@ export async function joinPrivateRoomByCode(code: string) {
     throw new Error(buildRoomErrorMessage(error.message));
   }
 
-  const room = normalizeRoomResult(data as RoomRow | RoomRow[] | null);
+  const room = normalizeResult(data as RoomRow | RoomRow[] | null);
 
   if (!room) {
     throw new Error('ROOM_NOT_FOUND');
@@ -137,6 +145,7 @@ export async function getActiveRoomIdForUser(userId: string) {
     .from('room_members')
     .select('room_id, joined_at, rooms!inner(id, status)')
     .eq('user_id', userId)
+    .eq('is_active', true)
     .order('joined_at', { ascending: false })
     .limit(1);
 
@@ -262,6 +271,15 @@ export async function getRoomDetails(roomId: string, currentUserId: string): Pro
       } satisfies RoomActivityView;
     }
 
+    if (entry.type === 'member_removed') {
+      return {
+        id: entry.id,
+        title: `${actorLabel} removed a member`,
+        subtitle: 'The room lineup was updated.',
+        createdAt: entry.created_at
+      } satisfies RoomActivityView;
+    }
+
     return {
       id: entry.id,
       title: entry.type,
@@ -315,6 +333,19 @@ export async function updateRoomMemberPresence(roomId: string, userId: string, i
   if (error) {
     throw error;
   }
+}
+
+export async function removeRoomMember(roomId: string, memberUserId: string) {
+  const { data, error } = await supabase.rpc('remove_room_member', {
+    p_room_id: roomId,
+    p_member_user_id: memberUserId
+  });
+
+  if (error) {
+    throw new Error(buildRoomErrorMessage(error.message));
+  }
+
+  return normalizeResult(data as RoomMemberRow | RoomMemberRow[] | null);
 }
 
 export function subscribeToRoomRealtime({

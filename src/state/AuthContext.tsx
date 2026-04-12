@@ -3,9 +3,18 @@ import * as WebBrowser from 'expo-web-browser';
 import { Platform } from 'react-native';
 import type { Session, User } from '@supabase/supabase-js';
 
-import { ensureAccountRecords, isGuestUser, updateLanguagePreference, updateThemePreference, type ProfileRow, type UserSettingsRow } from '../data/account';
+import {
+  buildGuestUsername,
+  ensureAccountRecords,
+  isGuestUser,
+  updateDisplayName as updateProfileDisplayName,
+  updateLanguagePreference,
+  updateThemePreference,
+  type ProfileRow,
+  type UserSettingsRow
+} from '../data/account';
 import i18n from '../i18n/i18n';
-import { isAccountLinkingEnabled, isSupabaseConfigured, supabase } from '../lib/supabase';
+import { isSupabaseConfigured, supabase } from '../lib/supabase';
 import { loadStoredLanguage, loadStoredTheme, storeLanguage, storeTheme, type AppLanguage, type AppThemePreference } from '../lib/storage';
 
 type AuthActionResult = {
@@ -27,46 +36,20 @@ type AuthContextValue = {
   displayName: string | null;
   username: string | null;
   email: string | null;
-  linkedProviderLabel: string | null;
   signInWithEmail: (email: string, password: string) => Promise<AuthActionResult>;
   signUpWithEmail: (email: string, password: string, displayName: string) => Promise<AuthActionResult>;
   signInWithGoogle: () => Promise<AuthActionResult>;
   continueAsGuest: (displayName: string) => Promise<AuthActionResult>;
+  updateDisplayName: (displayName: string) => Promise<AuthActionResult>;
+  linkGuestAccountWithEmail: (email: string, password: string) => Promise<AuthActionResult>;
   signOut: () => Promise<void>;
   changeLanguage: (language: AppLanguage) => Promise<AuthActionResult>;
   changeTheme: (theme: AppThemePreference) => Promise<AuthActionResult>;
-  linkAccount: () => Promise<AuthActionResult>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 WebBrowser.maybeCompleteAuthSession();
-
-function buildGuestUsername(displayName: string) {
-  const base = displayName
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
-
-  return base || `guest-${Math.random().toString(36).slice(2, 7)}`;
-}
-
-function providerLabelFromUser(user: User | null, isGuest: boolean) {
-  if (!user) {
-    return null;
-  }
-
-  if (isGuest) {
-    return 'Guest';
-  }
-
-  if (user.app_metadata?.provider === 'google') {
-    return 'Google';
-  }
-
-  return 'Email';
-}
 
 function getGoogleRedirectUrl() {
   if (Platform.OS === 'web' && typeof globalThis.location !== 'undefined') {
@@ -192,13 +175,13 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
   const user = session?.user ?? null;
   const isGuest = isGuestUser(user);
-  const linkedProviderLabel = providerLabelFromUser(user, isGuest);
   const displayName =
     profile?.display_name ??
     (typeof user?.user_metadata?.display_name === 'string' ? user.user_metadata.display_name : null) ??
     (typeof user?.user_metadata?.name === 'string' ? user.user_metadata.name : null) ??
+    (isGuest && user ? buildGuestUsername(user.id) : null) ??
     null;
-  const username = profile?.username ?? (isGuest && displayName ? buildGuestUsername(displayName) : null);
+  const username = profile?.username ?? (isGuest && user ? buildGuestUsername(user.id) : null);
 
   const value = useMemo<AuthContextValue>(
     () => ({
@@ -215,7 +198,6 @@ export function AuthProvider({ children }: PropsWithChildren) {
       displayName,
       username,
       email: user?.email ?? null,
-      linkedProviderLabel,
       signInWithEmail: async (email, password) => {
         if (!isSupabaseConfigured) {
           return { error: 'SUPABASE_NOT_CONFIGURED' };
@@ -243,13 +225,18 @@ export function AuthProvider({ children }: PropsWithChildren) {
           email,
           password,
           options: {
-            emailRedirectTo: getGoogleRedirectUrl(),
-            data: {
-              display_name: displayNameInput || undefined,
-              username: buildGuestUsername(displayNameInput || email.split('@')[0] || 'player')
+              emailRedirectTo: getGoogleRedirectUrl(),
+              data: {
+                display_name: displayNameInput || undefined,
+                username:
+                  displayNameInput
+                    .trim()
+                    .toLowerCase()
+                    .replace(/[^a-z0-9]+/g, '-')
+                    .replace(/^-+|-+$/g, '') || email.split('@')[0] || 'player'
+              }
             }
-          }
-        });
+          });
         setIsBusy(false);
 
         if (error) {
@@ -333,14 +320,14 @@ export function AuthProvider({ children }: PropsWithChildren) {
           return { error: 'SUPABASE_NOT_CONFIGURED' };
         }
 
-        const resolvedName = displayNameInput.trim() || 'Invitado';
+        const resolvedName = displayNameInput.trim() || `guess${String(Math.floor(Math.random() * 100000)).padStart(5, '0')}`;
 
         setIsBusy(true);
         const { data, error } = await supabase.auth.signInAnonymously({
           options: {
             data: {
               display_name: resolvedName,
-              username: buildGuestUsername(resolvedName)
+              username: resolvedName
             }
           }
         });
@@ -353,6 +340,69 @@ export function AuthProvider({ children }: PropsWithChildren) {
         setSession(data.session);
         await refreshAccountState(data.session.user, language, themePreference);
         return {};
+      },
+      updateDisplayName: async (nextDisplayName) => {
+        if (!user) {
+          return { error: 'AUTH_REQUIRED' };
+        }
+
+        const resolvedDisplayName = nextDisplayName.trim();
+
+        if (!resolvedDisplayName) {
+          return { error: 'DISPLAY_NAME_REQUIRED' };
+        }
+
+        setIsBusy(true);
+        const { data, error } = await supabase.auth.updateUser({
+          data: {
+            display_name: resolvedDisplayName,
+            username: profile?.username ?? (isGuest ? buildGuestUsername(user.id) : undefined)
+          }
+        });
+
+        if (error) {
+          setIsBusy(false);
+          return { error: error.message };
+        }
+
+        await updateProfileDisplayName(user.id, resolvedDisplayName);
+        const nextUser = data.user ?? user;
+        await refreshAccountState(nextUser, language, themePreference);
+        setIsBusy(false);
+        return { message: 'DISPLAY_NAME_UPDATED' };
+      },
+      linkGuestAccountWithEmail: async (email, _password) => {
+        if (!user) {
+          return { error: 'AUTH_REQUIRED' };
+        }
+
+        if (!isGuest) {
+          return { message: 'ACCOUNT_ALREADY_LINKED' };
+        }
+
+        if (!isSupabaseConfigured) {
+          return { error: 'SUPABASE_NOT_CONFIGURED' };
+        }
+
+        setIsBusy(true);
+        const { error } = await supabase.auth.updateUser(
+          {
+            email,
+            data: {
+              display_name: displayName ?? buildGuestUsername(user.id),
+              username: profile?.username ?? buildGuestUsername(user.id)
+            }
+          },
+          {
+            emailRedirectTo: getGoogleRedirectUrl()
+          }
+        );
+        setIsBusy(false);
+
+        if (error) {
+          return { error: error.message };
+        }
+        return { message: 'EMAIL_LINK_VERIFICATION_REQUIRED' };
       },
       signOut: async () => {
         setIsBusy(true);
@@ -385,21 +435,6 @@ export function AuthProvider({ children }: PropsWithChildren) {
         }
 
         return {};
-      },
-      linkAccount: async () => {
-        if (isGuest) {
-          return { message: 'LINK_GUEST_ACCOUNT' };
-        }
-
-        if (!isSupabaseConfigured) {
-          return { error: 'SUPABASE_NOT_CONFIGURED' };
-        }
-
-        if (!isAccountLinkingEnabled) {
-          return { message: 'LINKING_REQUIRES_SETUP' };
-        }
-
-        return { message: 'LINKING_REQUIRES_SETUP' };
       }
     }),
     [
@@ -408,7 +443,6 @@ export function AuthProvider({ children }: PropsWithChildren) {
       isGuest,
       isReady,
       language,
-      linkedProviderLabel,
       profile,
       session,
       settings,

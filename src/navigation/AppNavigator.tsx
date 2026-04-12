@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { featuredGames, lobbyScenarios } from '../data/mockData';
 import type { RoomDetails } from '../data/rooms';
 import { buildRoomJoinUrl, extractRoomCodeFromValue, normalizeRoomCode } from '../lib/roomLinks';
+import { loadStoredRoomResume, storeRoomResume } from '../lib/storage';
 import type { AppTab, LobbyActionId, LobbyScenario, Player } from './types';
 import { useAppFlow } from '../state/AppFlowContext';
 import { useAuth } from '../state/AuthContext';
@@ -50,6 +51,14 @@ function mapRoomNotice(translate: (key: string, options?: Record<string, unknown
 
   if (error === 'ROOMS_PERMISSION_DENIED') {
     return translate('lobby.errors.permissionDenied');
+  }
+
+  if (error === 'ROOM_MEMBER_NOT_FOUND') {
+    return translate('room.memberMissing');
+  }
+
+  if (error === 'CANNOT_REMOVE_HOST') {
+    return translate('room.removeHostBlocked');
   }
 
   return error ?? null;
@@ -128,17 +137,17 @@ export function AppNavigator() {
     displayName,
     username,
     email,
-    linkedProviderLabel,
     language,
     themePreference,
     signInWithEmail,
     signUpWithEmail,
     signInWithGoogle,
     continueAsGuest,
+    updateDisplayName,
+    linkGuestAccountWithEmail,
     signOut,
     changeLanguage,
-    changeTheme,
-    linkAccount
+    changeTheme
   } = useAuth();
   const {
     isReady: roomsReady,
@@ -148,6 +157,7 @@ export function AppNavigator() {
     syncNotice,
     createRoom,
     joinRoomByCode,
+    removeMember,
     saveSelectedGame,
     markRoomActive,
     setRoomScreenActive
@@ -190,7 +200,10 @@ export function AppNavigator() {
   const [pendingJoinCode, setPendingJoinCode] = useState<string | null>(null);
   const [isAutoGuestingForJoin, setIsAutoGuestingForJoin] = useState(false);
   const [showLeavePrompt, setShowLeavePrompt] = useState(false);
+  const [resumeRoomReady, setResumeRoomReady] = useState(false);
+  const [shouldResumeRoom, setShouldResumeRoom] = useState(false);
   const hadAccessRef = useRef(false);
+  const attemptedRoomResumeRef = useRef(false);
 
   function mapAuthNotice(error?: string | null) {
     if (!error) {
@@ -231,6 +244,23 @@ export function AppNavigator() {
   }, [isGuest, resetToLobby, session]);
 
   useEffect(() => {
+    let isMounted = true;
+
+    void loadStoredRoomResume().then((shouldRestore) => {
+      if (!isMounted) {
+        return;
+      }
+
+      setShouldResumeRoom(shouldRestore);
+      setResumeRoomReady(true);
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
     const hasAccess = Boolean(session || isGuest);
 
     if (hasAccess && !hadAccessRef.current) {
@@ -244,6 +274,42 @@ export function AppNavigator() {
 
     hadAccessRef.current = hasAccess;
   }, [isGuest, resetToLobby, session]);
+
+  useEffect(() => {
+    if (!isReady || !roomsReady || !resumeRoomReady) {
+      return;
+    }
+
+    const shouldPersistResume =
+      activeTab === 'games' &&
+      Boolean(activeRoom) &&
+      ['room', 'chooseGames', 'roomSettings', 'gameplay', 'results'].includes(currentScreen);
+
+    void storeRoomResume(shouldPersistResume);
+    setShouldResumeRoom(shouldPersistResume);
+
+    if (!shouldPersistResume) {
+      attemptedRoomResumeRef.current = false;
+    }
+  }, [activeRoom, activeTab, currentScreen, isReady, resumeRoomReady, roomsReady]);
+
+  useEffect(() => {
+    if (!resumeRoomReady || attemptedRoomResumeRef.current) {
+      return;
+    }
+
+    if (shouldResumeRoom && activeRoom && currentScreen === 'lobby') {
+      attemptedRoomResumeRef.current = true;
+      continueRoom();
+      return;
+    }
+
+    if (shouldResumeRoom && !activeRoom && !roomBusy) {
+      attemptedRoomResumeRef.current = true;
+      void storeRoomResume(false);
+      setShouldResumeRoom(false);
+    }
+  }, [activeRoom, continueRoom, currentScreen, resumeRoomReady, roomBusy, shouldResumeRoom]);
 
   useEffect(() => {
     if (activeRoom?.room.selected_game_id) {
@@ -371,12 +437,23 @@ export function AppNavigator() {
   const loadingShell = !isReady || !roomsReady;
   const resolvedLobbyScenario = buildLobbyScenario(activeRoom, isGuest, t);
 
-  if (loadingShell || (!session && !isGuest)) {
+  if (loadingShell) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.loadingShell}>
+          <Text style={styles.loadingTitle}>MiniGamesWF</Text>
+          <Text style={styles.loadingCopy}>{t('common.loading')}</Text>
+        </View>
+      </View>
+    );
+  }
+
+  if (!session && !isGuest) {
     return (
       <View style={styles.container}>
         <WelcomeScreen
-          isBusy={isBusy || roomBusy || loadingShell}
-          notice={loadingShell ? t('common.loading') : authNotice ?? (!isSupabaseConfigured ? t('auth.supabaseMissing') : null)}
+          isBusy={isBusy || roomBusy}
+          notice={authNotice ?? (!isSupabaseConfigured ? t('auth.supabaseMissing') : null)}
           onSignInWithGoogle={() => {
             void signInWithGoogle().then((result) => {
               setAuthNotice(mapAuthNotice(result.error));
@@ -408,16 +485,16 @@ export function AppNavigator() {
   }
 
   function resolveAccountNotice(message?: string) {
-    if (message === 'GOOGLE_SIGN_IN_SETUP_REQUIRED') {
-      return t('account.linkingRequiresSetup');
+    if (message === 'DISPLAY_NAME_UPDATED') {
+      return t('account.displayNameSaved');
     }
 
-    if (message === 'LINKING_REQUIRES_SETUP') {
-      return t('account.linkingRequiresSetup');
+    if (message === 'EMAIL_LINK_VERIFICATION_REQUIRED') {
+      return t('account.emailLinkVerification');
     }
 
-    if (message === 'LINK_GUEST_ACCOUNT') {
-      return t('account.linkingGuestEntry');
+    if (message === 'ACCOUNT_ALREADY_LINKED') {
+      return t('account.accountAlreadyLinked');
     }
 
     return null;
@@ -639,6 +716,16 @@ export function AppNavigator() {
               startGameplay();
             });
           }}
+          onRemoveMember={(memberUserId) => {
+            void removeMember(memberUserId).then((result) => {
+              if (result.error) {
+                setRoomNotice(mapRoomNotice(t, result.error));
+                return;
+              }
+
+              setRoomNotice(t('room.memberRemoved'));
+            });
+          }}
         />
       );
     }
@@ -702,19 +789,27 @@ export function AppNavigator() {
           displayName={displayName}
           username={username}
           email={email}
-          linkedProviderLabel={linkedProviderLabel}
           isBusy={isBusy}
           notice={accountNotice}
-          onLinkAccount={() => {
-            void linkAccount().then((result) => {
+          onSaveDisplayName={(nextDisplayName) => {
+            void updateDisplayName(nextDisplayName).then((result) => {
+              setAccountNotice(
+                resolveAccountNotice(result.message) ??
+                  (result.error === 'SUPABASE_NOT_CONFIGURED'
+                    ? t('account.notConfigured')
+                    : result.error === 'DISPLAY_NAME_REQUIRED'
+                      ? t('account.displayNameRequired')
+                      : result.error ?? null)
+              );
+            });
+          }}
+          onLinkWithEmail={(nextEmail) => {
+            void linkGuestAccountWithEmail(nextEmail, '').then((result) => {
               setAccountNotice(
                 resolveAccountNotice(result.message) ??
                   (result.error === 'SUPABASE_NOT_CONFIGURED' ? t('account.notConfigured') : result.error ?? null)
               );
             });
-          }}
-          onManageBilling={() => {
-            setAccountNotice(t('account.billingNotReady'));
           }}
         />
       );
@@ -746,6 +841,7 @@ export function AppNavigator() {
             setAuthNotice(null);
             setJoinNotice(null);
             setRoomNotice(null);
+            void storeRoomResume(false);
             void signOut();
           }}
         />
@@ -839,6 +935,22 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
   },
   content: {
     flex: 1
+  },
+  loadingShell: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.xl
+  },
+  loadingTitle: {
+    color: theme.colors.textPrimary,
+    fontSize: typography.hero,
+    fontWeight: '800'
+  },
+  loadingCopy: {
+    color: theme.colors.textSecondary,
+    fontSize: typography.body
   },
   brand: {
     color: theme.colors.textPrimary,
