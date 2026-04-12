@@ -1,10 +1,9 @@
 import { useState } from 'react';
-import { StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { AppButton } from '../components/AppButton';
 import { AppScreen } from '../components/AppScreen';
-import { Badge } from '../components/Badge';
 import { SurfaceCard } from '../components/SurfaceCard';
 import { radius, spacing, typography, useTheme } from '../theme';
 
@@ -21,38 +20,46 @@ export function WelcomeScreen({ isBusy, isSupabaseConfigured, notice, onSignIn, 
   const { t } = useTranslation();
   const theme = useTheme();
   const styles = createStyles(theme);
+  const [authMode, setAuthMode] = useState<'signUp' | 'signIn'>('signUp');
   const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const canSubmit = Boolean(email.trim() && password.trim() && (authMode === 'signIn' || displayName.trim()));
 
   return (
     <AppScreen>
+      <View style={styles.shell}>
       <View style={styles.hero}>
-        <Badge label={t('auth.badge')} tone="accent" />
+        <View style={styles.brandMark} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+          <View style={styles.brandTop} />
+          <View style={styles.brandBottom} />
+        </View>
         <Text style={styles.eyebrow}>{t('auth.eyebrow')}</Text>
         <Text style={styles.title}>{t('auth.title')}</Text>
         <Text style={styles.subtitle}>{t('auth.subtitle')}</Text>
-        <View style={styles.visualBlock}>
-          <View style={styles.visualRow}>
-            <View style={styles.visualCardLarge}>
-              <Text style={styles.visualLabel}>Private rooms</Text>
-              <Text style={styles.visualValue}>Friends in fast</Text>
-            </View>
-            <View style={styles.visualColumn}>
-              <View style={styles.visualCardSmall}>
-                <Text style={styles.visualTiny}>3 curated rounds</Text>
-              </View>
-              <View style={[styles.visualCardSmall, styles.visualCardSuccess]}>
-                <Text style={styles.visualTiny}>Warm social pacing</Text>
-              </View>
-            </View>
-          </View>
-        </View>
       </View>
 
       <SurfaceCard>
-        <Text style={styles.sectionTitle}>{t('auth.primaryCardTitle')}</Text>
-        <Text style={styles.cardCopy}>{t('auth.primaryCardCopy')}</Text>
+        <Text style={styles.sectionTitle}>{t('auth.quickAccessTitle')}</Text>
+        <Text style={styles.cardCopy}>{t('auth.quickAccessCopy')}</Text>
+        <AppButton
+          label={t('auth.continueAsGuest')}
+          onPress={() => onContinueAsGuest(displayName.trim())}
+          disabled={!isSupabaseConfigured || isBusy}
+        />
+        <Text style={styles.helper}>{t('auth.guestHint')}</Text>
+      </SurfaceCard>
+
+      <View style={styles.dividerRow}>
+        <View style={styles.dividerLine} />
+        <Text style={styles.dividerLabel}>{t('auth.divider')}</Text>
+        <View style={styles.dividerLine} />
+      </View>
+
+      <SurfaceCard>
+        <Text style={styles.sectionTitle}>{authMode === 'signUp' ? t('auth.formTitle') : t('auth.formTitleSignIn')}</Text>
+        <Text style={styles.cardCopy}>{t('auth.formSubtitle')}</Text>
+        <Text style={styles.fieldLabel}>{t('auth.nameLabel')}</Text>
         <TextInput
           value={displayName}
           onChangeText={setDisplayName}
@@ -60,6 +67,7 @@ export function WelcomeScreen({ isBusy, isSupabaseConfigured, notice, onSignIn, 
           placeholderTextColor={theme.colors.textMuted}
           style={styles.input}
         />
+        <Text style={styles.fieldLabel}>{t('auth.emailLabel')}</Text>
         <TextInput
           value={email}
           onChangeText={setEmail}
@@ -69,6 +77,7 @@ export function WelcomeScreen({ isBusy, isSupabaseConfigured, notice, onSignIn, 
           autoCapitalize="none"
           keyboardType="email-address"
         />
+        <Text style={styles.fieldLabel}>{t('auth.passwordLabel')}</Text>
         <TextInput
           value={password}
           onChangeText={setPassword}
@@ -78,40 +87,69 @@ export function WelcomeScreen({ isBusy, isSupabaseConfigured, notice, onSignIn, 
           autoCapitalize="none"
           secureTextEntry
         />
-        <AppButton label={t('auth.signIn')} onPress={() => onSignIn(email.trim(), password)} disabled={!isSupabaseConfigured || isBusy} />
         <AppButton
-          label={t('auth.signUp')}
-          onPress={() => onSignUp(email.trim(), password, displayName.trim())}
-          variant="secondary"
-          disabled={!isSupabaseConfigured || isBusy}
+          label={authMode === 'signUp' ? t('auth.primaryCta') : t('auth.primaryCtaSignIn')}
+          onPress={() =>
+            authMode === 'signUp'
+              ? onSignUp(email.trim(), password, displayName.trim())
+              : onSignIn(email.trim(), password)
+          }
+          disabled={!isSupabaseConfigured || isBusy || !canSubmit}
         />
-        <AppButton label={t('auth.continueAsGuest')} onPress={() => onContinueAsGuest(displayName.trim())} variant="ghost" disabled={!isSupabaseConfigured || isBusy} />
-        <Text style={styles.helper}>{t('auth.guestHint')}</Text>
+        <View style={styles.toggleRow}>
+          <Text style={styles.toggleCopy}>{authMode === 'signUp' ? t('auth.signInPrompt') : t('auth.signUpPrompt')}</Text>
+          <Pressable onPress={() => setAuthMode((current) => (current === 'signUp' ? 'signIn' : 'signUp'))}>
+            <Text style={styles.toggleAction}>{authMode === 'signUp' ? t('auth.signInAction') : t('auth.signUpAction')}</Text>
+          </Pressable>
+        </View>
+        <Text style={styles.terms}>{t('auth.terms')}</Text>
         {!isSupabaseConfigured ? <Text style={styles.notice}>{t('auth.supabaseMissing')}</Text> : null}
         {notice ? <Text style={styles.notice}>{notice}</Text> : null}
       </SurfaceCard>
-
-      <SurfaceCard>
-        <View style={styles.previewHeader}>
-          <Text style={styles.sectionTitle}>{t('auth.continueBlockTitle')}</Text>
-          <Badge label="Shell MVP" tone="success" />
-        </View>
-        <View style={styles.featureList}>
-          <Text style={styles.featureItem}>{t('auth.continueBlockCopy')}</Text>
-        </View>
-      </SurfaceCard>
+      </View>
     </AppScreen>
   );
 }
 
 function createStyles(theme: ReturnType<typeof useTheme>) {
   return StyleSheet.create({
+  shell: {
+    width: '100%',
+    maxWidth: 460,
+    alignSelf: 'center',
+    gap: spacing.lg
+  },
   hero: {
     gap: spacing.md,
-    paddingTop: spacing.md
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.sm
+  },
+  brandMark: {
+    width: 48,
+    height: 48
+  },
+  brandTop: {
+    position: 'absolute',
+    width: 30,
+    height: 18,
+    borderRadius: 4,
+    backgroundColor: theme.colors.textPrimary,
+    transform: [{ rotate: '-45deg' }],
+    top: 3,
+    left: 0
+  },
+  brandBottom: {
+    position: 'absolute',
+    width: 16,
+    height: 28,
+    borderRadius: 4,
+    backgroundColor: theme.colors.textMuted,
+    transform: [{ rotate: '-45deg' }],
+    top: 19,
+    left: 24
   },
   eyebrow: {
-    color: theme.colors.highlight,
+    color: theme.colors.textMuted,
     fontSize: typography.caption,
     fontWeight: '700',
     textTransform: 'uppercase',
@@ -121,7 +159,7 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
     color: theme.colors.textPrimary,
     fontSize: typography.hero,
     fontWeight: '800',
-    lineHeight: 44,
+    lineHeight: 48,
     letterSpacing: -1.4
   },
   subtitle: {
@@ -129,57 +167,20 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
     fontSize: typography.body,
     lineHeight: 24
   },
-  visualBlock: {
-    marginTop: spacing.sm
-  },
-  visualRow: {
+  dividerRow: {
     flexDirection: 'row',
+    alignItems: 'center',
     gap: spacing.sm
   },
-  visualCardLarge: {
+  dividerLine: {
     flex: 1,
-    minHeight: 150,
-    borderRadius: 26,
-    backgroundColor: theme.colors.surface,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    padding: spacing.lg,
-    justifyContent: 'space-between'
+    height: 1,
+    backgroundColor: theme.colors.border
   },
-  visualColumn: {
-    width: 118,
-    gap: spacing.sm
-  },
-  visualCardSmall: {
-    flex: 1,
-    borderRadius: 22,
-    backgroundColor: theme.colors.backgroundElevated,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    padding: spacing.md,
-    justifyContent: 'flex-end'
-  },
-  visualCardSuccess: {
-    backgroundColor: theme.colors.successMuted,
-    borderColor: theme.colors.success
-  },
-  visualLabel: {
+  dividerLabel: {
     color: theme.colors.textMuted,
-    fontSize: typography.caption,
-    textTransform: 'uppercase',
-    letterSpacing: 1.2
-  },
-  visualValue: {
-    color: theme.colors.textPrimary,
     fontSize: typography.section,
-    fontWeight: '700',
-    lineHeight: 24
-  },
-  visualTiny: {
-    color: theme.colors.textPrimary,
-    fontSize: typography.caption,
-    fontWeight: '700',
-    lineHeight: 18
+    fontWeight: '600'
   },
   sectionTitle: {
     color: theme.colors.textPrimary,
@@ -191,8 +192,13 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
     fontSize: typography.body,
     lineHeight: 22
   },
+  fieldLabel: {
+    color: theme.colors.textPrimary,
+    fontSize: typography.section,
+    fontWeight: '600'
+  },
   input: {
-    minHeight: 54,
+    minHeight: 60,
     borderRadius: radius.md,
     backgroundColor: theme.colors.backgroundElevated,
     borderWidth: 1,
@@ -201,19 +207,22 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
     paddingHorizontal: spacing.md,
     fontSize: typography.body
   },
-  previewHeader: {
+  toggleRow: {
     flexDirection: 'row',
+    justifyContent: 'center',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    flexWrap: 'wrap',
     gap: spacing.md
   },
-  featureList: {
-    gap: spacing.sm
-  },
-  featureItem: {
+  toggleCopy: {
     color: theme.colors.textSecondary,
     fontSize: typography.body,
     lineHeight: 22
+  },
+  toggleAction: {
+    color: theme.colors.textPrimary,
+    fontSize: typography.body,
+    fontWeight: '700'
   },
   notice: {
     color: theme.colors.highlight,
@@ -224,6 +233,12 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
     color: theme.colors.textSecondary,
     fontSize: typography.body,
     lineHeight: 22
+  },
+  terms: {
+    color: theme.colors.textMuted,
+    fontSize: typography.caption,
+    lineHeight: 22,
+    textAlign: 'center'
   }
   });
 }
