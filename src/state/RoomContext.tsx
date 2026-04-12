@@ -6,15 +6,17 @@ import {
   getErrorMessage,
   getActiveRoomIdForUser,
   getRoomDetails,
-    joinPrivateRoomByCode,
-    removeRoomMember,
-    subscribeToRoomRealtime,
+  joinPrivateRoomByCode,
+  removeRoomMember,
+  startImpostorRound as startImpostorRoundRequest,
+  subscribeToRoomRealtime,
   updateRoomMemberPresence,
   updateRoomSelectedGame,
   updateRoomStatus,
   type RoomDetails,
   type RoomRealtimeState
 } from '../data/rooms';
+import type { ImpostorCategoryId } from '../navigation/types';
 import { useAuth } from './AuthContext';
 
 type RoomActionResult = {
@@ -32,6 +34,7 @@ type RoomContextValue = {
   createRoom: (selectedGameId: string | null) => Promise<RoomActionResult>;
   joinRoomByCode: (code: string) => Promise<RoomActionResult>;
   removeMember: (memberUserId: string) => Promise<RoomActionResult>;
+  startImpostorRound: (themeCategory: ImpostorCategoryId, impostorCount: number) => Promise<RoomActionResult>;
   saveSelectedGame: (selectedGameId: string | null) => Promise<RoomActionResult>;
   markRoomActive: () => Promise<RoomActionResult>;
   setRoomScreenActive: (isActive: boolean) => void;
@@ -154,6 +157,9 @@ export function RoomProvider({ children }: PropsWithChildren) {
       onMembersChange: () => {
         void refreshResolvedActiveRoom();
       },
+      onRoundChange: () => {
+        void refreshResolvedActiveRoom();
+      },
       onConnectionStateChange: (nextState, message) => {
         setSyncState(nextState);
         setSyncNotice(message ?? null);
@@ -270,6 +276,24 @@ export function RoomProvider({ children }: PropsWithChildren) {
 
         try {
           await removeRoomMember(activeRoom.room.id, memberUserId);
+          const roomDetails = await getRoomDetails(activeRoom.room.id, user.id);
+          setActiveRoom(roomDetails);
+          return { roomId: activeRoom.room.id };
+        } catch (error) {
+          return { error: mapRoomError(error) };
+        } finally {
+          setIsBusy(false);
+        }
+      },
+      startImpostorRound: async (themeCategory, impostorCount) => {
+        if (!user || !activeRoom) {
+          return { error: 'AUTH_REQUIRED' };
+        }
+
+        setIsBusy(true);
+
+        try {
+          await startImpostorRoundRequest(activeRoom.room.id, themeCategory, impostorCount);
           const roomDetails = await getRoomDetails(activeRoom.room.id, user.id);
           setActiveRoom(roomDetails);
           return { roomId: activeRoom.room.id };

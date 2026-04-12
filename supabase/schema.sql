@@ -53,11 +53,25 @@ create table if not exists public.room_activity (
   created_at timestamptz not null default timezone('utc', now())
 );
 
+create table if not exists public.room_rounds (
+  id uuid primary key default gen_random_uuid(),
+  room_id uuid not null unique references public.rooms (id) on delete cascade,
+  game_id text not null default 'impostor',
+  theme_category text not null check (theme_category in ('animals', 'countries', 'objects')),
+  secret_word text not null,
+  impostor_ids uuid[] not null default '{}'::uuid[],
+  started_by_user_id uuid not null references auth.users (id) on delete cascade,
+  status text not null default 'active' check (status in ('active', 'finished')),
+  created_at timestamptz not null default timezone('utc', now()),
+  updated_at timestamptz not null default timezone('utc', now())
+);
+
 alter table public.profiles enable row level security;
 alter table public.user_settings enable row level security;
 alter table public.rooms enable row level security;
 alter table public.room_members enable row level security;
 alter table public.room_activity enable row level security;
+alter table public.room_rounds enable row level security;
 
 create or replace function public.set_updated_at()
 returns trigger
@@ -81,6 +95,20 @@ as $$
     where room_members.room_id = target_room_id
       and room_members.user_id = auth.uid()
       and room_members.is_active = true
+  );
+$$;
+
+create or replace function private.is_room_host(target_room_id uuid)
+returns boolean
+language sql
+security definer
+set search_path = ''
+as $$
+  select exists (
+    select 1
+    from public.rooms
+    where rooms.id = target_room_id
+      and rooms.host_user_id = auth.uid()
   );
 $$;
 
@@ -116,6 +144,12 @@ execute function public.set_updated_at();
 drop trigger if exists set_rooms_updated_at on public.rooms;
 create trigger set_rooms_updated_at
 before update on public.rooms
+for each row
+execute function public.set_updated_at();
+
+drop trigger if exists set_room_rounds_updated_at on public.room_rounds;
+create trigger set_room_rounds_updated_at
+before update on public.room_rounds
 for each row
 execute function public.set_updated_at();
 
@@ -297,6 +331,131 @@ begin
 end;
 $$;
 
+create or replace function public.start_impostor_round(
+  p_room_id uuid,
+  p_theme_category text,
+  p_impostor_count integer default 1
+)
+returns public.room_rounds
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  current_user_id uuid := auth.uid();
+  target_room public.rooms;
+  member_count integer := 0;
+  total_impostors integer := 1;
+  theme_words text[];
+  selected_word text;
+  selected_impostor_ids uuid[];
+  next_round public.room_rounds;
+begin
+  if current_user_id is null then
+    raise exception 'AUTH_REQUIRED';
+  end if;
+
+  select *
+  into target_room
+  from public.rooms
+  where id = p_room_id
+  limit 1;
+
+  if target_room.id is null then
+    raise exception 'ROOM_NOT_FOUND';
+  end if;
+
+  if target_room.host_user_id <> current_user_id then
+    raise exception 'ROUND_HOST_ONLY';
+  end if;
+
+  member_count := (
+    select count(*)
+    from public.room_members
+    where room_id = p_room_id
+      and is_active = true
+  );
+
+  if member_count = 0 then
+    raise exception 'ROUND_NO_MEMBERS';
+  end if;
+
+  total_impostors := least(greatest(coalesce(p_impostor_count, 1), 1), greatest(member_count - 1, 1));
+
+  theme_words := case p_theme_category
+    when 'animals' then array['Leon', 'Tigre', 'Elefante', 'Jirafa', 'Delfin', 'Lobo', 'Pinguino', 'Cebra', 'Koala', 'Zorro', 'Rinoceronte', 'Hipopotamo']
+    when 'countries' then array['Mexico', 'Japon', 'Italia', 'Brasil', 'Canada', 'Argentina', 'Francia', 'India', 'Egipto', 'Australia', 'Portugal', 'Colombia']
+    when 'objects' then array['Brujula', 'Lampara', 'Martillo', 'Mochila', 'Reloj', 'Camara', 'Paraguas', 'Llave', 'Telefono', 'Binoculares', 'Microfono', 'Guitarra']
+    else null
+  end;
+
+  if theme_words is null or array_length(theme_words, 1) is null then
+    raise exception 'ROUND_THEME_NOT_FOUND';
+  end if;
+
+  selected_word := theme_words[1 + floor(random() * array_length(theme_words, 1))::integer];
+
+  selected_impostor_ids := (
+    select coalesce(array_agg(member_pick.user_id), '{}'::uuid[])
+    from (
+      select user_id
+      from public.room_members
+      where room_id = p_room_id
+        and is_active = true
+      order by random()
+      limit total_impostors
+    ) as member_pick
+  );
+
+  insert into public.room_rounds (
+    room_id,
+    game_id,
+    theme_category,
+    secret_word,
+    impostor_ids,
+    started_by_user_id,
+    status
+  )
+  values (
+    p_room_id,
+    'impostor',
+    p_theme_category,
+    selected_word,
+    selected_impostor_ids,
+    current_user_id,
+    'active'
+  )
+  on conflict (room_id) do update
+  set game_id = excluded.game_id,
+      theme_category = excluded.theme_category,
+      secret_word = excluded.secret_word,
+      impostor_ids = excluded.impostor_ids,
+      started_by_user_id = excluded.started_by_user_id,
+      status = 'active',
+      updated_at = timezone('utc', now())
+  returning * into next_round;
+
+  update public.rooms
+  set status = 'active',
+      selected_game_id = 'impostor'
+  where id = p_room_id;
+
+  insert into public.room_activity (room_id, actor_user_id, type, payload)
+  values (
+    p_room_id,
+    current_user_id,
+    'round_started',
+    jsonb_build_object(
+      'game_id', 'impostor',
+      'theme_category', p_theme_category,
+      'impostor_count', total_impostors
+    )
+  );
+
+  return next_round;
+end;
+$$;
+
 create or replace function public.handle_new_user()
 returns trigger
 language plpgsql
@@ -422,6 +581,14 @@ using (user_id = auth.uid());
 drop policy if exists "Members can read room activity" on public.room_activity;
 create policy "Members can read room activity"
 on public.room_activity
+for select
+using (
+  private.is_room_member(room_id)
+);
+
+drop policy if exists "Members can read room rounds" on public.room_rounds;
+create policy "Members can read room rounds"
+on public.room_rounds
 for select
 using (
   private.is_room_member(room_id)

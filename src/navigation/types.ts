@@ -111,4 +111,15 @@ export type RoomSettings = {
   vibe: 'Balanced' | 'Fast' | 'Talkative';
   format: 'Casual' | 'Competitive';
   chatEnabled: boolean;
+  impostorCount: number;
+  themeCategory: ImpostorCategoryId;
+};
+
+export type ImpostorRoundSetup = {
+  roundId: string;
+  categoryId: ImpostorCategoryId;
+  secretWord: string;
+  impostorIds: string[];
+  startedAt: string;
+  status: 'active' | 'finished';
 };

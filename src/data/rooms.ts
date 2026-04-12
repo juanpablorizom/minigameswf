@@ -1,9 +1,11 @@
 import { supabase } from '../lib/supabase';
 import type { Database, RoomMemberRole, RoomStatus } from '../lib/supabase.types';
+import type { ImpostorRoundSetup, ImpostorCategoryId } from '../navigation/types';
 
 export type RoomRow = Database['public']['Tables']['rooms']['Row'];
 export type RoomMemberRow = Database['public']['Tables']['room_members']['Row'];
 export type RoomActivityRow = Database['public']['Tables']['room_activity']['Row'];
+export type RoomRoundRow = Database['public']['Tables']['room_rounds']['Row'];
 export type ProfileRow = Database['public']['Tables']['profiles']['Row'];
 
 export type RoomMemberView = {
@@ -29,6 +31,7 @@ export type RoomDetails = {
   room: RoomRow;
   members: RoomMemberView[];
   activity: RoomActivityView[];
+  round: ImpostorRoundSetup | null;
   currentUserRole: RoomMemberRole | null;
   isHost: boolean;
 };
@@ -39,6 +42,7 @@ type SubscribeToRoomRealtimeOptions = {
   roomId: string;
   onRoomChange: () => void;
   onMembersChange: () => void;
+  onRoundChange: () => void;
   onConnectionStateChange?: (state: RoomRealtimeState, message?: string | null) => void;
 };
 
@@ -69,6 +73,18 @@ function buildRoomErrorMessage(message: string) {
 
   if (message.includes('CANNOT_REMOVE_HOST')) {
     return 'CANNOT_REMOVE_HOST';
+  }
+
+  if (message.includes('ROUND_HOST_ONLY')) {
+    return 'ROUND_HOST_ONLY';
+  }
+
+  if (message.includes('ROUND_THEME_NOT_FOUND')) {
+    return 'ROUND_THEME_NOT_FOUND';
+  }
+
+  if (message.includes('ROUND_NO_MEMBERS')) {
+    return 'ROUND_NO_MEMBERS';
   }
 
   if (message.includes('Failed to fetch') || message.includes('fetch failed') || message.includes('Network request failed')) {
@@ -221,6 +237,35 @@ async function getRoomActivity(roomId: string) {
   return data ?? [];
 }
 
+async function getRoomRound(roomId: string) {
+  const { data, error } = await supabase
+    .from('room_rounds')
+    .select('*')
+    .eq('room_id', roomId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(buildRoomErrorMessage(error.message));
+  }
+
+  return data;
+}
+
+function mapRoomRound(round: RoomRoundRow | null): ImpostorRoundSetup | null {
+  if (!round) {
+    return null;
+  }
+
+  return {
+    roundId: round.id,
+    categoryId: round.theme_category as ImpostorCategoryId,
+    secretWord: round.secret_word,
+    impostorIds: round.impostor_ids,
+    startedAt: round.created_at,
+    status: round.status
+  };
+}
+
 export async function getRoomDetails(roomId: string, currentUserId: string): Promise<RoomDetails | null> {
   const room = await getRoom(roomId);
 
@@ -231,6 +276,7 @@ export async function getRoomDetails(roomId: string, currentUserId: string): Pro
   const members = await getRoomMembers(roomId);
   const profiles = await getProfilesForUsers(members.map((member) => member.user_id));
   const activity = await getRoomActivity(roomId);
+  const round = await getRoomRound(roomId);
   const profilesById = new Map(profiles.map((profile) => [profile.id, profile]));
 
   const memberViews = members.map((member) => {
@@ -280,6 +326,15 @@ export async function getRoomDetails(roomId: string, currentUserId: string): Pro
       } satisfies RoomActivityView;
     }
 
+    if (entry.type === 'round_started') {
+      return {
+        id: entry.id,
+        title: `${actorLabel} started an Impostor round`,
+        subtitle: 'The room moved into gameplay.',
+        createdAt: entry.created_at
+      } satisfies RoomActivityView;
+    }
+
     return {
       id: entry.id,
       title: entry.type,
@@ -294,6 +349,7 @@ export async function getRoomDetails(roomId: string, currentUserId: string): Pro
     room,
     members: memberViews,
     activity: activityViews,
+    round: mapRoomRound(round),
     currentUserRole: currentMember?.role ?? null,
     isHost: currentMember?.role === 'host'
   };
@@ -348,10 +404,25 @@ export async function removeRoomMember(roomId: string, memberUserId: string) {
   return normalizeResult(data as RoomMemberRow | RoomMemberRow[] | null);
 }
 
+export async function startImpostorRound(roomId: string, themeCategory: ImpostorCategoryId, impostorCount: number) {
+  const { data, error } = await supabase.rpc('start_impostor_round', {
+    p_room_id: roomId,
+    p_theme_category: themeCategory,
+    p_impostor_count: impostorCount
+  });
+
+  if (error) {
+    throw new Error(buildRoomErrorMessage(error.message));
+  }
+
+  return mapRoomRound(normalizeResult(data as RoomRoundRow | RoomRoundRow[] | null));
+}
+
 export function subscribeToRoomRealtime({
   roomId,
   onRoomChange,
   onMembersChange,
+  onRoundChange,
   onConnectionStateChange
 }: SubscribeToRoomRealtimeOptions) {
   const channel = supabase
@@ -365,6 +436,11 @@ export function subscribeToRoomRealtime({
       'postgres_changes',
       { event: '*', schema: 'public', table: 'room_members', filter: `room_id=eq.${roomId}` },
       () => onMembersChange()
+    )
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'room_rounds', filter: `room_id=eq.${roomId}` },
+      () => onRoundChange()
     )
     .subscribe((status) => {
       if (status === 'SUBSCRIBED') {

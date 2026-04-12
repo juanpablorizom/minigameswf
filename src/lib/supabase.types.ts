@@ -3,6 +3,7 @@ import type { AppLanguage, AppThemePreference } from './storage';
 export type RoomStatus = 'waiting' | 'active' | 'finished';
 export type RoomVisibility = 'private';
 export type RoomMemberRole = 'host' | 'member';
+export type RoomRoundStatus = 'active' | 'finished';
 
 export type Database = {
   public: {
@@ -151,6 +152,45 @@ export type Database = {
         };
         Relationships: [];
       };
+      room_rounds: {
+        Row: {
+          id: string;
+          room_id: string;
+          game_id: string;
+          theme_category: string;
+          secret_word: string;
+          impostor_ids: string[];
+          started_by_user_id: string;
+          status: RoomRoundStatus;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          room_id: string;
+          game_id?: string;
+          theme_category: string;
+          secret_word: string;
+          impostor_ids: string[];
+          started_by_user_id: string;
+          status?: RoomRoundStatus;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          room_id?: string;
+          game_id?: string;
+          theme_category?: string;
+          secret_word?: string;
+          impostor_ids?: string[];
+          started_by_user_id?: string;
+          status?: RoomRoundStatus;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {
@@ -172,6 +212,14 @@ export type Database = {
           p_member_user_id: string;
         };
         Returns: Database['public']['Tables']['room_members']['Row'][];
+      };
+      start_impostor_round: {
+        Args: {
+          p_room_id: string;
+          p_theme_category: string;
+          p_impostor_count: number;
+        };
+        Returns: Database['public']['Tables']['room_rounds']['Row'][];
       };
     };
     Enums: Record<string, never>;

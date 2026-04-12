@@ -199,7 +199,9 @@ export const initialRoomSettings: RoomSettings = {
   privacy: 'Invite only',
   vibe: 'Balanced',
   format: 'Casual',
-  chatEnabled: true
+  chatEnabled: true,
+  impostorCount: 1,
+  themeCategory: 'animals'
 };
 
 export const podium: ResultEntry[] = [
@@ -208,32 +210,3 @@ export const podium: ResultEntry[] = [
   { id: 'r3', name: 'Camila', points: 1360, change: '+255', badge: 'Crowd Control' },
   { id: 'r4', name: 'Diego', points: 1120, change: '+140', badge: 'Late Hero' }
 ];
-
-export const impostorCategories: Record<
-  ImpostorCategoryId,
-  {
-    label: string;
-    prompt: string;
-    secretWord: string;
-    answerSuggestions: string[];
-  }
-> = {
-  animals: {
-    label: 'Animals',
-    prompt: 'Describe this animal in one word.',
-    secretWord: 'Dolphin',
-    answerSuggestions: ['Smart', 'Friendly', 'Fast', 'Playful']
-  },
-  countries: {
-    label: 'Countries',
-    prompt: 'Describe the gastronomy of this country.',
-    secretWord: 'Mexico',
-    answerSuggestions: ['Spicy', 'Colorful', 'Comforting', 'Street-food heavy']
-  },
-  objects: {
-    label: 'Objects',
-    prompt: 'How would you use this object in real life?',
-    secretWord: 'Compass',
-    answerSuggestions: ['Navigation', 'Backup tool', 'Travel essential', 'Useful outdoors']
-  }
-};

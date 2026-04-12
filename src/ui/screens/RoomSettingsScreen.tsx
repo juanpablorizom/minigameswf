@@ -15,11 +15,13 @@ type RoomSettingsScreenProps = {
 };
 
 const maxPlayerOptions = [6, 8, 10];
+const impostorCountOptions = [1, 2, 3];
 const roundOptions = [2, 3, 4];
 const turnOptions = [30, 45, 60];
 const privacyOptions: RoomSettings['privacy'][] = ['Invite only', 'Friends of friends'];
 const vibeOptions: RoomSettings['vibe'][] = ['Balanced', 'Fast', 'Talkative'];
 const formatOptions: RoomSettings['format'][] = ['Casual', 'Competitive'];
+const themeOptions: RoomSettings['themeCategory'][] = ['animals', 'countries', 'objects'];
 
 export function RoomSettingsScreen({ settings, onChangeSettings, onSave }: RoomSettingsScreenProps) {
   const { t } = useTranslation();
@@ -39,9 +41,40 @@ export function RoomSettingsScreen({ settings, onChangeSettings, onSave }: RoomS
             format: formatLabel.toLowerCase(),
             maxPlayers: settings.maxPlayers,
             rounds: settings.rounds,
-            turnSeconds: settings.turnSeconds
+            turnSeconds: settings.turnSeconds,
+            impostorCount: settings.impostorCount,
+            theme: t(`roomSettings.themeOptions.${settings.themeCategory}`).toLowerCase()
           })}
         </Text>
+      </SurfaceCard>
+
+      <SurfaceCard>
+        <Text style={styles.sectionTitle}>{t('roomSettings.impostorCount')}</Text>
+        <View style={styles.optionRow}>
+          {impostorCountOptions.map((impostorCount) => (
+            <OptionChip
+              key={impostorCount}
+              label={t('roomSettings.impostorCountValue', { count: impostorCount })}
+              active={settings.impostorCount === impostorCount}
+              onPress={() => onChangeSettings({ ...settings, impostorCount })}
+            />
+          ))}
+        </View>
+      </SurfaceCard>
+
+      <SurfaceCard>
+        <Text style={styles.sectionTitle}>{t('roomSettings.theme')}</Text>
+        <Text style={styles.summaryCopy}>{t('roomSettings.themeHint')}</Text>
+        <View style={styles.optionColumn}>
+          {themeOptions.map((themeCategory) => (
+            <OptionChip
+              key={themeCategory}
+              label={t(`roomSettings.themeOptions.${themeCategory}`)}
+              active={settings.themeCategory === themeCategory}
+              onPress={() => onChangeSettings({ ...settings, themeCategory })}
+            />
+          ))}
+        </View>
       </SurfaceCard>
 
       <SurfaceCard>

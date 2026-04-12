@@ -85,6 +85,10 @@ export function PrivateRoomScreen({
     return t(`roomSettings.formatOptions.${value}`);
   }
 
+  function themeLabel(value: RoomSettings['themeCategory']) {
+    return t(`roomSettings.themeOptions.${value}`);
+  }
+
   return (
     <AppScreen title={t('room.title')} subtitle={canManageRoom ? t('room.subtitleHost') : t('room.subtitleMember')}>
       <SurfaceCard>
@@ -108,6 +112,7 @@ export function PrivateRoomScreen({
         </Text>
         <View style={styles.roomActions}>
           <AppButton label={t('room.shareCode')} onPress={onShareCode} variant="secondary" />
+          {canManageRoom ? <AppButton label={t('room.configureRoom')} onPress={onOpenSettings} variant="ghost" /> : null}
           {canManageRoom ? (
             <AppButton label={roomStatus === 'active' ? t('room.returnToGame') : t('room.continueToGame')} onPress={onStart} disabled={isBusy} />
           ) : null}
@@ -185,6 +190,8 @@ export function PrivateRoomScreen({
         </View>
         <Text style={styles.itemSubtitle}>{t('room.privacyLine', { value: privacyLabel(settings.privacy) })}</Text>
         <Text style={styles.itemSubtitle}>{t('room.maxPlayersLine', { value: settings.maxPlayers })}</Text>
+        <Text style={styles.itemSubtitle}>{t('room.impostorCountLine', { value: settings.impostorCount })}</Text>
+        <Text style={styles.itemSubtitle}>{t('room.themeLine', { value: themeLabel(settings.themeCategory) })}</Text>
         <Text style={styles.itemSubtitle}>{t('room.turnTimerLine', { value: settings.turnSeconds })}</Text>
         <Text style={styles.itemSubtitle}>{t('room.modeLine', { value: formatLabel(settings.format) })}</Text>
         <Text style={styles.itemSubtitle}>{t('room.flowLine', { value: vibeLabel(settings.vibe) })}</Text>

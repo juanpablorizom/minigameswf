@@ -61,6 +61,18 @@ function mapRoomNotice(translate: (key: string, options?: Record<string, unknown
     return translate('room.removeHostBlocked');
   }
 
+  if (error === 'ROUND_HOST_ONLY') {
+    return translate('room.hostOnlyContinue');
+  }
+
+  if (error === 'ROUND_NO_MEMBERS') {
+    return translate('lobby.errors.noActiveRoomFallback');
+  }
+
+  if (error === 'ROUND_THEME_NOT_FOUND') {
+    return translate('room.themeUnavailable');
+  }
+
   return error ?? null;
 }
 
@@ -158,8 +170,8 @@ export function AppNavigator() {
     createRoom,
     joinRoomByCode,
     removeMember,
+    startImpostorRound,
     saveSelectedGame,
-    markRoomActive,
     setRoomScreenActive
   } = useRoom();
   const {
@@ -316,6 +328,18 @@ export function AppNavigator() {
       hydrateSelectedGame(activeRoom.room.selected_game_id);
     }
   }, [activeRoom?.room.selected_game_id, hydrateSelectedGame]);
+
+  useEffect(() => {
+    if (!activeRoom?.round) {
+      return;
+    }
+
+    if (currentScreen === 'gameplay') {
+      return;
+    }
+
+    startGameplay();
+  }, [activeRoom?.round?.roundId, currentScreen, startGameplay]);
 
   useEffect(() => {
     setRoomScreenActive(
@@ -680,7 +704,7 @@ export function AppNavigator() {
     }
 
     if (currentScreen === 'room' && activeRoom) {
-      const selectedGame = featuredGames.find((game) => game.id === activeRoom.room.selected_game_id) ?? selectedGames[0] ?? null;
+      const selectedGame = featuredGames.find((game) => game.id === 'impostor') ?? selectedGames[0] ?? null;
 
       return (
         <PrivateRoomScreen
@@ -706,14 +730,15 @@ export function AppNavigator() {
               return;
             }
 
-            void markRoomActive().then((result) => {
+            setRoomNotice(t('room.roundStarting'));
+
+            void startImpostorRound(roomSettings.themeCategory, roomSettings.impostorCount).then((result) => {
               if (result.error) {
                 setRoomNotice(mapRoomNotice(t, result.error));
                 return;
               }
 
               setRoomNotice(null);
-              startGameplay();
             });
           }}
           onRemoveMember={(memberUserId) => {
@@ -767,7 +792,7 @@ export function AppNavigator() {
 
     if (currentScreen === 'gameplay') {
       const gameplayPlayers: Player[] = (activeRoom?.members ?? []).map((member, index) => ({
-        id: member.id,
+        id: member.userId,
         name: member.displayName,
         status: member.role === 'host' ? 'host' : 'ready',
         mood: member.isCurrentUser ? 'You are in this round' : `Joined #${index + 1}`,
@@ -775,10 +800,58 @@ export function AppNavigator() {
         isCurrentUser: member.isCurrentUser
       }));
 
-      return <GameplayScreen players={gameplayPlayers} activeGame={selectedGames[0] ?? featuredGames[0]} onRevealResults={revealResults} />;
+      return (
+        <GameplayScreen
+          players={gameplayPlayers}
+          activeGame={featuredGames.find((game) => game.id === 'impostor') ?? featuredGames[0]}
+          roomSettings={roomSettings}
+          roundSetup={activeRoom?.round ?? null}
+          onPlayAgain={() => {
+            if (!activeRoom?.isHost) {
+              setRoomNotice(t('room.hostOnlyContinue'));
+              return;
+            }
+
+            setRoomNotice(t('room.roundStarting'));
+
+            void startImpostorRound(roomSettings.themeCategory, roomSettings.impostorCount).then((result) => {
+              if (result.error) {
+                setRoomNotice(mapRoomNotice(t, result.error));
+                return;
+              }
+
+              setRoomNotice(null);
+              playAgain();
+            });
+          }}
+          onRevealResults={revealResults}
+        />
+      );
     }
 
-    return <ResultsScreen onPlayAgain={playAgain} onBackToLobby={backToLobby} />;
+    return (
+      <ResultsScreen
+        onPlayAgain={() => {
+          if (!activeRoom?.isHost) {
+            setRoomNotice(t('room.hostOnlyContinue'));
+            return;
+          }
+
+          setRoomNotice(t('room.roundStarting'));
+
+          void startImpostorRound(roomSettings.themeCategory, roomSettings.impostorCount).then((result) => {
+            if (result.error) {
+              setRoomNotice(mapRoomNotice(t, result.error));
+              return;
+            }
+
+            setRoomNotice(null);
+            playAgain();
+          });
+        }}
+        onBackToLobby={backToLobby}
+      />
+    );
   }
 
   function renderTabContent() {
