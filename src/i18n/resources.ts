@@ -8,7 +8,9 @@ export const resources = {
         settings: 'Ajustes',
         loading: 'Cargando',
         guest: 'Invitado',
-        player: 'Jugador'
+        player: 'Jugador',
+        stay: 'Quedarse',
+        continue: 'Continuar'
       },
       auth: {
         badge: 'MiniGamesWF',
@@ -246,6 +248,8 @@ export const resources = {
         cameraNeeded: 'Se necesita acceso a la cámara para escanear el QR. También puedes entrar manualmente con el código.',
         allowCamera: 'Permitir cámara',
         invalidQr: 'Este QR no corresponde a una sala válida de MiniGamesWF.',
+        detected: 'QR detectado: {{code}}',
+        joining: 'Entrando a la sala {{code}}...',
         scanAgain: 'Escanear otra vez',
         joinWithCode: 'Entrar con código'
       },
@@ -293,7 +297,9 @@ export const resources = {
         chatDisabled: 'Desactivado',
         activityTitle: 'Actividad de sala',
         activityLive: 'En vivo',
-        activityEmpty: 'La actividad de la sala aparecerá aquí cuando entren miembros y la partida avance.'
+        activityEmpty: 'La actividad de la sala aparecerá aquí cuando entren miembros y la partida avance.',
+        leavePromptTitle: '¿Seguro que quieres salir?',
+        leavePromptSubtitle: 'Volverás al menú principal de Juegos. Tu sala seguirá guardada y podrás retomarla después.'
       }
     }
   },
@@ -306,7 +312,9 @@ export const resources = {
         settings: 'Settings',
         loading: 'Loading',
         guest: 'Guest',
-        player: 'Player'
+        player: 'Player',
+        stay: 'Stay',
+        continue: 'Continue'
       },
       auth: {
         badge: 'MiniGamesWF',
@@ -543,6 +551,8 @@ export const resources = {
         cameraNeeded: 'Camera access is required to scan a room QR. You can still join manually with the room code.',
         allowCamera: 'Allow camera',
         invalidQr: 'This QR is not a valid MiniGamesWF room link.',
+        detected: 'QR detected: {{code}}',
+        joining: 'Joining room {{code}}...',
         scanAgain: 'Scan again',
         joinWithCode: 'Join with code'
       },
@@ -590,7 +600,9 @@ export const resources = {
         chatDisabled: 'Off',
         activityTitle: 'Party activity',
         activityLive: 'Live',
-        activityEmpty: 'Room activity will appear here as members join and the party moves forward.'
+        activityEmpty: 'Room activity will appear here as members join and the party moves forward.',
+        leavePromptTitle: 'Are you sure you want to leave?',
+        leavePromptSubtitle: 'You will go back to the main Games menu. Your room will stay saved and you can resume it later.'
       }
     }
   }

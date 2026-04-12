@@ -12,7 +12,7 @@ import { radius, spacing, typography, useTheme } from '../theme';
 type ScanRoomScreenProps = {
   isBusy: boolean;
   notice: string | null;
-  onScanCode: (code: string) => void;
+  onScanCode: (code: string) => Promise<void> | void;
   onFallbackToManual: () => void;
 };
 
@@ -23,10 +23,11 @@ export function ScanRoomScreen({ isBusy, notice, onScanCode, onFallbackToManual 
   const [permission, requestPermission] = useCameraPermissions();
   const [localNotice, setLocalNotice] = useState<string | null>(null);
   const [isPaused, setIsPaused] = useState(false);
+  const [lastCode, setLastCode] = useState<string | null>(null);
 
   const resolvedNotice = notice ?? localNotice;
 
-  function handleScanned(data: string) {
+  async function handleScanned(data: string) {
     if (isPaused || isBusy) {
       return;
     }
@@ -35,13 +36,15 @@ export function ScanRoomScreen({ isBusy, notice, onScanCode, onFallbackToManual 
 
     if (!code) {
       setIsPaused(true);
+      setLastCode(null);
       setLocalNotice(t('scanRoom.invalidQr'));
       return;
     }
 
-    setLocalNotice(null);
     setIsPaused(true);
-    onScanCode(code);
+    setLastCode(code);
+    setLocalNotice(`${t('scanRoom.detected', { code })}\n${t('scanRoom.joining', { code })}`);
+    await onScanCode(code);
   }
 
   return (
@@ -62,19 +65,21 @@ export function ScanRoomScreen({ isBusy, notice, onScanCode, onFallbackToManual 
               facing="back"
               style={styles.camera}
               barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
-              onBarcodeScanned={({ data }) => handleScanned(data)}
+              onBarcodeScanned={isPaused || isBusy ? undefined : ({ data }) => void handleScanned(data)}
             />
-            <View style={styles.overlay}>
+            <View pointerEvents="none" style={styles.overlay}>
               <View style={styles.scanWindow} />
             </View>
           </View>
         ) : null}
 
         {resolvedNotice ? <Text style={styles.notice}>{resolvedNotice}</Text> : null}
+        {lastCode && !resolvedNotice ? <Text style={styles.notice}>{t('scanRoom.detected', { code: lastCode })}</Text> : null}
 
         {permission?.granted ? (
           <Pressable onPress={() => {
             setIsPaused(false);
+            setLastCode(null);
             setLocalNotice(null);
           }}>
             <Text style={styles.resetLink}>{t('scanRoom.scanAgain')}</Text>

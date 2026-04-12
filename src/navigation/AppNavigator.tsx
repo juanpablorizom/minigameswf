@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Linking, Pressable, Share, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Linking, Modal, Pressable, Share, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { featuredGames, lobbyScenarios } from '../data/mockData';
@@ -20,6 +20,7 @@ import { RoomSettingsScreen } from '../ui/screens/RoomSettingsScreen';
 import { ScanRoomScreen } from '../ui/screens/ScanRoomScreen';
 import { SettingsScreen } from '../ui/screens/SettingsScreen';
 import { WelcomeScreen } from '../ui/screens/WelcomeScreen';
+import { AppButton } from '../ui/components/AppButton';
 import { radius, spacing, typography, useTheme } from '../ui/theme';
 
 function mapRoomNotice(translate: (key: string, options?: Record<string, unknown>) => string, error?: string | null) {
@@ -188,6 +189,8 @@ export function AppNavigator() {
   const [joinNotice, setJoinNotice] = useState<string | null>(null);
   const [pendingJoinCode, setPendingJoinCode] = useState<string | null>(null);
   const [isAutoGuestingForJoin, setIsAutoGuestingForJoin] = useState(false);
+  const [showLeavePrompt, setShowLeavePrompt] = useState(false);
+  const hadAccessRef = useRef(false);
 
   function mapAuthNotice(error?: string | null) {
     if (!error) {
@@ -225,6 +228,21 @@ export function AppNavigator() {
     if (!session && !isGuest) {
       resetToLobby();
     }
+  }, [isGuest, resetToLobby, session]);
+
+  useEffect(() => {
+    const hasAccess = Boolean(session || isGuest);
+
+    if (hasAccess && !hadAccessRef.current) {
+      resetToLobby();
+      setAccountNotice(null);
+      setSettingsNotice(null);
+      setAuthNotice(null);
+      setJoinNotice(null);
+      setRoomNotice(null);
+    }
+
+    hadAccessRef.current = hasAccess;
   }, [isGuest, resetToLobby, session]);
 
   useEffect(() => {
@@ -471,6 +489,11 @@ export function AppNavigator() {
   }
 
   function handleTabPress(tab: AppTab) {
+    if (activeTab === 'games' && ['room', 'chooseGames', 'roomSettings', 'gameplay', 'results'].includes(currentScreen) && tab !== 'games') {
+      setShowLeavePrompt(true);
+      return;
+    }
+
     if (tab === 'account') {
       openAccount();
       return;
@@ -482,6 +505,15 @@ export function AppNavigator() {
     }
 
     openGamesTab();
+  }
+
+  function handleBackPress() {
+    if (['room', 'chooseGames', 'roomSettings', 'gameplay', 'results'].includes(currentScreen)) {
+      setShowLeavePrompt(true);
+      return;
+    }
+
+    goBack();
   }
 
   function renderGamesTab() {
@@ -541,7 +573,7 @@ export function AppNavigator() {
             setJoinNotice(null);
             openJoinRoom();
           }}
-          onScanCode={(code) => {
+          onScanCode={async (code) => {
             const normalizedCode = normalizeRoomCode(code);
 
             if (!normalizedCode) {
@@ -553,16 +585,18 @@ export function AppNavigator() {
               setRoomNotice(t('lobby.switchingRoom', { from: activeRoom.room.code, to: normalizedCode }));
             }
 
-            void joinRoomByCode(normalizedCode).then((result) => {
-              if (result.error) {
-                setJoinNotice(mapRoomNotice(t, result.error));
-                return;
-              }
+            setJoinNotice(t('scanRoom.joining', { code: normalizedCode }));
 
-              setJoinNotice(null);
-              setRoomNotice(null);
-              continueRoom();
-            });
+            const result = await joinRoomByCode(normalizedCode);
+
+            if (result.error) {
+              setJoinNotice(mapRoomNotice(t, result.error));
+              return;
+            }
+
+            setJoinNotice(null);
+            setRoomNotice(null);
+            continueRoom();
           }}
         />
       );
@@ -729,7 +763,7 @@ export function AppNavigator() {
           <Text style={styles.brandSub}>{activeTab === 'games' ? t('common.games') : activeTab === 'account' ? t('common.account') : t('common.settings')}</Text>
         </View>
         {canGoBack ? (
-          <Pressable onPress={goBack}>
+          <Pressable onPress={handleBackPress}>
             <Text style={styles.back}>{t('common.back')}</Text>
           </Pressable>
         ) : (
@@ -746,6 +780,26 @@ export function AppNavigator() {
         <TabButton label={t('navigation.gamesTab')} active={activeTab === 'games'} prominent onPress={() => handleTabPress('games')} />
         <TabButton label={t('navigation.settingsTab')} active={activeTab === 'settings'} onPress={() => handleTabPress('settings')} />
       </View>
+
+      <Modal visible={showLeavePrompt} transparent animationType="fade" onRequestClose={() => setShowLeavePrompt(false)}>
+        <View style={styles.modalBackdrop}>
+          <Pressable style={StyleSheet.absoluteFillObject} onPress={() => setShowLeavePrompt(false)} />
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>{t('room.leavePromptTitle')}</Text>
+            <Text style={styles.modalSubtitle}>{t('room.leavePromptSubtitle')}</Text>
+            <View style={styles.modalActions}>
+              <AppButton label={t('common.stay')} onPress={() => setShowLeavePrompt(false)} variant="secondary" />
+              <AppButton
+                label={t('common.continue')}
+                onPress={() => {
+                  setShowLeavePrompt(false);
+                  backToLobby();
+                }}
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -824,6 +878,33 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
     paddingTop: spacing.sm,
     paddingBottom: spacing.lg,
     backgroundColor: theme.colors.background
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    padding: spacing.lg,
+    justifyContent: 'center'
+  },
+  modalCard: {
+    borderRadius: radius.lg,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    padding: spacing.lg,
+    gap: spacing.md
+  },
+  modalTitle: {
+    color: theme.colors.textPrimary,
+    fontSize: typography.title,
+    fontWeight: '800'
+  },
+  modalSubtitle: {
+    color: theme.colors.textSecondary,
+    fontSize: typography.body,
+    lineHeight: 22
+  },
+  modalActions: {
+    gap: spacing.sm
   },
   tabButton: {
     flex: 1,
