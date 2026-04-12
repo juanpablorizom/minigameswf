@@ -1,58 +1,23 @@
 import { createContext, useContext, useEffect, useMemo, useState, type PropsWithChildren } from 'react';
 import { Platform } from 'react-native';
-import type { AuthSession, UserSchema } from '@insforge/sdk';
+import type { Session, User } from '@supabase/supabase-js';
 
+import { ensureAccountRecords, isGuestUser, updateLanguagePreference, updateThemePreference, type ProfileRow, type UserSettingsRow } from '../data/account';
 import i18n from '../i18n/i18n';
-import { insforge, isAccountLinkingEnabled, isInsForgeConfigured } from '../lib/insforge';
-import {
-  clearStoredGuestProfile,
-  loadStoredGuestProfile,
-  loadStoredLanguage,
-  loadStoredTheme,
-  storeGuestProfile,
-  storeLanguage,
-  storeTheme,
-  type AppLanguage,
-  type AppThemePreference
-} from '../lib/storage';
+import { isAccountLinkingEnabled, isSupabaseConfigured, supabase } from '../lib/supabase';
+import { loadStoredLanguage, loadStoredTheme, storeLanguage, storeTheme, type AppLanguage, type AppThemePreference } from '../lib/storage';
 
 type AuthActionResult = {
   error?: string;
   message?: string;
 };
 
-type ProfileRow = {
-  display_name: string | null;
-  username: string | null;
-  avatar_url: string | null;
-  preferred_language: AppLanguage | null;
-};
-
-type UserSettingsRow = {
-  language: AppLanguage | null;
-  linked_provider_label: string | null;
-  theme_preference: AppThemePreference | null;
-};
-
-type GuestUser = {
-  id: string;
-  email: string;
-  profile: {
-    name: string;
-    avatar_url?: string;
-  } | null;
-  metadata: Record<string, unknown> | null;
-  providers?: string[];
-};
-
-type AuthUser = UserSchema | GuestUser;
-
 type AuthContextValue = {
   isReady: boolean;
   isBusy: boolean;
-  isInsForgeConfigured: boolean;
-  session: AuthSession | null;
-  user: AuthUser | null;
+  isSupabaseConfigured: boolean;
+  session: Session | null;
+  user: User | null;
   isGuest: boolean;
   profile: ProfileRow | null;
   settings: UserSettingsRow | null;
@@ -84,47 +49,7 @@ function buildGuestUsername(displayName: string) {
   return base || `guest-${Math.random().toString(36).slice(2, 7)}`;
 }
 
-function buildGuestUser(displayName: string): GuestUser {
-  const resolvedName = displayName.trim() || 'Invitado';
-  const username = buildGuestUsername(resolvedName);
-
-  return {
-    id: `guest-${username}`,
-    email: `${username}@guest.minigameswf.local`,
-    profile: {
-      name: resolvedName
-    },
-    metadata: {
-      provider: 'guest',
-      username
-    },
-    providers: ['guest']
-  };
-}
-
-function buildProfile(user: AuthUser | null, language: AppLanguage): ProfileRow | null {
-  if (!user) {
-    return null;
-  }
-
-  const metadata = user.metadata ?? {};
-  const displayName =
-    user.profile?.name ??
-    (typeof metadata.display_name === 'string' ? metadata.display_name : null) ??
-    (typeof metadata.name === 'string' ? metadata.name : null) ??
-    null;
-  const username = typeof metadata.username === 'string' ? metadata.username : null;
-  const avatarUrl = typeof user.profile?.avatar_url === 'string' ? user.profile.avatar_url : null;
-
-  return {
-    display_name: displayName,
-    username,
-    avatar_url: avatarUrl,
-    preferred_language: language
-  };
-}
-
-function providerLabelFromUser(user: AuthUser | null, isGuest: boolean) {
+function providerLabelFromUser(user: User | null, isGuest: boolean) {
   if (!user) {
     return null;
   }
@@ -133,7 +58,7 @@ function providerLabelFromUser(user: AuthUser | null, isGuest: boolean) {
     return 'Guest';
   }
 
-  if (user.providers?.includes('google')) {
+  if (user.app_metadata?.provider === 'google') {
     return 'Google';
   }
 
@@ -151,10 +76,11 @@ function getGoogleRedirectUrl() {
 export function AuthProvider({ children }: PropsWithChildren) {
   const [isReady, setIsReady] = useState(false);
   const [isBusy, setIsBusy] = useState(false);
-  const [session, setSession] = useState<AuthSession | null>(null);
-  const [guestUser, setGuestUser] = useState<GuestUser | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [language, setLanguage] = useState<AppLanguage>('es');
   const [themePreference, setThemePreference] = useState<AppThemePreference>('default');
+  const [profile, setProfile] = useState<ProfileRow | null>(null);
+  const [settings, setSettings] = useState<UserSettingsRow | null>(null);
 
   async function applyLanguage(nextLanguage: AppLanguage) {
     await i18n.changeLanguage(nextLanguage);
@@ -167,75 +93,102 @@ export function AuthProvider({ children }: PropsWithChildren) {
     setThemePreference(nextTheme);
   }
 
+  async function refreshAccountState(nextUser: User | null, fallbackLanguage: AppLanguage, fallbackTheme: AppThemePreference) {
+    if (!nextUser) {
+      setProfile(null);
+      setSettings(null);
+      return;
+    }
+
+    const accountState = await ensureAccountRecords(nextUser, fallbackLanguage, fallbackTheme);
+    setProfile(accountState.profile);
+    setSettings(accountState.settings);
+
+    const resolvedLanguage = accountState.settings?.language ?? accountState.profile?.preferred_language ?? fallbackLanguage;
+    const resolvedTheme = accountState.settings?.theme_preference ?? fallbackTheme;
+
+    if (resolvedLanguage !== fallbackLanguage) {
+      await applyLanguage(resolvedLanguage);
+    }
+
+    if (resolvedTheme !== fallbackTheme) {
+      await applyTheme(resolvedTheme);
+    }
+  }
+
   useEffect(() => {
     let isMounted = true;
 
     async function bootstrap() {
-      const [storedLanguage, storedTheme, storedGuest] = await Promise.all([
-        loadStoredLanguage(),
-        loadStoredTheme(),
-        loadStoredGuestProfile()
-      ]);
+      const [storedLanguage, storedTheme] = await Promise.all([loadStoredLanguage(), loadStoredTheme()]);
 
       await i18n.changeLanguage(storedLanguage);
 
       if (!isMounted) {
-        return;
+        return () => {};
       }
 
       setLanguage(storedLanguage);
       setThemePreference(storedTheme);
 
-      if (isInsForgeConfigured) {
-        const { data } = await insforge.auth.getCurrentUser();
-
-        if (!isMounted) {
-          return;
-        }
-
-        if (data?.user) {
-          setSession({
-            user: data.user,
-            accessToken: ''
-          });
-          setGuestUser(null);
-          await clearStoredGuestProfile();
-        } else if (storedGuest) {
-          setGuestUser(buildGuestUser(storedGuest.displayName));
-        }
-      } else if (storedGuest) {
-        setGuestUser(buildGuestUser(storedGuest.displayName));
-      }
-
-      if (isMounted) {
+      if (!isSupabaseConfigured) {
+        setProfile(null);
+        setSettings(null);
         setIsReady(true);
+        return () => {};
       }
+
+      const {
+        data: { session: initialSession }
+      } = await supabase.auth.getSession();
+
+      if (!isMounted) {
+        return () => {};
+      }
+
+      setSession(initialSession);
+      await refreshAccountState(initialSession?.user ?? null, storedLanguage, storedTheme);
+      setIsReady(true);
+
+      const {
+        data: { subscription }
+      } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+        setSession(nextSession);
+        void refreshAccountState(nextSession?.user ?? null, storedLanguage, storedTheme);
+      });
+
+      return () => {
+        subscription.unsubscribe();
+      };
     }
 
-    void bootstrap();
+    let cleanup: (() => void) | undefined;
+
+    void bootstrap().then((nextCleanup) => {
+      cleanup = nextCleanup;
+    });
 
     return () => {
       isMounted = false;
+      cleanup?.();
     };
   }, []);
 
-  const value = useMemo<AuthContextValue>(() => {
-    const user = session?.user ?? guestUser ?? null;
-    const isGuest = Boolean(guestUser && !session);
-    const linkedProviderLabel = providerLabelFromUser(user, isGuest);
-    const profile = buildProfile(user, language);
-    const settings: UserSettingsRow | null = {
-      language,
-      linked_provider_label: linkedProviderLabel,
-      theme_preference: themePreference
-    };
-    const displayName = profile?.display_name ?? null;
-    const username = profile?.username ?? (isGuest ? (guestUser?.metadata?.username as string | undefined) ?? null : null);
+  const user = session?.user ?? null;
+  const isGuest = isGuestUser(user);
+  const linkedProviderLabel = providerLabelFromUser(user, isGuest);
+  const displayName =
+    profile?.display_name ??
+    (typeof user?.user_metadata?.display_name === 'string' ? user.user_metadata.display_name : null) ??
+    (typeof user?.user_metadata?.name === 'string' ? user.user_metadata.name : null) ??
+    null;
+  const username = profile?.username ?? (isGuest && displayName ? buildGuestUsername(displayName) : null);
 
-    return {
+  const value = useMemo<AuthContextValue>(
+    () => ({
       isReady,
       isBusy,
-      isInsForgeConfigured,
+      isSupabaseConfigured,
       session,
       user,
       isGuest,
@@ -245,40 +198,41 @@ export function AuthProvider({ children }: PropsWithChildren) {
       themePreference,
       displayName,
       username,
-      email: isGuest ? null : user?.email ?? null,
+      email: user?.email ?? null,
       linkedProviderLabel,
       signInWithEmail: async (email, password) => {
-        if (!isInsForgeConfigured) {
-          return { error: 'INSFORGE_NOT_CONFIGURED' };
+        if (!isSupabaseConfigured) {
+          return { error: 'SUPABASE_NOT_CONFIGURED' };
         }
 
         setIsBusy(true);
-        const { data, error } = await insforge.auth.signInWithPassword({ email, password });
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         setIsBusy(false);
 
-        if (error || !data) {
+        if (error || !data.session) {
           return { error: error?.message ?? 'AUTH_FAILED' };
         }
 
-        setSession({
-          user: data.user,
-          accessToken: data.accessToken
-        });
-        setGuestUser(null);
-        await clearStoredGuestProfile();
+        setSession(data.session);
+        await refreshAccountState(data.session.user, language, themePreference);
         return {};
       },
       signUpWithEmail: async (email, password, displayNameInput) => {
-        if (!isInsForgeConfigured) {
-          return { error: 'INSFORGE_NOT_CONFIGURED' };
+        if (!isSupabaseConfigured) {
+          return { error: 'SUPABASE_NOT_CONFIGURED' };
         }
 
         setIsBusy(true);
-        const { data, error } = await insforge.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
-          name: displayNameInput || undefined,
-          redirectTo: getGoogleRedirectUrl()
+          options: {
+            emailRedirectTo: getGoogleRedirectUrl(),
+            data: {
+              display_name: displayNameInput || undefined,
+              username: buildGuestUsername(displayNameInput || email.split('@')[0] || 'player')
+            }
+          }
         });
         setIsBusy(false);
 
@@ -286,60 +240,86 @@ export function AuthProvider({ children }: PropsWithChildren) {
           return { error: error.message };
         }
 
-        if (data?.requireEmailVerification || !data?.accessToken || !data.user) {
+        if (!data.session || !data.user) {
           return { message: 'SIGNUP_CONFIRMATION_REQUIRED' };
         }
 
-        setSession({
-          user: data.user,
-          accessToken: data.accessToken
-        });
-        setGuestUser(null);
-        await clearStoredGuestProfile();
+        setSession(data.session);
+        await refreshAccountState(data.session.user, language, themePreference);
         return {};
       },
       signInWithGoogle: async () => {
-        if (!isInsForgeConfigured) {
-          return { error: 'INSFORGE_NOT_CONFIGURED' };
+        if (!isSupabaseConfigured) {
+          return { error: 'SUPABASE_NOT_CONFIGURED' };
         }
 
         setIsBusy(true);
-        const { error } = await insforge.auth.signInWithOAuth({
+        const { error } = await supabase.auth.signInWithOAuth({
           provider: 'google',
-          redirectTo: getGoogleRedirectUrl()
+          options: {
+            redirectTo: getGoogleRedirectUrl()
+          }
         });
         setIsBusy(false);
 
         return error ? { error: error.message } : {};
       },
       continueAsGuest: async (displayNameInput) => {
-        const nextGuest = buildGuestUser(displayNameInput);
-        await storeGuestProfile({
-          displayName: nextGuest.profile?.name ?? 'Invitado',
-          username: (nextGuest.metadata?.username as string) ?? 'guest'
+        if (!isSupabaseConfigured) {
+          return { error: 'SUPABASE_NOT_CONFIGURED' };
+        }
+
+        const resolvedName = displayNameInput.trim() || 'Invitado';
+
+        setIsBusy(true);
+        const { data, error } = await supabase.auth.signInAnonymously({
+          options: {
+            data: {
+              display_name: resolvedName,
+              username: buildGuestUsername(resolvedName)
+            }
+          }
         });
-        setGuestUser(nextGuest);
-        setSession(null);
+        setIsBusy(false);
+
+        if (error || !data.session) {
+          return { error: error?.message ?? 'AUTH_FAILED' };
+        }
+
+        setSession(data.session);
+        await refreshAccountState(data.session.user, language, themePreference);
         return {};
       },
       signOut: async () => {
         setIsBusy(true);
 
-        if (isInsForgeConfigured) {
-          await insforge.auth.signOut();
+        if (isSupabaseConfigured) {
+          await supabase.auth.signOut();
         }
 
         setSession(null);
-        setGuestUser(null);
-        await clearStoredGuestProfile();
+        setProfile(null);
+        setSettings(null);
         setIsBusy(false);
       },
       changeLanguage: async (nextLanguage) => {
         await applyLanguage(nextLanguage);
+
+        if (user) {
+          await updateLanguagePreference(user.id, nextLanguage);
+          setSettings((current) => (current ? { ...current, language: nextLanguage } : current));
+        }
+
         return {};
       },
       changeTheme: async (nextTheme) => {
         await applyTheme(nextTheme);
+
+        if (user) {
+          await updateThemePreference(user.id, nextTheme);
+          setSettings((current) => (current ? { ...current, theme_preference: nextTheme } : current));
+        }
+
         return {};
       },
       linkAccount: async () => {
@@ -347,8 +327,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
           return { message: 'LINK_GUEST_ACCOUNT' };
         }
 
-        if (!isInsForgeConfigured) {
-          return { error: 'INSFORGE_NOT_CONFIGURED' };
+        if (!isSupabaseConfigured) {
+          return { error: 'SUPABASE_NOT_CONFIGURED' };
         }
 
         if (!isAccountLinkingEnabled) {
@@ -357,8 +337,22 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
         return { message: 'LINKING_REQUIRES_SETUP' };
       }
-    };
-  }, [guestUser, isBusy, isReady, language, session, themePreference]);
+    }),
+    [
+      displayName,
+      isBusy,
+      isGuest,
+      isReady,
+      language,
+      linkedProviderLabel,
+      profile,
+      session,
+      settings,
+      themePreference,
+      user,
+      username
+    ]
+  );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

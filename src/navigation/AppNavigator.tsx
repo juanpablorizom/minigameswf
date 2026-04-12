@@ -44,7 +44,7 @@ function mapRoomNotice(error?: string | null) {
   }
 
   if (error === 'BACKEND_UNREACHABLE') {
-    return 'The InsForge backend could not be reached right now.';
+    return 'The Supabase backend could not be reached right now.';
   }
 
   return error ?? null;
@@ -101,7 +101,7 @@ export function AppNavigator() {
   const {
     isReady,
     isBusy,
-    isInsForgeConfigured,
+    isSupabaseConfigured,
     session,
     isGuest,
     displayName,
@@ -234,7 +234,7 @@ export function AppNavigator() {
     }
 
     if (!session && !isGuest) {
-      if (!isInsForgeConfigured) {
+      if (!isSupabaseConfigured) {
         setAuthNotice('Room links need backend auth configured first.');
         setPendingJoinCode(null);
         return;
@@ -285,7 +285,7 @@ export function AppNavigator() {
     isBusy,
     isGuest,
     isReady,
-    isInsForgeConfigured,
+    isSupabaseConfigured,
     joinRoomByCode,
     openJoinRoom,
     pendingJoinCode,
@@ -302,11 +302,11 @@ export function AppNavigator() {
       <View style={styles.container}>
         <WelcomeScreen
           isBusy={isBusy || roomBusy || loadingShell}
-          isInsForgeConfigured={isInsForgeConfigured}
+          isSupabaseConfigured={isSupabaseConfigured}
           notice={loadingShell ? t('common.loading') : authNotice}
           onSignInWithGoogle={() => {
             void signInWithGoogle().then((result) => {
-              setAuthNotice(result.error === 'INSFORGE_NOT_CONFIGURED' ? t('auth.insforgeMissing') : result.error ?? null);
+              setAuthNotice(result.error === 'SUPABASE_NOT_CONFIGURED' ? t('auth.supabaseMissing') : result.error ?? null);
             });
           }}
           onSignIn={(nextEmail, password) => {
@@ -620,7 +620,7 @@ export function AppNavigator() {
             void linkAccount().then((result) => {
               setAccountNotice(
                 resolveAccountNotice(result.message) ??
-                  (result.error === 'INSFORGE_NOT_CONFIGURED' ? t('account.notConfigured') : result.error ?? null)
+                  (result.error === 'SUPABASE_NOT_CONFIGURED' ? t('account.notConfigured') : result.error ?? null)
               );
             });
           }}
@@ -642,7 +642,7 @@ export function AppNavigator() {
             void changeLanguage(nextLanguage).then((result) => {
               setSettingsNotice(
                 resolveAccountNotice(result.message) ??
-                  (result.error === 'INSFORGE_NOT_CONFIGURED' ? t('account.notConfigured') : result.error ?? null)
+                  (result.error === 'SUPABASE_NOT_CONFIGURED' ? t('account.notConfigured') : result.error ?? null)
               );
             });
           }}

@@ -1,5 +1,5 @@
-import { insforge } from '../lib/insforge';
-import type { Database, RoomMemberRole, RoomStatus } from '../lib/insforge.types';
+import { supabase } from '../lib/supabase';
+import type { Database, RoomMemberRole, RoomStatus } from '../lib/supabase.types';
 
 export type RoomRow = Database['public']['Tables']['rooms']['Row'];
 export type RoomMemberRow = Database['public']['Tables']['room_members']['Row'];
@@ -75,7 +75,7 @@ function buildRoomErrorMessage(message: string) {
 }
 
 export async function createPrivateRoom(selectedGameId: string | null) {
-  const { data, error } = await insforge.database.rpc('create_private_room', {
+  const { data, error } = await supabase.rpc('create_private_room', {
     p_selected_game_id: selectedGameId
   });
 
@@ -95,7 +95,7 @@ export async function createPrivateRoom(selectedGameId: string | null) {
 export async function joinPrivateRoomByCode(code: string) {
   const normalizedCode = code.trim().toUpperCase();
 
-  const { data, error } = await insforge.database.rpc('join_private_room', {
+  const { data, error } = await supabase.rpc('join_private_room', {
     p_code: normalizedCode
   });
 
@@ -113,7 +113,7 @@ export async function joinPrivateRoomByCode(code: string) {
 }
 
 export async function getActiveRoomIdForUser(userId: string) {
-  const { data, error } = await insforge.database
+  const { data, error } = await supabase
     .from('room_members')
     .select('room_id, joined_at, rooms!inner(id, status)')
     .eq('user_id', userId)
@@ -133,7 +133,7 @@ export async function getActiveRoomIdForUser(userId: string) {
 }
 
 async function getRoom(roomId: string) {
-  const { data, error } = await insforge.database
+  const { data, error } = await supabase
     .from('rooms')
     .select('*')
     .eq('id', roomId)
@@ -147,7 +147,7 @@ async function getRoom(roomId: string) {
 }
 
 async function getRoomMembers(roomId: string) {
-  const { data, error } = await insforge.database
+  const { data, error } = await supabase
     .from('room_members')
     .select('*')
     .eq('room_id', roomId)
@@ -165,7 +165,7 @@ async function getProfilesForUsers(userIds: string[]) {
     return [];
   }
 
-  const { data, error } = await insforge.database
+  const { data, error } = await supabase
     .from('profiles')
     .select('*')
     .in('id', userIds);
@@ -178,7 +178,7 @@ async function getProfilesForUsers(userIds: string[]) {
 }
 
 async function getRoomActivity(roomId: string) {
-  const { data, error } = await insforge.database
+  const { data, error } = await supabase
     .from('room_activity')
     .select('*')
     .eq('room_id', roomId)
@@ -262,7 +262,7 @@ export async function getRoomDetails(roomId: string, currentUserId: string): Pro
 }
 
 export async function updateRoomSelectedGame(roomId: string, hostUserId: string, selectedGameId: string | null) {
-  const { error } = await insforge.database
+  const { error } = await supabase
     .from('rooms')
     .update({ selected_game_id: selectedGameId })
     .eq('id', roomId)
@@ -274,7 +274,7 @@ export async function updateRoomSelectedGame(roomId: string, hostUserId: string,
 }
 
 export async function updateRoomStatus(roomId: string, hostUserId: string, status: RoomStatus) {
-  const { error } = await insforge.database
+  const { error } = await supabase
     .from('rooms')
     .update({ status })
     .eq('id', roomId)
@@ -286,7 +286,7 @@ export async function updateRoomStatus(roomId: string, hostUserId: string, statu
 }
 
 export async function updateRoomMemberPresence(roomId: string, userId: string, isActive: boolean) {
-  const { error } = await insforge.database
+  const { error } = await supabase
     .from('room_members')
     .update({ is_active: isActive })
     .eq('room_id', roomId)
@@ -298,14 +298,40 @@ export async function updateRoomMemberPresence(roomId: string, userId: string, i
 }
 
 export function subscribeToRoomRealtime({
-  roomId: _roomId,
-  onRoomChange: _onRoomChange,
-  onMembersChange: _onMembersChange,
+  roomId,
+  onRoomChange,
+  onMembersChange,
   onConnectionStateChange
 }: SubscribeToRoomRealtimeOptions) {
-  onConnectionStateChange?.('idle', null);
+  const channel = supabase
+    .channel(`room:${roomId}`)
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'rooms', filter: `id=eq.${roomId}` },
+      () => onRoomChange()
+    )
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'room_members', filter: `room_id=eq.${roomId}` },
+      () => onMembersChange()
+    )
+    .subscribe((status) => {
+      if (status === 'SUBSCRIBED') {
+        onConnectionStateChange?.('live', null);
+        return;
+      }
+
+      if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+        onConnectionStateChange?.('error', 'Realtime sync is temporarily unavailable.');
+        return;
+      }
+
+      onConnectionStateChange?.('connecting', 'Connecting live room updates...');
+    });
+
+  onConnectionStateChange?.('connecting', 'Connecting live room updates...');
 
   return () => {
-    return;
+    void supabase.removeChannel(channel);
   };
 }

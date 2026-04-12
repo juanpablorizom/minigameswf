@@ -43,7 +43,7 @@ export const resources = {
         passwordPlaceholder: 'Tu contraseña',
         signIn: 'Iniciar sesión',
         signUp: 'Crear cuenta',
-        insforgeMissing: 'Falta configurar la conexión de InsForge para activar el acceso real.',
+        supabaseMissing: 'Falta configurar la conexión de Supabase para activar el acceso real.',
         signUpSuccess: 'Cuenta creada. Si tu proyecto exige confirmación por correo, revisa tu inbox antes de entrar.'
       },
       account: {
@@ -75,7 +75,7 @@ export const resources = {
         linkingRequiresSetup: 'Hace falta terminar la configuración del proveedor antes de completar la vinculación.',
         linkingGuestEntry: 'La entrada para vincular cuenta ya está prevista, pero todavía necesita el proveedor real.',
         billingNotReady: 'La gestión real de pagos y plan queda preparada, pero todavía no está conectada.',
-        notConfigured: 'InsForge todavía no está configurado.',
+        notConfigured: 'Supabase todavía no está configurado.',
         savingLanguage: 'Guardando idioma...'
       },
       settings: {
@@ -143,7 +143,7 @@ export const resources = {
         passwordPlaceholder: 'Your password',
         signIn: 'Sign in',
         signUp: 'Create account',
-        insforgeMissing: 'The InsForge connection is missing. Configure it to enable real sign-in.',
+        supabaseMissing: 'The Supabase connection is missing. Configure it to enable real sign-in.',
         signUpSuccess: 'Account created. If your project requires email confirmation, check your inbox before signing in.'
       },
       account: {
@@ -175,7 +175,7 @@ export const resources = {
         linkingRequiresSetup: 'You still need to finish the provider setup before account linking can complete.',
         linkingGuestEntry: 'The account-linking entry point is ready, but it still needs the real provider setup.',
         billingNotReady: 'Real billing and plan management are scaffolded, but not connected yet.',
-        notConfigured: 'InsForge is not configured yet.',
+        notConfigured: 'Supabase is not configured yet.',
         savingLanguage: 'Saving language...'
       },
       settings: {
