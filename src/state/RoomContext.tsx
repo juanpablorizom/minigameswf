@@ -1,4 +1,3 @@
-import { AppState, type AppStateStatus } from 'react-native';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type PropsWithChildren } from 'react';
 
 import {
@@ -95,8 +94,6 @@ export function RoomProvider({ children }: PropsWithChildren) {
   const [activeRoom, setActiveRoom] = useState<RoomDetails | null>(null);
   const [syncState, setSyncState] = useState<RoomRealtimeState>('idle');
   const [syncNotice, setSyncNotice] = useState<string | null>(null);
-  const [roomScreenActive, setRoomScreenActive] = useState(false);
-  const appStateRef = useRef<AppStateStatus>(AppState.currentState);
   const lastPresenceRef = useRef<boolean | null>(null);
 
   const refreshResolvedActiveRoom = useCallback(async () => {
@@ -208,45 +205,22 @@ export function RoomProvider({ children }: PropsWithChildren) {
       return;
     }
 
-    let isMounted = true;
     const roomId = activeRoom.room.id;
     const userId = user.id;
 
-    async function pushPresence(nextPresence: boolean) {
-      if (!isMounted || lastPresenceRef.current === nextPresence) {
-        return;
-      }
-
-      lastPresenceRef.current = nextPresence;
-
-      try {
-        await updateRoomMemberPresence(roomId, userId, nextPresence);
-      } catch {
-        // Keep realtime presence non-blocking.
-      }
+    if (lastPresenceRef.current == true) {
+      return;
     }
 
-    function resolvePresence(nextAppState: AppStateStatus) {
-      const nextPresence = nextAppState === 'active' && roomScreenActive;
-      void pushPresence(nextPresence);
-    }
-
-    resolvePresence(appStateRef.current);
-
-    const subscription = AppState.addEventListener('change', (nextAppState) => {
-      appStateRef.current = nextAppState;
-      resolvePresence(nextAppState);
+    lastPresenceRef.current = true;
+    void updateRoomMemberPresence(roomId, userId, true).catch(() => {
+      // Presence sync is best-effort only.
     });
 
     return () => {
-      isMounted = false;
-      subscription.remove();
-      void updateRoomMemberPresence(roomId, userId, false).catch(() => {
-        // Cleanup best effort only.
-      });
-      lastPresenceRef.current = null;
+      // Keep membership active across refreshes and screen changes.
     };
-  }, [activeRoom?.room.id, roomScreenActive, user]);
+  }, [activeRoom?.room.id, user]);
 
   const value = useMemo<RoomContextValue>(
     () => ({
@@ -439,7 +413,9 @@ export function RoomProvider({ children }: PropsWithChildren) {
           setIsBusy(false);
         }
       },
-      setRoomScreenActive
+      setRoomScreenActive: () => {
+        // Presence no longer depends on screen focus.
+      }
     }),
     [activeRoom, isBusy, isReady, refreshResolvedActiveRoom, syncNotice, syncState, user]
   );

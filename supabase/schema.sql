@@ -399,11 +399,10 @@ begin
 
   total_impostors := least(greatest(coalesce(p_impostor_count, 1), 1), greatest(member_count - 1, 1));
 
-  select coalesce(room_rounds.round_number, 0)
+  select coalesce(max(room_rounds.round_number), 0)
   into previous_round_number
   from public.room_rounds
-  where room_id = p_room_id
-  limit 1;
+  where room_id = p_room_id;
 
   theme_words := case p_theme_category
     when 'animals' then array['Leon', 'Tigre', 'Elefante', 'Jirafa', 'Delfin', 'Lobo', 'Pinguino', 'Cebra', 'Koala', 'Zorro', 'Rinoceronte', 'Hipopotamo']
