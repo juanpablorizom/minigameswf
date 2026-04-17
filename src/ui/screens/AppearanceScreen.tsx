@@ -5,7 +5,9 @@ import type { AppThemePreference } from '../../lib/storage';
 import { AppScreen } from '../components/AppScreen';
 import { Badge } from '../components/Badge';
 import { SurfaceCard } from '../components/SurfaceCard';
-import { radius, spacing, themeOptions, typography, useTheme } from '../theme';
+import { layout, radius, spacing } from '../system/layout';
+import { textStyles, typography } from '../system/typography';
+import { themeOptions, useTheme } from '../theme';
 
 type AppearanceScreenProps = {
   embedded?: boolean;
@@ -36,7 +38,12 @@ export function AppearanceScreen({
           <Pressable
             key={themeOption.id}
             onPress={() => onChangeTheme(themeOption.id)}
-            style={[styles.themeCard, isActive && styles.themeCardActive]}
+            style={({ pressed, hovered }) => [
+              styles.themeCard,
+              isActive && styles.themeCardActive,
+              hovered && styles.themeCardHover,
+              pressed && styles.themeCardPressed
+            ]}
           >
             <View style={styles.themeHeader}>
               <View style={styles.themeMeta}>
@@ -63,28 +70,33 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
   return StyleSheet.create({
     introTitle: {
       color: theme.colors.textPrimary,
-      fontSize: typography.section,
-      fontWeight: '800'
+      ...textStyles.section
     },
     introCopy: {
       color: theme.colors.textSecondary,
-      fontSize: typography.body,
-      lineHeight: 24
+      ...textStyles.body
     },
     themeCard: {
       borderRadius: radius.md,
       borderWidth: 1,
       borderColor: theme.colors.border,
       backgroundColor: theme.colors.backgroundElevated,
-      padding: spacing.lg,
-      gap: spacing.md
+      padding: layout.cardPadding,
+      gap: layout.groupGap
     },
     themeCardActive: {
       borderColor: theme.colors.primary,
       backgroundColor: theme.colors.surfaceMuted
     },
+    themeCardHover: {
+      borderColor: theme.colors.borderStrong,
+      backgroundColor: theme.colors.surface
+    },
+    themeCardPressed: {
+      transform: [{ scale: 0.994 }]
+    },
     themeHeader: {
-      gap: spacing.md
+      gap: layout.groupGap
     },
     themeMeta: {
       gap: spacing.xs
@@ -97,13 +109,11 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
     },
     themeTitle: {
       color: theme.colors.textPrimary,
-      fontSize: typography.body,
-      fontWeight: '800'
+      ...textStyles.bodyStrong
     },
     themeDescription: {
       color: theme.colors.textSecondary,
-      fontSize: typography.body,
-      lineHeight: 24,
+      ...textStyles.body,
       maxWidth: 720
     },
     swatchRow: {

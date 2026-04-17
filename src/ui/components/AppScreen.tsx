@@ -1,7 +1,9 @@
 import type { PropsWithChildren, ReactNode } from 'react';
 import { SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { spacing, typography, useTheme } from '../theme';
+import { layout } from '../system/layout';
+import { textStyles, typography } from '../system/typography';
+import { useTheme } from '../theme';
 
 type AppScreenProps = PropsWithChildren<{
   title?: string;
@@ -37,23 +39,20 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
     },
     content: {
       width: '100%',
-      maxWidth: 1040,
+      maxWidth: layout.maxWidth,
       alignSelf: 'center',
-      paddingHorizontal: spacing.lg,
-      paddingTop: spacing.lg,
-      paddingBottom: spacing.xxl,
-      gap: spacing.lg
+      paddingHorizontal: layout.screenPaddingX,
+      paddingTop: layout.screenPaddingTop,
+      paddingBottom: layout.screenPaddingBottom,
+      gap: layout.sectionGap
     },
     header: {
-      gap: spacing.md,
-      paddingBottom: spacing.sm
+      gap: layout.groupGap,
+      paddingBottom: layout.controlGap
     },
     title: {
       color: theme.colors.textPrimary,
-      fontSize: typography.title,
-      fontWeight: '800',
-      letterSpacing: -1.2,
-      lineHeight: 40
+      ...textStyles.title
     },
     subtitle: {
       color: theme.colors.textSecondary,
@@ -62,7 +61,7 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
       maxWidth: 760
     },
     footer: {
-      marginTop: spacing.sm
+      marginTop: layout.controlGap
     }
   });
 }

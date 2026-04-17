@@ -2,6 +2,8 @@ import { createContext, useContext, useMemo, type PropsWithChildren } from 'reac
 
 import type { AppThemePreference } from '../lib/storage';
 import { useAuth } from '../state/AuthContext';
+import { radius, spacing } from './system/layout';
+import { typography } from './system/typography';
 
 export type ThemeColors = {
   primary: string;
@@ -287,31 +289,6 @@ export const themeOptions: ThemeOption[] = [
   { id: 'legacy-dark', emphasis: 'accent', preview: ['#171311', '#2A221E', '#D6B989'] }
 ];
 
-export const spacing = {
-  xs: 8,
-  sm: 12,
-  md: 16,
-  lg: 20,
-  xl: 28,
-  xxl: 40
-} as const;
-
-export const radius = {
-  sm: 14,
-  md: 20,
-  lg: 28,
-  pill: 999
-} as const;
-
-export const typography = {
-  micro: 11,
-  caption: 13,
-  body: 16,
-  section: 20,
-  title: 34,
-  hero: 52
-} as const;
-
 export const shadows = {
   lightCard: {
     shadowColor: '#0E0E0E',
@@ -334,3 +311,5 @@ export function ThemeProvider({ children }: PropsWithChildren) {
 export function useTheme() {
   return useContext(ThemeContext);
 }
+
+export { spacing, radius, typography };

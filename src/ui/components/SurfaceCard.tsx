@@ -1,7 +1,8 @@
 import type { PropsWithChildren } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { radius, shadows, spacing, useTheme } from '../theme';
+import { layout, radius } from '../system/layout';
+import { useTheme } from '../theme';
 
 export function SurfaceCard({ children }: PropsWithChildren) {
   const theme = useTheme();
@@ -13,13 +14,12 @@ export function SurfaceCard({ children }: PropsWithChildren) {
 function createStyles(theme: ReturnType<typeof useTheme>) {
   return StyleSheet.create({
     card: {
-      backgroundColor: theme.colors.surface,
+      backgroundColor: theme.mode === 'dark' ? theme.colors.surfaceMuted : theme.colors.surface,
       borderRadius: radius.lg,
       borderWidth: 1,
       borderColor: theme.colors.border,
-      padding: spacing.lg,
-      gap: spacing.md,
-      ...(theme.mode === 'light' ? shadows.lightCard : null)
+      padding: layout.cardPadding,
+      gap: layout.groupGap
     }
   });
 }

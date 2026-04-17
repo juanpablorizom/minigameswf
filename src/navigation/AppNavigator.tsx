@@ -107,52 +107,25 @@ function buildLobbyScenario(
 
     return {
       ...baseScenario,
-      greeting: isGuest ? translate('lobby.guestGreeting') : translate('lobby.noRoomGreeting'),
       statusLabel: isGuest ? translate('lobby.guestStatus') : translate('lobby.noRoomStatus'),
       title: isGuest ? translate('lobby.guestTitle') : translate('lobby.noRoomTitle'),
       subtitle: isGuest ? translate('lobby.guestSubtitle') : translate('lobby.noRoomSubtitle'),
       primaryAction: { ...baseScenario.primaryAction, label: translate('lobby.createRoom') },
       secondaryAction: baseScenario.secondaryAction
         ? { ...baseScenario.secondaryAction, label: translate('lobby.joinByCode') }
-        : undefined,
-      socialItems: [],
-      recommendationItems: []
+        : undefined
     };
   }
 
-  const activeMembers = activeRoom.members.filter((member) => member.isActive);
   const selectedGame = activeRoom.room.selected_game_id;
-  const roomStatusLabel =
-    activeRoom.room.status === 'active'
-      ? translate('room.statusActive')
-      : activeRoom.room.status === 'finished'
-        ? translate('room.statusFinished')
-        : translate('room.statusWaiting');
-  const activityItems =
-    activeRoom.activity.map((item) => ({
-      id: item.id,
-      title: item.title,
-      subtitle: item.subtitle
-    })) || [];
 
   return {
     key: 'activeRoom',
-    greeting: activeRoom.isHost ? translate('lobby.activeGreetingHost') : translate('lobby.activeGreetingMember'),
     statusLabel: activeRoom.room.status === 'active' ? translate('lobby.activeStatusActive') : translate('lobby.activeStatusWaiting'),
     title: translate('lobby.activeTitleReady', { code: activeRoom.room.code }),
     subtitle: activeRoom.isHost ? translate('lobby.activeSubtitleHost') : translate('lobby.activeSubtitleMember'),
     primaryAction: { id: 'continueRoom', label: translate('lobby.continueRoom') },
     secondaryAction: activeRoom.isHost ? { id: 'inviteFriends', label: translate('lobby.shareCode'), variant: 'secondary' } : undefined,
-    roomSummary: {
-      title: translate('lobby.privateParty', { code: activeRoom.room.code }),
-      subtitle: translate('lobby.activeMembersStatus', { count: activeMembers.length, status: roomStatusLabel }),
-      meta: activeRoom.isHost ? translate('lobby.hostingMeta') : translate('lobby.memberMeta'),
-      code: activeRoom.room.code,
-      ctaLabel: translate('lobby.openRoom'),
-      ctaAction: 'continueRoom'
-    },
-    socialItems: activityItems,
-    recommendationItems: [],
     modeIds: selectedGame ? [selectedGame] : ['impostor']
   };
 }

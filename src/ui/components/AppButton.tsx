@@ -1,12 +1,15 @@
 import type { ReactNode } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { radius, spacing, typography, useTheme } from '../theme';
+import { controls, radius, spacing } from '../system/layout';
+import { getButtonPalette, type ButtonState, type ButtonVariant } from '../system/theme';
+import { textStyles } from '../system/typography';
+import { useTheme } from '../theme';
 
 type AppButtonProps = {
   label: string;
   onPress: () => void;
-  variant?: 'primary' | 'secondary' | 'ghost';
+  variant?: ButtonVariant;
   leftSlot?: ReactNode;
   disabled?: boolean;
   loading?: boolean;
@@ -21,11 +24,33 @@ export function AppButton({ label, onPress, variant = 'primary', leftSlot, disab
     <Pressable
       onPress={onPress}
       disabled={isDisabled}
-      style={({ pressed }) => [styles.base, styles[variant], isDisabled && styles.disabled, pressed && !isDisabled && styles.pressed]}
+      style={({ pressed, hovered }) => {
+        const state: ButtonState = isDisabled ? 'disabled' : pressed ? 'pressed' : hovered ? 'hover' : 'default';
+        const palette = getButtonPalette(theme, variant, state);
+
+        return [
+          styles.base,
+          {
+            backgroundColor: palette.backgroundColor,
+            borderColor: palette.borderColor
+          },
+          isDisabled && styles.disabled,
+          pressed && !isDisabled && styles.pressed
+        ];
+      }}
     >
-      {loading ? <ActivityIndicator color={styles[`${variant}Label`].color} /> : null}
-      {leftSlot ? <View style={styles.leftSlot}>{leftSlot}</View> : null}
-      <Text style={[styles.label, styles[`${variant}Label`]]}>{label}</Text>
+      {({ pressed, hovered }) => {
+        const state: ButtonState = isDisabled ? 'disabled' : pressed ? 'pressed' : hovered ? 'hover' : 'default';
+        const palette = getButtonPalette(theme, variant, state);
+
+        return (
+          <>
+            {loading ? <ActivityIndicator color={palette.textColor} /> : null}
+            {leftSlot ? <View style={styles.leftSlot}>{leftSlot}</View> : null}
+            <Text style={[styles.label, { color: palette.textColor }]}>{label}</Text>
+          </>
+        );
+      }}
     </Pressable>
   );
 }
@@ -33,9 +58,10 @@ export function AppButton({ label, onPress, variant = 'primary', leftSlot, disab
 function createStyles(theme: ReturnType<typeof useTheme>) {
   return StyleSheet.create({
     base: {
-      minHeight: 56,
+      minHeight: controls.minHeight,
       borderRadius: radius.md,
-      paddingHorizontal: spacing.lg,
+      paddingHorizontal: controls.buttonPaddingX,
+      paddingVertical: controls.buttonPaddingY,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
@@ -50,33 +76,12 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
     disabled: {
       opacity: 0.42
     },
-    primary: {
-      backgroundColor: theme.colors.primary,
-      borderColor: theme.colors.primary
-    },
-    secondary: {
-      backgroundColor: theme.colors.surfaceMuted,
-      borderColor: theme.colors.border
-    },
-    ghost: {
-      backgroundColor: 'transparent',
-      borderColor: theme.colors.border
-    },
     label: {
-      fontSize: typography.body,
-      fontWeight: '800',
-      letterSpacing: -0.2
-    },
-    primaryLabel: {
-      color: theme.colors.primaryText
-    },
-    secondaryLabel: {
-      color: theme.colors.textPrimary
-    },
-    ghostLabel: {
-      color: theme.colors.textSecondary
+      ...textStyles.bodyStrong
     },
     leftSlot: {
+      width: controls.iconSize,
+      height: controls.iconSize,
       alignItems: 'center',
       justifyContent: 'center'
     }

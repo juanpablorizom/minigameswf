@@ -1,12 +1,15 @@
 import { useEffect, useState } from 'react';
-import { StyleSheet, Text, TextInput, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { AppButton } from '../components/AppButton';
 import { AppScreen } from '../components/AppScreen';
+import { AppTextField } from '../components/AppTextField';
 import { Badge } from '../components/Badge';
 import { SurfaceCard } from '../components/SurfaceCard';
-import { radius, spacing, typography, useTheme } from '../theme';
+import { layout, spacing } from '../system/layout';
+import { textStyles, typography } from '../system/typography';
+import { useTheme } from '../theme';
 
 type AccountScreenProps = {
   embedded?: boolean;
@@ -67,13 +70,12 @@ export function AccountScreen({
         <Text style={styles.sectionTitle}>{t('account.accountData')}</Text>
         <Text style={styles.helper}>{t('account.accountDataHint')}</Text>
 
-        <Text style={styles.fieldLabel}>{t('account.displayName')}</Text>
-        <TextInput
+        <AppTextField
+          label={t('account.displayName')}
           value={nextDisplayName}
           onChangeText={setNextDisplayName}
           placeholder={t('account.displayNamePlaceholder')}
-          placeholderTextColor={theme.colors.textMuted}
-          style={styles.input}
+          helperText={null}
         />
 
         <View style={styles.detailRow}>
@@ -96,13 +98,11 @@ export function AccountScreen({
           <Text style={styles.sectionTitle}>{t('account.linkAccountSection')}</Text>
           <Text style={styles.helper}>{t('account.linkAccountHint')}</Text>
 
-          <Text style={styles.fieldLabel}>{t('account.email')}</Text>
-          <TextInput
+          <AppTextField
+            label={t('account.email')}
             value={linkEmail}
             onChangeText={setLinkEmail}
             placeholder={t('auth.emailPlaceholder')}
-            placeholderTextColor={theme.colors.textMuted}
-            style={styles.input}
             autoCapitalize="none"
             keyboardType="email-address"
             autoComplete="email"
@@ -121,7 +121,7 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
   return StyleSheet.create({
     profileHeader: {
       flexDirection: 'row',
-      gap: spacing.md,
+      gap: layout.groupGap,
       alignItems: 'center'
     },
     avatar: {
@@ -151,15 +151,11 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
     },
     sectionTitle: {
       color: theme.colors.textPrimary,
-      fontSize: typography.section,
-      fontWeight: '800',
-      letterSpacing: -0.4
+      ...textStyles.section
     },
     profileValue: {
       color: theme.colors.textPrimary,
-      fontSize: typography.section,
-      lineHeight: 26,
-      fontWeight: '800'
+      ...textStyles.section
     },
     profileSubvalue: {
       color: theme.colors.textSecondary,
@@ -171,21 +167,6 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
       fontSize: typography.body,
       lineHeight: 24,
       maxWidth: 760
-    },
-    fieldLabel: {
-      color: theme.colors.textPrimary,
-      fontSize: typography.body,
-      fontWeight: '700'
-    },
-    input: {
-      minHeight: 58,
-      borderRadius: radius.md,
-      borderWidth: 1,
-      borderColor: theme.colors.border,
-      backgroundColor: theme.colors.background,
-      paddingHorizontal: spacing.lg,
-      color: theme.colors.textPrimary,
-      fontSize: typography.body
     },
     detailRow: {
       gap: spacing.xs

@@ -6,7 +6,9 @@ import { AppButton } from '../components/AppButton';
 import { AppScreen } from '../components/AppScreen';
 import { Badge } from '../components/Badge';
 import { SurfaceCard } from '../components/SurfaceCard';
-import { radius, spacing, typography, useTheme } from '../theme';
+import { controls, layout, radius, spacing } from '../system/layout';
+import { textStyles, typography } from '../system/typography';
+import { useTheme } from '../theme';
 
 type SettingsScreenProps = {
   embedded?: boolean;
@@ -89,7 +91,15 @@ function OptionChip({ label, active, onPress }: OptionChipProps) {
   const styles = createStyles(theme);
 
   return (
-    <Pressable onPress={onPress} style={[styles.optionChip, active && styles.optionChipActive]}>
+    <Pressable
+      onPress={onPress}
+      style={({ pressed, hovered }) => [
+        styles.optionChip,
+        active && styles.optionChipActive,
+        hovered && styles.optionChipHover,
+        pressed && styles.optionChipPressed
+      ]}
+    >
       <Text style={[styles.optionLabel, active && styles.optionLabelActive]}>{label}</Text>
     </Pressable>
   );
@@ -99,21 +109,19 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
   return StyleSheet.create({
     sectionTitle: {
       color: theme.colors.textPrimary,
-      fontSize: typography.section,
-      fontWeight: '700'
+      ...textStyles.section
     },
     helper: {
       color: theme.colors.textSecondary,
-      fontSize: typography.body,
-      lineHeight: 24
+      ...textStyles.body
     },
     optionRow: {
       flexDirection: 'row',
-      gap: spacing.sm
+      gap: layout.controlGap
     },
     optionChip: {
       flex: 1,
-      minHeight: 52,
+      minHeight: controls.compactMinHeight,
       borderRadius: radius.pill,
       backgroundColor: theme.colors.backgroundElevated,
       borderWidth: 1,
@@ -126,10 +134,16 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
       backgroundColor: theme.colors.surfaceMuted,
       borderColor: theme.colors.primary
     },
+    optionChipHover: {
+      borderColor: theme.colors.borderStrong,
+      backgroundColor: theme.colors.surface
+    },
+    optionChipPressed: {
+      transform: [{ scale: 0.992 }]
+    },
     optionLabel: {
       color: theme.colors.textSecondary,
-      fontSize: typography.body,
-      fontWeight: '700'
+      ...textStyles.bodyStrong
     },
     optionLabelActive: {
       color: theme.colors.textPrimary
@@ -138,7 +152,7 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'flex-start',
-      gap: spacing.md
+      gap: layout.groupGap
     },
     rowMeta: {
       flex: 1,
@@ -148,7 +162,7 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
       color: theme.colors.highlight,
       fontSize: typography.caption,
       lineHeight: 18,
-      paddingHorizontal: spacing.lg
+      paddingHorizontal: layout.cardPadding
     }
   });
 }

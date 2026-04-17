@@ -31,12 +31,6 @@ export type MiniGame = {
 export type ImpostorMode = 'friends' | 'multiplayer';
 export type ImpostorCategoryId = 'animals' | 'countries' | 'objects';
 
-export type ActivityItem = {
-  id: string;
-  title: string;
-  subtitle: string;
-};
-
 export type LobbyScenarioKey = 'guest' | 'noRoom' | 'activeRoom' | 'invited' | 'returning';
 
 export type LobbyActionId =
@@ -54,44 +48,13 @@ export type LobbyAction = {
   variant?: 'primary' | 'secondary' | 'ghost';
 };
 
-export type LobbyRoomSummary = {
-  title: string;
-  subtitle: string;
-  meta: string;
-  code: string;
-  ctaLabel: string;
-  ctaAction: LobbyActionId;
-};
-
-export type LobbyInvite = {
-  title: string;
-  subtitle: string;
-  fromLabel: string;
-  code: string;
-  ctaLabel: string;
-  ctaAction: LobbyActionId;
-};
-
-export type LobbyRecentActivity = {
-  title: string;
-  subtitle: string;
-  ctaLabel: string;
-  ctaAction: LobbyActionId;
-};
-
 export type LobbyScenario = {
   key: LobbyScenarioKey;
-  greeting: string;
   statusLabel: string;
   title: string;
   subtitle: string;
   primaryAction: LobbyAction;
   secondaryAction?: LobbyAction;
-  roomSummary?: LobbyRoomSummary;
-  invite?: LobbyInvite;
-  recentActivity?: LobbyRecentActivity;
-  socialItems: ActivityItem[];
-  recommendationItems: ActivityItem[];
   modeIds: string[];
 };
 

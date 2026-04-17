@@ -1,11 +1,14 @@
 import { useState } from 'react';
-import { StyleSheet, Text, TextInput, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { AppButton } from '../components/AppButton';
 import { AppScreen } from '../components/AppScreen';
+import { AppTextField } from '../components/AppTextField';
 import { SurfaceCard } from '../components/SurfaceCard';
-import { radius, spacing, typography, useTheme } from '../theme';
+import { layout, spacing } from '../system/layout';
+import { textStyles, typography } from '../system/typography';
+import { useTheme } from '../theme';
 
 type JoinRoomScreenProps = {
   isBusy: boolean;
@@ -24,17 +27,17 @@ export function JoinRoomScreen({ isBusy, notice, onJoin, onOpenScanner }: JoinRo
     <AppScreen title={t('joinRoom.title')} subtitle={t('joinRoom.subtitle')}>
       <SurfaceCard>
         <Text style={styles.sectionTitle}>{t('joinRoom.roomCode')}</Text>
-        <TextInput
+        <AppTextField
           value={code}
           onChangeText={(next) => setCode(next.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 5))}
+          label={undefined}
           placeholder="AX4N2"
-          placeholderTextColor={theme.colors.textMuted}
           style={styles.input}
           autoCapitalize="characters"
           autoCorrect={false}
           maxLength={5}
+          helperText={t('joinRoom.helper')}
         />
-        <Text style={styles.helper}>{t('joinRoom.helper')}</Text>
         <View style={styles.actionRow}>
           <AppButton label={t('joinRoom.joinParty')} onPress={() => onJoin(code)} disabled={isBusy || code.trim().length < 5} />
           <AppButton label={t('joinRoom.scanInstead')} onPress={onOpenScanner} variant="secondary" disabled={isBusy} />
@@ -49,29 +52,16 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
   return StyleSheet.create({
   sectionTitle: {
     color: theme.colors.textPrimary,
-    fontSize: typography.section,
-    fontWeight: '700'
+    ...textStyles.section
   },
   input: {
-    minHeight: 64,
-    borderRadius: radius.md,
-    backgroundColor: theme.colors.backgroundElevated,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    color: theme.colors.textPrimary,
-    paddingHorizontal: spacing.md,
     fontSize: 28,
     fontWeight: '800',
     letterSpacing: 6,
     textAlign: 'center'
   },
-  helper: {
-    color: theme.colors.textSecondary,
-    fontSize: typography.body,
-    lineHeight: 22
-  },
   actionRow: {
-    gap: spacing.sm
+    gap: layout.controlGap
   },
   notice: {
     color: theme.colors.highlight,
