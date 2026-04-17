@@ -49,28 +49,28 @@ const neutralLightTheme: AppTheme = {
   colors: {
     primary: '#171717',
     primaryHover: '#2b2b2b',
-    primaryText: '#F7F6F2',
+    primaryText: '#F4F0E8',
     secondary: '#727272',
-    background: '#F5F2EB',
-    backgroundElevated: '#EFEBE4',
-    surface: '#FFFEFC',
-    surfaceMuted: '#F4F1EA',
-    border: '#DED8CF',
-    borderStrong: '#C7C0B4',
+    background: '#ECE7DD',
+    backgroundElevated: '#E4DDD2',
+    surface: '#F6F2EA',
+    surfaceMuted: '#ECE6DB',
+    border: '#D1C8BB',
+    borderStrong: '#BBB1A3',
     textPrimary: '#171717',
-    textSecondary: '#5F5A52',
-    textMuted: '#8D877C',
+    textSecondary: '#5D584F',
+    textMuted: '#847D72',
     error: '#B24B44',
     warning: '#A97120',
     highlight: '#111111',
     success: '#346A50',
     successMuted: '#E6F1EA',
     successText: '#204633',
-    badgeAccentBackground: '#EDE8DE',
-    badgeNeutralBackground: '#F2EFE7',
+    badgeAccentBackground: '#E8E0D4',
+    badgeNeutralBackground: '#EEE9E0',
     overlay: 'rgba(14, 14, 14, 0.08)',
-    glowTop: '#ECE7DD',
-    glowBottom: '#F3F1EB'
+    glowTop: 'transparent',
+    glowBottom: 'transparent'
   }
 };
 
@@ -101,8 +101,8 @@ const neutralDarkTheme: AppTheme = {
     badgeAccentBackground: '#252822',
     badgeNeutralBackground: '#1E211F',
     overlay: 'rgba(4, 5, 4, 0.64)',
-    glowTop: '#151714',
-    glowBottom: '#111310'
+    glowTop: 'transparent',
+    glowBottom: 'transparent'
   }
 };
 
@@ -133,8 +133,8 @@ const legacyDarkTheme: AppTheme = {
     badgeAccentBackground: '#3D3125',
     badgeNeutralBackground: '#211B18',
     overlay: 'rgba(8, 6, 5, 0.52)',
-    glowTop: '#2A241F',
-    glowBottom: '#1F2420'
+    glowTop: 'transparent',
+    glowBottom: 'transparent'
   }
 };
 
@@ -145,7 +145,7 @@ export const appThemes: Record<AppThemePreference, AppTheme> = {
 };
 
 export const themeOptions: ThemeOption[] = [
-  { id: 'neutral-light', preview: ['#F5F2EB', '#FFFFFF', '#171717'] },
+  { id: 'neutral-light', preview: ['#ECE7DD', '#F6F2EA', '#171717'] },
   { id: 'neutral-dark', preview: ['#0E0F0E', '#181B19', '#F2EFE7'] },
   { id: 'legacy-dark', preview: ['#171311', '#2A221E', '#D6B989'] }
 ];

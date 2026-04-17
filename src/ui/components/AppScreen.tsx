@@ -15,8 +15,6 @@ export function AppScreen({ children, title, subtitle, footer }: AppScreenProps)
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <View pointerEvents="none" style={styles.backgroundGlowTop} />
-      <View pointerEvents="none" style={styles.backgroundGlowBottom} />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {title ? (
           <View style={styles.header}>
@@ -39,12 +37,12 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
     },
     content: {
       width: '100%',
-      maxWidth: 1120,
+      maxWidth: 1040,
       alignSelf: 'center',
       paddingHorizontal: spacing.lg,
-      paddingTop: spacing.xl,
+      paddingTop: spacing.lg,
       paddingBottom: spacing.xxl,
-      gap: spacing.xl
+      gap: spacing.lg
     },
     header: {
       gap: spacing.md,
@@ -65,24 +63,6 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
     },
     footer: {
       marginTop: spacing.sm
-    },
-    backgroundGlowTop: {
-      position: 'absolute',
-      top: -60,
-      left: -40,
-      width: 320,
-      height: 320,
-      borderRadius: 320,
-      backgroundColor: theme.colors.glowTop
-    },
-    backgroundGlowBottom: {
-      position: 'absolute',
-      right: -60,
-      bottom: 60,
-      width: 260,
-      height: 260,
-      borderRadius: 260,
-      backgroundColor: theme.colors.glowBottom
     }
   });
 }

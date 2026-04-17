@@ -70,10 +70,10 @@ export function normalizeThemePreference(value: string | null | undefined): AppT
   }
 
   if (value === 'default' || value === 'geo-style') {
-    return 'legacy-dark';
+    return 'neutral-dark';
   }
 
-  return 'neutral-light';
+  return 'neutral-dark';
 }
 
 export async function loadStoredGuestProfile() {

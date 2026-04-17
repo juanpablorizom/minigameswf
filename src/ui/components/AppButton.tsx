@@ -33,7 +33,7 @@ export function AppButton({ label, onPress, variant = 'primary', leftSlot, disab
 function createStyles(theme: ReturnType<typeof useTheme>) {
   return StyleSheet.create({
     base: {
-      minHeight: 58,
+      minHeight: 56,
       borderRadius: radius.md,
       paddingHorizontal: spacing.lg,
       flexDirection: 'row',
@@ -55,12 +55,12 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
       borderColor: theme.colors.primary
     },
     secondary: {
-      backgroundColor: theme.colors.surface,
+      backgroundColor: theme.colors.surfaceMuted,
       borderColor: theme.colors.border
     },
     ghost: {
-      backgroundColor: theme.colors.backgroundElevated,
-      borderColor: theme.colors.borderStrong
+      backgroundColor: 'transparent',
+      borderColor: theme.colors.border
     },
     label: {
       fontSize: typography.body,
@@ -74,7 +74,7 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
       color: theme.colors.textPrimary
     },
     ghostLabel: {
-      color: theme.colors.textPrimary
+      color: theme.colors.textSecondary
     },
     leftSlot: {
       alignItems: 'center',

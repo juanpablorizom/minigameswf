@@ -133,22 +133,23 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
       color: theme.colors.textPrimary
     },
     themeColumn: {
-      gap: spacing.md
+      gap: spacing.sm
     },
     themeCard: {
       borderRadius: radius.md,
       borderWidth: 1,
       borderColor: theme.colors.border,
       backgroundColor: theme.colors.backgroundElevated,
-      padding: spacing.lg,
-      gap: spacing.sm
+      padding: spacing.md,
+      gap: spacing.md
     },
     themeCardActive: {
       borderColor: theme.colors.primary,
       backgroundColor: theme.colors.surfaceMuted
     },
     themeMeta: {
-      gap: spacing.xs
+      gap: spacing.xs,
+      maxWidth: 720
     },
     themeTitle: {
       color: theme.colors.textPrimary,
@@ -162,12 +163,13 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
     },
     swatchRow: {
       flexDirection: 'row',
-      gap: spacing.sm
+      gap: spacing.sm,
+      alignItems: 'center'
     },
     swatch: {
-      width: 26,
-      height: 26,
-      borderRadius: 13,
+      width: 22,
+      height: 22,
+      borderRadius: 11,
       borderWidth: 1,
       borderColor: theme.colors.border
     },

@@ -17,7 +17,7 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
       borderRadius: radius.lg,
       borderWidth: 1,
       borderColor: theme.colors.border,
-      padding: spacing.xl,
+      padding: spacing.lg,
       gap: spacing.md,
       ...(theme.mode === 'light' ? shadows.lightCard : null)
     }

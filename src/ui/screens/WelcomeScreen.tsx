@@ -268,14 +268,14 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
   return StyleSheet.create({
     shell: {
       width: '100%',
-      maxWidth: 520,
+      maxWidth: 500,
       alignSelf: 'center',
-      gap: spacing.xl,
-      paddingTop: spacing.md
+      gap: spacing.lg,
+      paddingTop: spacing.sm
     },
     hero: {
-      gap: spacing.md,
-      paddingTop: spacing.lg
+      gap: spacing.sm,
+      paddingTop: spacing.md
     },
     brandMark: {
       width: 48,
@@ -305,17 +305,17 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
       color: theme.colors.textPrimary,
       fontSize: typography.hero,
       fontWeight: '800',
-      lineHeight: 60,
-      letterSpacing: -2
+      lineHeight: 56,
+      letterSpacing: -1.8
     },
     subtitle: {
       color: theme.colors.textSecondary,
       fontSize: typography.body,
-      lineHeight: 28,
-      maxWidth: 500
+      lineHeight: 26,
+      maxWidth: 480
     },
     quickCard: {
-      padding: spacing.lg,
+      padding: spacing.md,
       gap: spacing.md,
       borderRadius: radius.lg,
       backgroundColor: theme.colors.surface,
@@ -344,7 +344,7 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
     dividerRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: spacing.sm
+      gap: spacing.md
     },
     dividerLine: {
       flex: 1,
@@ -361,10 +361,10 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
       backgroundColor: theme.colors.surface,
       borderWidth: 1,
       borderColor: theme.colors.border,
-      padding: spacing.xl
+      padding: spacing.lg
     },
     formBlock: {
-      gap: spacing.md
+      gap: spacing.sm
     },
     formTitle: {
       color: theme.colors.textPrimary,
@@ -379,7 +379,7 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
     },
     fieldLabel: {
       color: theme.colors.textPrimary,
-      fontSize: typography.section,
+      fontSize: typography.body,
       fontWeight: '600'
     },
     input: {
@@ -397,7 +397,7 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
       justifyContent: 'center',
       alignItems: 'center',
       flexWrap: 'wrap',
-      gap: spacing.md
+      gap: spacing.sm
     },
     toggleCopy: {
       color: theme.colors.textSecondary,
@@ -445,7 +445,7 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
       borderColor: theme.colors.border,
       borderRadius: radius.lg,
       padding: spacing.lg,
-      gap: spacing.md
+      gap: spacing.sm
     },
     modalTitle: {
       color: theme.colors.textPrimary,

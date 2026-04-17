@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState, type PropsWithChildren } from 'react';
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type PropsWithChildren } from 'react';
 import * as WebBrowser from 'expo-web-browser';
 import { Platform } from 'react-native';
 import type { Session, User } from '@supabase/supabase-js';
@@ -85,18 +85,22 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [isBusy, setIsBusy] = useState(false);
   const [session, setSession] = useState<Session | null>(null);
   const [language, setLanguage] = useState<AppLanguage>('es');
-  const [themePreference, setThemePreference] = useState<AppThemePreference>('neutral-light');
+  const [themePreference, setThemePreference] = useState<AppThemePreference>('neutral-dark');
   const [profile, setProfile] = useState<ProfileRow | null>(null);
   const [settings, setSettings] = useState<UserSettingsRow | null>(null);
+  const languageRef = useRef<AppLanguage>('es');
+  const themePreferenceRef = useRef<AppThemePreference>('neutral-dark');
 
   async function applyLanguage(nextLanguage: AppLanguage) {
     await i18n.changeLanguage(nextLanguage);
     await storeLanguage(nextLanguage);
+    languageRef.current = nextLanguage;
     setLanguage(nextLanguage);
   }
 
   async function applyTheme(nextTheme: AppThemePreference) {
     await storeTheme(nextTheme);
+    themePreferenceRef.current = nextTheme;
     setThemePreference(nextTheme);
   }
 
@@ -137,6 +141,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
       setLanguage(storedLanguage);
       setThemePreference(storedTheme);
+      languageRef.current = storedLanguage;
+      themePreferenceRef.current = storedTheme;
 
       if (!isSupabaseConfigured) {
         setProfile(null);
@@ -161,7 +167,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
         data: { subscription }
       } = supabase.auth.onAuthStateChange((_event, nextSession) => {
         setSession(nextSession);
-        void refreshAccountState(nextSession?.user ?? null, storedLanguage, storedTheme);
+        void refreshAccountState(nextSession?.user ?? null, languageRef.current, themePreferenceRef.current);
       });
 
       return () => {

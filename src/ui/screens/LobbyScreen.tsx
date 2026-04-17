@@ -180,15 +180,15 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
     color: theme.colors.textPrimary,
     fontSize: typography.hero,
     fontWeight: '800',
-    lineHeight: 56,
+    lineHeight: 52,
     letterSpacing: -1.8,
-    maxWidth: 740
+    maxWidth: 680
   },
   copy: {
     color: theme.colors.textSecondary,
     fontSize: typography.body,
-    lineHeight: 26,
-    maxWidth: 760
+    lineHeight: 24,
+    maxWidth: 720
   },
   actionRow: {
     gap: spacing.sm
@@ -200,7 +200,7 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
     alignItems: 'center'
   },
   section: {
-    gap: spacing.md
+    gap: spacing.sm
   },
   sectionTitle: {
     color: theme.colors.textPrimary,
@@ -225,7 +225,7 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
   itemSubtitle: {
     color: theme.colors.textSecondary,
     fontSize: typography.body,
-    lineHeight: 24
+    lineHeight: 22
   },
   supportingCopy: {
     color: theme.colors.textMuted,
@@ -235,7 +235,7 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
   codePill: {
     minWidth: 74,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.xs,
     borderRadius: radius.pill,
     backgroundColor: theme.colors.background,
     borderWidth: 1,
