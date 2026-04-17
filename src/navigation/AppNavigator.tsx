@@ -1110,9 +1110,9 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
     backgroundColor: theme.colors.background
   },
   topBar: {
-    paddingTop: 18,
+    paddingTop: 20,
     paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.sm,
+    paddingBottom: spacing.md,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -1148,7 +1148,7 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
   },
   brand: {
     color: theme.colors.textPrimary,
-    fontSize: typography.section,
+    fontSize: typography.body,
     fontWeight: '800'
   },
   brandSub: {
@@ -1168,7 +1168,7 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
     fontWeight: '700'
   },
   statusPill: {
-    minHeight: 34,
+    minHeight: 38,
     borderRadius: radius.pill,
     paddingHorizontal: spacing.md,
     justifyContent: 'center',
@@ -1192,7 +1192,7 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
   },
   tabButton: {
     flex: 1,
-    minHeight: 54,
+    minHeight: 58,
     borderRadius: radius.md,
     backgroundColor: theme.colors.surface,
     borderWidth: 1,

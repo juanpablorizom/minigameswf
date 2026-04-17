@@ -34,6 +34,7 @@ export function SettingsScreen({
     <AppScreen title={t('settings.title')} subtitle={t('settings.subtitle')}>
       <SurfaceCard>
         <Text style={styles.sectionTitle}>{t('settings.language')}</Text>
+        <Text style={styles.helper}>{t('settings.languageHint')}</Text>
         <View style={styles.optionRow}>
           <OptionChip label={t('settings.spanish')} active={language === 'es'} onPress={() => onChangeLanguage('es')} />
           <OptionChip label={t('settings.english')} active={language === 'en'} onPress={() => onChangeLanguage('en')} />
@@ -42,20 +43,20 @@ export function SettingsScreen({
 
       <SurfaceCard>
         <Text style={styles.sectionTitle}>{t('settings.appearanceSection')}</Text>
-        <Text style={styles.helper}>{t('settings.themeHint')}</Text>
+        <Text style={styles.helper}>{t('settings.appearanceHint')}</Text>
         <View style={styles.themeColumn}>
-          {themeOptions.map((theme) => (
+          {themeOptions.map((themeOption) => (
             <Pressable
-              key={theme.id}
-              onPress={() => onChangeTheme(theme.id)}
-              style={[styles.themeCard, themePreference === theme.id && styles.themeCardActive]}
+              key={themeOption.id}
+              onPress={() => onChangeTheme(themeOption.id)}
+              style={[styles.themeCard, themePreference === themeOption.id && styles.themeCardActive]}
             >
               <View style={styles.themeMeta}>
-                <Text style={styles.themeTitle}>{theme.label}</Text>
-                <Text style={styles.themeDescription}>{theme.description}</Text>
+                <Text style={styles.themeTitle}>{t(`settings.themeChoices.${themeOption.id}.label`)}</Text>
+                <Text style={styles.themeDescription}>{t(`settings.themeChoices.${themeOption.id}.description`)}</Text>
               </View>
               <View style={styles.swatchRow}>
-                {theme.preview.map((colorValue) => (
+                {themeOption.preview.map((colorValue) => (
                   <View key={colorValue} style={[styles.swatch, { backgroundColor: colorValue }]} />
                 ))}
               </View>
@@ -102,7 +103,7 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
     helper: {
       color: theme.colors.textSecondary,
       fontSize: typography.body,
-      lineHeight: 22
+      lineHeight: 24
     },
     optionRow: {
       flexDirection: 'row',
@@ -110,7 +111,7 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
     },
     optionChip: {
       flex: 1,
-      minHeight: 48,
+      minHeight: 52,
       borderRadius: radius.pill,
       backgroundColor: theme.colors.backgroundElevated,
       borderWidth: 1,
@@ -120,8 +121,8 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
       paddingHorizontal: spacing.md
     },
     optionChipActive: {
-      backgroundColor: theme.colors.successMuted,
-      borderColor: theme.colors.success
+      backgroundColor: theme.colors.surfaceMuted,
+      borderColor: theme.colors.primary
     },
     optionLabel: {
       color: theme.colors.textSecondary,
@@ -129,17 +130,17 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
       fontWeight: '700'
     },
     optionLabelActive: {
-      color: theme.colors.successText
+      color: theme.colors.textPrimary
     },
     themeColumn: {
-      gap: spacing.sm
+      gap: spacing.md
     },
     themeCard: {
       borderRadius: radius.md,
       borderWidth: 1,
       borderColor: theme.colors.border,
       backgroundColor: theme.colors.backgroundElevated,
-      padding: spacing.md,
+      padding: spacing.lg,
       gap: spacing.sm
     },
     themeCardActive: {
@@ -157,7 +158,7 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
     themeDescription: {
       color: theme.colors.textSecondary,
       fontSize: typography.body,
-      lineHeight: 22
+      lineHeight: 24
     },
     swatchRow: {
       flexDirection: 'row',

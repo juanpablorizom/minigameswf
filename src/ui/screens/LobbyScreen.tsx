@@ -174,19 +174,21 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
     color: theme.colors.textMuted,
     fontSize: typography.caption,
     textTransform: 'uppercase',
-    letterSpacing: 1.1
+    letterSpacing: 1.4
   },
   heroTitle: {
     color: theme.colors.textPrimary,
-    fontSize: typography.title,
-    fontWeight: '700',
-    lineHeight: 34,
-    letterSpacing: -0.8
+    fontSize: typography.hero,
+    fontWeight: '800',
+    lineHeight: 56,
+    letterSpacing: -1.8,
+    maxWidth: 740
   },
   copy: {
     color: theme.colors.textSecondary,
     fontSize: typography.body,
-    lineHeight: 22
+    lineHeight: 26,
+    maxWidth: 760
   },
   actionRow: {
     gap: spacing.sm
@@ -203,12 +205,13 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
   sectionTitle: {
     color: theme.colors.textPrimary,
     fontSize: typography.section,
-    fontWeight: '700'
+    fontWeight: '800',
+    letterSpacing: -0.4
   },
   itemTitle: {
     color: theme.colors.textPrimary,
     fontSize: typography.body,
-    fontWeight: '700'
+    fontWeight: '800'
   },
   detailHeader: {
     flexDirection: 'row',
@@ -222,19 +225,19 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
   itemSubtitle: {
     color: theme.colors.textSecondary,
     fontSize: typography.body,
-    lineHeight: 22
+    lineHeight: 24
   },
   supportingCopy: {
     color: theme.colors.textMuted,
     fontSize: typography.caption,
-    lineHeight: 18
+    lineHeight: 20
   },
   codePill: {
     minWidth: 74,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderRadius: radius.pill,
-    backgroundColor: theme.colors.backgroundElevated,
+    backgroundColor: theme.colors.background,
     borderWidth: 1,
     borderColor: theme.colors.border,
     alignItems: 'center'

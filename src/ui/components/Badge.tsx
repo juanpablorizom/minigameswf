@@ -24,26 +24,31 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
       alignSelf: 'flex-start',
       borderRadius: radius.pill,
       paddingHorizontal: spacing.md,
-      paddingVertical: spacing.xs
+      paddingVertical: 7,
+      borderWidth: 1,
+      borderColor: 'transparent'
     },
     label: {
       fontSize: typography.caption,
       fontWeight: '700'
     },
     accentBadge: {
-      backgroundColor: theme.colors.badgeAccentBackground
+      backgroundColor: theme.colors.badgeAccentBackground,
+      borderColor: theme.colors.border
     },
     accentLabel: {
       color: theme.colors.highlight
     },
     successBadge: {
-      backgroundColor: theme.colors.successMuted
+      backgroundColor: theme.colors.successMuted,
+      borderColor: theme.colors.success
     },
     successLabel: {
       color: theme.colors.successText
     },
     neutralBadge: {
-      backgroundColor: theme.colors.badgeNeutralBackground
+      backgroundColor: theme.colors.badgeNeutralBackground,
+      borderColor: theme.colors.border
     },
     neutralLabel: {
       color: theme.colors.textSecondary

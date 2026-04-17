@@ -6,7 +6,7 @@ import { AppButton } from '../components/AppButton';
 import { AppScreen } from '../components/AppScreen';
 import { Badge } from '../components/Badge';
 import { SurfaceCard } from '../components/SurfaceCard';
-import { spacing, typography, useTheme } from '../theme';
+import { radius, spacing, typography, useTheme } from '../theme';
 
 type AccountScreenProps = {
   isGuest: boolean;
@@ -86,7 +86,7 @@ export function AccountScreen({
           </View>
         ) : null}
 
-        <AppButton label={t('account.saveName')} onPress={() => onSaveDisplayName(nextDisplayName)} variant="secondary" disabled={!canSaveName || isBusy} />
+        <AppButton label={t('account.saveName')} onPress={() => onSaveDisplayName(nextDisplayName)} disabled={!canSaveName || isBusy} />
       </SurfaceCard>
 
       {isGuest ? (
@@ -123,10 +123,10 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
       alignItems: 'center'
     },
     avatar: {
-      width: 72,
-      height: 72,
-      borderRadius: 36,
-      backgroundColor: theme.colors.backgroundElevated,
+      width: 84,
+      height: 84,
+      borderRadius: 42,
+      backgroundColor: theme.colors.background,
       alignItems: 'center',
       justifyContent: 'center',
       borderWidth: 1,
@@ -134,7 +134,7 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
     },
     avatarLabel: {
       color: theme.colors.highlight,
-      fontSize: typography.section,
+      fontSize: typography.title,
       fontWeight: '800'
     },
     profileMeta: {
@@ -150,35 +150,37 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
     sectionTitle: {
       color: theme.colors.textPrimary,
       fontSize: typography.section,
-      fontWeight: '700'
+      fontWeight: '800',
+      letterSpacing: -0.4
     },
     profileValue: {
       color: theme.colors.textPrimary,
-      fontSize: typography.body,
-      lineHeight: 22,
-      fontWeight: '700'
+      fontSize: typography.section,
+      lineHeight: 26,
+      fontWeight: '800'
     },
     profileSubvalue: {
       color: theme.colors.textSecondary,
       fontSize: typography.body,
-      lineHeight: 22
+      lineHeight: 24
     },
     helper: {
       color: theme.colors.textSecondary,
       fontSize: typography.body,
-      lineHeight: 22
+      lineHeight: 24,
+      maxWidth: 760
     },
     fieldLabel: {
       color: theme.colors.textPrimary,
-      fontSize: typography.section,
+      fontSize: typography.body,
       fontWeight: '700'
     },
     input: {
       minHeight: 58,
-      borderRadius: 22,
+      borderRadius: radius.md,
       borderWidth: 1,
       borderColor: theme.colors.border,
-      backgroundColor: theme.colors.backgroundElevated,
+      backgroundColor: theme.colors.background,
       paddingHorizontal: spacing.lg,
       color: theme.colors.textPrimary,
       fontSize: typography.body

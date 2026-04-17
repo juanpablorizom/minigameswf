@@ -33,37 +33,39 @@ export function AppButton({ label, onPress, variant = 'primary', leftSlot, disab
 function createStyles(theme: ReturnType<typeof useTheme>) {
   return StyleSheet.create({
     base: {
-      minHeight: 54,
+      minHeight: 58,
       borderRadius: radius.md,
       paddingHorizontal: spacing.lg,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      gap: spacing.sm
+      gap: spacing.sm,
+      borderWidth: 1,
+      borderColor: 'transparent'
     },
     pressed: {
-      opacity: 0.88,
-      transform: [{ scale: 0.99 }]
+      opacity: 0.94,
+      transform: [{ scale: 0.992 }]
     },
     disabled: {
-      opacity: 0.45
+      opacity: 0.42
     },
     primary: {
-      backgroundColor: theme.colors.primary
+      backgroundColor: theme.colors.primary,
+      borderColor: theme.colors.primary
     },
     secondary: {
       backgroundColor: theme.colors.surface,
-      borderWidth: 1,
       borderColor: theme.colors.border
     },
     ghost: {
-      backgroundColor: 'transparent',
-      borderWidth: 1,
+      backgroundColor: theme.colors.backgroundElevated,
       borderColor: theme.colors.borderStrong
     },
     label: {
       fontSize: typography.body,
-      fontWeight: '700'
+      fontWeight: '800',
+      letterSpacing: -0.2
     },
     primaryLabel: {
       color: theme.colors.primaryText
@@ -72,7 +74,7 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
       color: theme.colors.textPrimary
     },
     ghostLabel: {
-      color: theme.colors.textSecondary
+      color: theme.colors.textPrimary
     },
     leftSlot: {
       alignItems: 'center',

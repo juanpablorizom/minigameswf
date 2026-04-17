@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 
 export type AppLanguage = 'es' | 'en';
-export type AppThemePreference = 'default' | 'geo-style';
+export type AppThemePreference = 'neutral-light' | 'neutral-dark' | 'legacy-dark';
 export type GuestProfile = {
   displayName: string;
   username: string;
@@ -57,16 +57,23 @@ export async function storeLanguage(language: AppLanguage) {
 
 export async function loadStoredTheme() {
   const value = await appStorage.getItem(THEME_STORAGE_KEY);
-
-  if (value === 'geo-style') {
-    return value;
-  }
-
-  return 'default';
+  return normalizeThemePreference(value);
 }
 
 export async function storeTheme(theme: AppThemePreference) {
   await appStorage.setItem(THEME_STORAGE_KEY, theme);
+}
+
+export function normalizeThemePreference(value: string | null | undefined): AppThemePreference {
+  if (value === 'neutral-light' || value === 'neutral-dark' || value === 'legacy-dark') {
+    return value;
+  }
+
+  if (value === 'default' || value === 'geo-style') {
+    return 'legacy-dark';
+  }
+
+  return 'neutral-light';
 }
 
 export async function loadStoredGuestProfile() {

@@ -103,14 +103,30 @@ export const resources = {
       },
       settings: {
         title: 'Ajustes',
-        subtitle: 'Controla idioma, dirección visual y tu sesión.',
+        subtitle: 'Controla idioma, sistema visual y tu sesión.',
         language: 'Idioma',
+        languageHint: 'El idioma cambia al instante en toda la interfaz.',
         spanish: 'Español',
         english: 'Inglés',
         theme: 'Sistema de color',
-        themeHint: 'La selección queda guardada desde ahora. La aplicación completa adoptará la expansión visual en el siguiente pase.',
+        themeHint: 'La selección queda guardada desde ahora.',
         logout: 'Cerrar sesión',
-        appearanceSection: 'Apariencia',
+        appearanceSection: 'Diseño visual',
+        appearanceHint: 'Neutro claro y neutro oscuro son la base nueva. Legacy conserva el estilo anterior solo como opción secundaria.',
+        themeChoices: {
+          'neutral-light': {
+            label: 'Neutro claro',
+            description: 'Base limpia, luminosa y editorial con contraste suave y tarjetas blancas.'
+          },
+          'neutral-dark': {
+            label: 'Neutro oscuro',
+            description: 'Versión oscura del sistema nuevo, con contraste sobrio y superficies profundas.'
+          },
+          'legacy-dark': {
+            label: 'Legacy',
+            description: 'Recupera el estilo cálido anterior sin mezclarlo con la nueva dirección visual.'
+          }
+        },
         sessionSection: 'Sesión',
         savingTheme: 'Guardando tema...'
       },
@@ -511,14 +527,30 @@ export const resources = {
       },
       settings: {
         title: 'Settings',
-        subtitle: 'Control language, visual direction, and your session.',
+        subtitle: 'Control language, visual system, and your session.',
         language: 'Language',
+        languageHint: 'Language updates instantly across the interface.',
         spanish: 'Spanish',
         english: 'English',
         theme: 'Color system',
-        themeHint: 'The choice is already saved. The full app will adopt the broader visual expansion in the next pass.',
+        themeHint: 'The choice is already saved.',
         logout: 'Log out',
-        appearanceSection: 'Appearance',
+        appearanceSection: 'Visual design',
+        appearanceHint: 'Neutral light and neutral dark are the new base. Legacy keeps the previous style as a secondary option.',
+        themeChoices: {
+          'neutral-light': {
+            label: 'Neutral light',
+            description: 'Clean, bright, editorial base with soft contrast and white surfaces.'
+          },
+          'neutral-dark': {
+            label: 'Neutral dark',
+            description: 'Dark version of the new system, with restrained contrast and deep surfaces.'
+          },
+          'legacy-dark': {
+            label: 'Legacy',
+            description: 'Brings back the previous warm style without mixing it into the new direction.'
+          }
+        },
         sessionSection: 'Session',
         savingTheme: 'Saving theme...'
       },

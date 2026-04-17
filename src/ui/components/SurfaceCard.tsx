@@ -17,9 +17,9 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
       borderRadius: radius.lg,
       borderWidth: 1,
       borderColor: theme.colors.border,
-      padding: spacing.lg,
+      padding: spacing.xl,
       gap: spacing.md,
-      ...shadows.card
+      ...(theme.mode === 'light' ? shadows.lightCard : null)
     }
   });
 }

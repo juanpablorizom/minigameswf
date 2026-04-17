@@ -38,44 +38,50 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
       backgroundColor: theme.colors.background
     },
     content: {
+      width: '100%',
+      maxWidth: 1120,
+      alignSelf: 'center',
       paddingHorizontal: spacing.lg,
-      paddingTop: spacing.lg,
+      paddingTop: spacing.xl,
       paddingBottom: spacing.xxl,
-      gap: spacing.lg
+      gap: spacing.xl
     },
     header: {
-      gap: spacing.sm
+      gap: spacing.md,
+      paddingBottom: spacing.sm
     },
     title: {
       color: theme.colors.textPrimary,
       fontSize: typography.title,
-      fontWeight: '700',
-      letterSpacing: -0.8
+      fontWeight: '800',
+      letterSpacing: -1.2,
+      lineHeight: 40
     },
     subtitle: {
       color: theme.colors.textSecondary,
       fontSize: typography.body,
-      lineHeight: 22
+      lineHeight: 26,
+      maxWidth: 760
     },
     footer: {
       marginTop: spacing.sm
     },
     backgroundGlowTop: {
       position: 'absolute',
-      top: -80,
-      left: -30,
-      width: 220,
-      height: 220,
-      borderRadius: 220,
+      top: -60,
+      left: -40,
+      width: 320,
+      height: 320,
+      borderRadius: 320,
       backgroundColor: theme.colors.glowTop
     },
     backgroundGlowBottom: {
       position: 'absolute',
-      right: -50,
-      bottom: 110,
-      width: 180,
-      height: 180,
-      borderRadius: 180,
+      right: -60,
+      bottom: 60,
+      width: 260,
+      height: 260,
+      borderRadius: 260,
       backgroundColor: theme.colors.glowBottom
     }
   });

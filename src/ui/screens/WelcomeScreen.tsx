@@ -50,29 +50,31 @@ export function WelcomeScreen({
           <Text style={styles.subtitle}>{t('auth.subtitle')}</Text>
         </View>
 
-        <View style={styles.providerStack}>
-          <AppButton
-            label={t('auth.continueAsGuest')}
-            onPress={() => onContinueAsGuest(guestDisplayName.trim())}
-            variant="secondary"
-            disabled={isBusy}
-            leftSlot={
-              <View style={styles.providerIconGuest}>
-                <GuestMark />
-              </View>
-            }
-          />
-          <AppButton
-            label={t('auth.continueWithGoogle')}
-            onPress={onSignInWithGoogle}
-            variant="secondary"
-            disabled={isBusy}
-            leftSlot={
-              <View style={styles.providerIconGoogle}>
-                <GoogleMark />
-              </View>
-            }
-          />
+        <View style={styles.quickCard}>
+          <View style={styles.providerStack}>
+            <AppButton
+              label={t('auth.continueAsGuest')}
+              onPress={() => onContinueAsGuest(guestDisplayName.trim())}
+              variant="secondary"
+              disabled={isBusy}
+              leftSlot={
+                <View style={styles.providerIconGuest}>
+                  <GuestMark />
+                </View>
+              }
+            />
+            <AppButton
+              label={t('auth.continueWithGoogle')}
+              onPress={onSignInWithGoogle}
+              variant="secondary"
+              disabled={isBusy}
+              leftSlot={
+                <View style={styles.providerIconGoogle}>
+                  <GoogleMark />
+                </View>
+              }
+            />
+          </View>
         </View>
 
         <View style={styles.dividerRow}>
@@ -81,6 +83,7 @@ export function WelcomeScreen({
           <View style={styles.dividerLine} />
         </View>
 
+        <View style={styles.formCard}>
         <View style={styles.formBlock}>
           <Text style={styles.formTitle}>{t('auth.formTitleSignIn')}</Text>
           <Text style={styles.formSubtitle}>{t('auth.formSubtitleSignIn')}</Text>
@@ -121,6 +124,7 @@ export function WelcomeScreen({
               <Text style={styles.toggleAction}>{t('auth.signUpAction')}</Text>
             </Pressable>
           </View>
+        </View>
         </View>
 
         <Text style={styles.terms}>{t('auth.terms')}</Text>
@@ -264,15 +268,14 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
   return StyleSheet.create({
     shell: {
       width: '100%',
-      maxWidth: 420,
+      maxWidth: 520,
       alignSelf: 'center',
-      gap: spacing.lg,
+      gap: spacing.xl,
       paddingTop: spacing.md
     },
     hero: {
       gap: spacing.md,
-      paddingTop: spacing.lg,
-      paddingBottom: spacing.sm
+      paddingTop: spacing.lg
     },
     brandMark: {
       width: 48,
@@ -302,21 +305,30 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
       color: theme.colors.textPrimary,
       fontSize: typography.hero,
       fontWeight: '800',
-      lineHeight: 48,
-      letterSpacing: -1.4
+      lineHeight: 60,
+      letterSpacing: -2
     },
     subtitle: {
       color: theme.colors.textSecondary,
       fontSize: typography.body,
-      lineHeight: 24
+      lineHeight: 28,
+      maxWidth: 500
+    },
+    quickCard: {
+      padding: spacing.lg,
+      gap: spacing.md,
+      borderRadius: radius.lg,
+      backgroundColor: theme.colors.surface,
+      borderWidth: 1,
+      borderColor: theme.colors.border
     },
     providerStack: {
       gap: spacing.md
     },
     providerIconGuest: {
-      width: 28,
-      height: 28,
-      borderRadius: 14,
+      width: 30,
+      height: 30,
+      borderRadius: 15,
       backgroundColor: theme.colors.backgroundElevated,
       alignItems: 'center',
       justifyContent: 'center'
@@ -341,8 +353,15 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
     },
     dividerLabel: {
       color: theme.colors.textMuted,
-      fontSize: typography.section,
+      fontSize: typography.body,
       fontWeight: '600'
+    },
+    formCard: {
+      borderRadius: radius.lg,
+      backgroundColor: theme.colors.surface,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      padding: spacing.xl
     },
     formBlock: {
       gap: spacing.md
@@ -350,12 +369,13 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
     formTitle: {
       color: theme.colors.textPrimary,
       fontSize: typography.title,
-      fontWeight: '700'
+      fontWeight: '800',
+      letterSpacing: -1
     },
     formSubtitle: {
       color: theme.colors.textSecondary,
       fontSize: typography.body,
-      lineHeight: 24
+      lineHeight: 26
     },
     fieldLabel: {
       color: theme.colors.textPrimary,
@@ -365,11 +385,11 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
     input: {
       minHeight: 60,
       borderRadius: radius.md,
-      backgroundColor: theme.colors.backgroundElevated,
+      backgroundColor: theme.colors.background,
       borderWidth: 1,
       borderColor: theme.colors.border,
       color: theme.colors.textPrimary,
-      paddingHorizontal: spacing.md,
+      paddingHorizontal: spacing.lg,
       fontSize: typography.body
     },
     toggleRow: {

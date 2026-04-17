@@ -15,7 +15,15 @@ import {
 } from '../data/account';
 import i18n from '../i18n/i18n';
 import { isSupabaseConfigured, supabase } from '../lib/supabase';
-import { loadStoredLanguage, loadStoredTheme, storeLanguage, storeTheme, type AppLanguage, type AppThemePreference } from '../lib/storage';
+import {
+  loadStoredLanguage,
+  loadStoredTheme,
+  normalizeThemePreference,
+  storeLanguage,
+  storeTheme,
+  type AppLanguage,
+  type AppThemePreference
+} from '../lib/storage';
 
 type AuthActionResult = {
   error?: string;
@@ -77,7 +85,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [isBusy, setIsBusy] = useState(false);
   const [session, setSession] = useState<Session | null>(null);
   const [language, setLanguage] = useState<AppLanguage>('es');
-  const [themePreference, setThemePreference] = useState<AppThemePreference>('default');
+  const [themePreference, setThemePreference] = useState<AppThemePreference>('neutral-light');
   const [profile, setProfile] = useState<ProfileRow | null>(null);
   const [settings, setSettings] = useState<UserSettingsRow | null>(null);
 
@@ -104,7 +112,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     setSettings(accountState.settings);
 
     const resolvedLanguage = accountState.settings?.language ?? accountState.profile?.preferred_language ?? fallbackLanguage;
-    const resolvedTheme = accountState.settings?.theme_preference ?? fallbackTheme;
+    const resolvedTheme = normalizeThemePreference(accountState.settings?.theme_preference ?? fallbackTheme);
 
     if (resolvedLanguage !== fallbackLanguage) {
       await applyLanguage(resolvedLanguage);

@@ -32,130 +32,164 @@ export type ThemeColors = {
 
 export type AppTheme = {
   id: AppThemePreference;
-  label: string;
-  description: string;
-  preview: [string, string, string];
+  family: 'neutral' | 'legacy';
+  mode: 'light' | 'dark';
   colors: ThemeColors;
 };
 
-const defaultTheme: AppTheme = {
-  id: 'default',
-  label: 'Default',
-  description: 'Current warm premium palette with champagne contrast.',
-  preview: ['#171311', '#2a221e', '#d6b989'],
+type ThemeOption = {
+  id: AppThemePreference;
+  preview: [string, string, string];
+};
+
+const neutralLightTheme: AppTheme = {
+  id: 'neutral-light',
+  family: 'neutral',
+  mode: 'light',
   colors: {
-    primary: '#d6b989',
-    primaryHover: '#b99664',
-    primaryText: '#221912',
-    secondary: '#92a784',
-    background: '#171311',
-    backgroundElevated: '#211b18',
-    surface: '#2a221e',
-    surfaceMuted: '#322924',
-    border: '#473b34',
-    borderStrong: '#5a4d44',
-    textPrimary: '#f6f0e8',
-    textSecondary: '#cfc0b1',
-    textMuted: '#a49282',
-    error: '#a96657',
-    warning: '#c89656',
-    highlight: '#f0debf',
-    success: '#92a784',
-    successMuted: '#344033',
-    successText: '#d4e5ca',
-    badgeAccentBackground: '#3d3125',
-    badgeNeutralBackground: '#211b18',
-    overlay: 'rgba(8, 6, 5, 0.52)',
-    glowTop: '#2a241f',
-    glowBottom: '#1f2420'
+    primary: '#171717',
+    primaryHover: '#2b2b2b',
+    primaryText: '#F7F6F2',
+    secondary: '#727272',
+    background: '#F5F2EB',
+    backgroundElevated: '#EFEBE4',
+    surface: '#FFFEFC',
+    surfaceMuted: '#F4F1EA',
+    border: '#DED8CF',
+    borderStrong: '#C7C0B4',
+    textPrimary: '#171717',
+    textSecondary: '#5F5A52',
+    textMuted: '#8D877C',
+    error: '#B24B44',
+    warning: '#A97120',
+    highlight: '#111111',
+    success: '#346A50',
+    successMuted: '#E6F1EA',
+    successText: '#204633',
+    badgeAccentBackground: '#EDE8DE',
+    badgeNeutralBackground: '#F2EFE7',
+    overlay: 'rgba(14, 14, 14, 0.08)',
+    glowTop: '#ECE7DD',
+    glowBottom: '#F3F1EB'
   }
 };
 
-const geoTheme: AppTheme = {
-  id: 'geo-style',
-  label: 'Geo Style',
-  description: 'Darker competitive palette with green primary and sharper contrast.',
-  preview: ['#121212', '#1E1E1E', '#00C853'],
+const neutralDarkTheme: AppTheme = {
+  id: 'neutral-dark',
+  family: 'neutral',
+  mode: 'dark',
   colors: {
-    primary: '#00C853',
-    primaryHover: '#009624',
-    primaryText: '#04120a',
-    secondary: '#2196F3',
-    background: '#121212',
-    backgroundElevated: '#181818',
-    surface: '#1E1E1E',
-    surfaceMuted: '#252525',
-    border: '#2C2C2C',
-    borderStrong: '#404040',
-    textPrimary: '#FFFFFF',
-    textSecondary: '#B0B0B0',
-    textMuted: '#8D8D8D',
-    error: '#F44336',
-    warning: '#FF9800',
-    highlight: '#FFD600',
-    success: '#00C853',
-    successMuted: '#11321d',
-    successText: '#d7ffe3',
-    badgeAccentBackground: '#3c3510',
-    badgeNeutralBackground: '#232323',
-    overlay: 'rgba(4, 4, 4, 0.6)',
-    glowTop: '#10231a',
-    glowBottom: '#102232'
+    primary: '#F2EFE7',
+    primaryHover: '#E2DCCE',
+    primaryText: '#121212',
+    secondary: '#A6A097',
+    background: '#0E0F0E',
+    backgroundElevated: '#141615',
+    surface: '#181B19',
+    surfaceMuted: '#202422',
+    border: '#2B2F2C',
+    borderStrong: '#3A3F3B',
+    textPrimary: '#F4F2EC',
+    textSecondary: '#CBC7BE',
+    textMuted: '#98948A',
+    error: '#D46B64',
+    warning: '#D29A47',
+    highlight: '#F6F2E7',
+    success: '#85B598',
+    successMuted: '#1C2A22',
+    successText: '#D9EBDD',
+    badgeAccentBackground: '#252822',
+    badgeNeutralBackground: '#1E211F',
+    overlay: 'rgba(4, 5, 4, 0.64)',
+    glowTop: '#151714',
+    glowBottom: '#111310'
+  }
+};
+
+const legacyDarkTheme: AppTheme = {
+  id: 'legacy-dark',
+  family: 'legacy',
+  mode: 'dark',
+  colors: {
+    primary: '#D6B989',
+    primaryHover: '#B99664',
+    primaryText: '#221912',
+    secondary: '#92A784',
+    background: '#171311',
+    backgroundElevated: '#211B18',
+    surface: '#2A221E',
+    surfaceMuted: '#322924',
+    border: '#473B34',
+    borderStrong: '#5A4D44',
+    textPrimary: '#F6F0E8',
+    textSecondary: '#CFC0B1',
+    textMuted: '#A49282',
+    error: '#A96657',
+    warning: '#C89656',
+    highlight: '#F0DEBF',
+    success: '#92A784',
+    successMuted: '#344033',
+    successText: '#D4E5CA',
+    badgeAccentBackground: '#3D3125',
+    badgeNeutralBackground: '#211B18',
+    overlay: 'rgba(8, 6, 5, 0.52)',
+    glowTop: '#2A241F',
+    glowBottom: '#1F2420'
   }
 };
 
 export const appThemes: Record<AppThemePreference, AppTheme> = {
-  default: defaultTheme,
-  'geo-style': geoTheme
+  'neutral-light': neutralLightTheme,
+  'neutral-dark': neutralDarkTheme,
+  'legacy-dark': legacyDarkTheme
 };
 
+export const themeOptions: ThemeOption[] = [
+  { id: 'neutral-light', preview: ['#F5F2EB', '#FFFFFF', '#171717'] },
+  { id: 'neutral-dark', preview: ['#0E0F0E', '#181B19', '#F2EFE7'] },
+  { id: 'legacy-dark', preview: ['#171311', '#2A221E', '#D6B989'] }
+];
+
 export const spacing = {
-  xs: 6,
-  sm: 10,
+  xs: 8,
+  sm: 12,
   md: 16,
   lg: 20,
   xl: 28,
-  xxl: 36
+  xxl: 40
 } as const;
 
 export const radius = {
-  sm: 12,
-  md: 18,
-  lg: 24,
+  sm: 14,
+  md: 20,
+  lg: 28,
   pill: 999
 } as const;
 
 export const typography = {
   micro: 11,
   caption: 13,
-  body: 15,
-  section: 18,
-  title: 28,
-  hero: 40
+  body: 16,
+  section: 20,
+  title: 34,
+  hero: 52
 } as const;
 
 export const shadows = {
-  card: {
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.24,
-    shadowRadius: 20,
-    elevation: 6
+  lightCard: {
+    shadowColor: '#0E0E0E',
+    shadowOffset: { width: 0, height: 14 },
+    shadowOpacity: 0.08,
+    shadowRadius: 30,
+    elevation: 5
   }
-};
+} as const;
 
-export const themeOptions = Object.values(appThemes).map((theme) => ({
-  id: theme.id,
-  label: theme.label,
-  description: theme.description,
-  preview: theme.preview
-}));
-
-const ThemeContext = createContext<AppTheme>(defaultTheme);
+const ThemeContext = createContext<AppTheme>(neutralLightTheme);
 
 export function ThemeProvider({ children }: PropsWithChildren) {
   const { themePreference } = useAuth();
-  const theme = useMemo(() => appThemes[themePreference] ?? defaultTheme, [themePreference]);
+  const theme = useMemo(() => appThemes[themePreference] ?? neutralLightTheme, [themePreference]);
 
   return <ThemeContext.Provider value={theme}>{children}</ThemeContext.Provider>;
 }
