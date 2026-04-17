@@ -1,12 +1,14 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { featuredGames } from '../../data/mockData';
 import { AppButton } from '../components/AppButton';
 import { AppScreen } from '../components/AppScreen';
-import { Badge } from '../components/Badge';
-import { SurfaceCard } from '../components/SurfaceCard';
-import { spacing, typography, useTheme } from '../theme';
+import { GameCard } from '../components/GameCard';
+import { layout, spacing } from '../system/layout';
+import { useTheme } from '../theme';
+
+const impostorArtwork = require('../assets/impostor-card.png');
 
 type ChooseGamesScreenProps = {
   selectedGameIds: string[];
@@ -17,31 +19,26 @@ type ChooseGamesScreenProps = {
 export function ChooseGamesScreen({ selectedGameIds, onToggleGame, onSave }: ChooseGamesScreenProps) {
   const { t } = useTranslation();
   const theme = useTheme();
+  const { width } = useWindowDimensions();
   const styles = createStyles(theme);
   const impostor = featuredGames[0];
   const selected = selectedGameIds.includes(impostor.id);
+  const isWide = width >= 860;
 
   return (
     <AppScreen title={t('chooseGames.title')} subtitle={t('chooseGames.subtitle')}>
-      <SurfaceCard>
-        <Text style={styles.selectionTitle}>{t('chooseGames.onlyModeTitle')}</Text>
-        <Text style={styles.selectionCopy}>{t('chooseGames.onlyModeCopy')}</Text>
-      </SurfaceCard>
-
-      <SurfaceCard>
-        <View style={styles.header}>
-          <View style={styles.meta}>
-            <Text style={styles.title}>{t(`gameMeta.names.${impostor.id}`)}</Text>
-            <Text style={styles.subtitle}>{t(`gameMeta.descriptions.${impostor.id}`)}</Text>
+      <View style={styles.gridShell}>
+        <View style={[styles.grid, isWide && styles.gridWide]}>
+          <View style={[styles.cell, isWide && styles.cellWide]}>
+            <GameCard
+              title={t(`gameMeta.names.${impostor.id}`)}
+              imageSource={impostorArtwork}
+              selected={selected}
+              onPress={() => onToggleGame(impostor.id)}
+            />
           </View>
-          <Badge label={selected ? t('chooseGames.selected') : t('chooseGames.tapToAdd')} tone={selected ? 'success' : 'neutral'} />
         </View>
-        <AppButton
-          label={selected ? t('chooseGames.keepSelected') : t('chooseGames.selectImpostor')}
-          onPress={() => onToggleGame(impostor.id)}
-          variant={selected ? 'secondary' : 'primary'}
-        />
-      </SurfaceCard>
+      </View>
 
       <AppButton label={t('chooseGames.save')} onPress={onSave} disabled={!selected} />
     </AppScreen>
@@ -50,33 +47,26 @@ export function ChooseGamesScreen({ selectedGameIds, onToggleGame, onSave }: Cho
 
 function createStyles(theme: ReturnType<typeof useTheme>) {
   return StyleSheet.create({
-    selectionTitle: {
-      color: theme.colors.textPrimary,
-      fontSize: typography.section,
-      fontWeight: '700'
+    gridShell: {
+      width: '100%',
+      maxWidth: layout.compactWidth,
+      alignSelf: 'center'
     },
-    selectionCopy: {
-      color: theme.colors.textSecondary,
-      fontSize: typography.body,
-      lineHeight: 22
-    },
-    header: {
+    grid: {
+      width: '100%',
       flexDirection: 'row',
+      flexWrap: 'wrap',
+      justifyContent: 'center',
       gap: spacing.md
     },
-    meta: {
-      flex: 1,
-      gap: spacing.xs
+    gridWide: {
+      justifyContent: 'flex-start'
     },
-    title: {
-      color: theme.colors.textPrimary,
-      fontSize: typography.section,
-      fontWeight: '700'
+    cell: {
+      width: '100%'
     },
-    subtitle: {
-      color: theme.colors.textSecondary,
-      fontSize: typography.body,
-      lineHeight: 22
+    cellWide: {
+      width: '48%'
     }
   });
 }
