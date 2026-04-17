@@ -2,7 +2,14 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 
 export type AppLanguage = 'es' | 'en';
-export type AppThemePreference = 'neutral-light' | 'neutral-dark' | 'legacy-dark';
+export type AppThemePreference =
+  | 'neutral-light'
+  | 'neutral-dark'
+  | 'legacy-dark'
+  | 'green'
+  | 'gold'
+  | 'light-blue'
+  | 'dark-green';
 export type GuestProfile = {
   displayName: string;
   username: string;
@@ -65,7 +72,15 @@ export async function storeTheme(theme: AppThemePreference) {
 }
 
 export function normalizeThemePreference(value: string | null | undefined): AppThemePreference {
-  if (value === 'neutral-light' || value === 'neutral-dark' || value === 'legacy-dark') {
+  if (
+    value === 'neutral-light' ||
+    value === 'neutral-dark' ||
+    value === 'legacy-dark' ||
+    value === 'green' ||
+    value === 'gold' ||
+    value === 'light-blue' ||
+    value === 'dark-green'
+  ) {
     return value;
   }
 

@@ -106,6 +106,8 @@ export const resources = {
       settings: {
         title: 'Ajustes',
         subtitle: 'Controla idioma, sistema visual y tu sesión.',
+        openAccount: 'Abrir cuenta',
+        accountHint: 'Gestiona {{account}} y abre los datos de cuenta dentro de este panel. Estado actual: {{state}}.',
         language: 'Idioma',
         languageHint: 'El idioma cambia al instante en toda la interfaz.',
         spanish: 'Español',
@@ -115,14 +117,33 @@ export const resources = {
         logout: 'Cerrar sesión',
         appearanceSection: 'Diseño visual',
         appearanceHint: 'Neutro claro y neutro oscuro son la base nueva. Legacy conserva el estilo anterior solo como opción secundaria.',
+        appearanceCardHint: 'Elige un estilo visual completo para toda la interfaz. La selección vive dentro de un panel dedicado.',
+        openAppearance: 'Abrir apariencia',
+        activeAppearance: 'Activa',
         themeChoices: {
           'neutral-light': {
             label: 'Neutro claro',
-            description: 'Base limpia, luminosa y editorial con contraste suave y tarjetas blancas.'
+            description: 'Base limpia, luminosa y editorial con contraste suave y blancos más calmados.'
           },
           'neutral-dark': {
             label: 'Neutro oscuro',
             description: 'Versión oscura del sistema nuevo, con contraste sobrio y superficies profundas.'
+          },
+          green: {
+            label: 'Verde',
+            description: 'Versión profunda con acentos verdes suaves para una mesa social más fresca.'
+          },
+          gold: {
+            label: 'Dorado',
+            description: 'Acentos cálidos y sobrios que empujan una lectura premium sin recargar la interfaz.'
+          },
+          'light-blue': {
+            label: 'Azul claro',
+            description: 'Interfaz clara con base azul grisácea, luminosa pero menos agresiva a la vista.'
+          },
+          'dark-green': {
+            label: 'Verde oscuro',
+            description: 'Variante oscura de tono bosque con contraste controlado y acento vegetal.'
           },
           'legacy-dark': {
             label: 'Legacy',
@@ -555,6 +576,8 @@ export const resources = {
       settings: {
         title: 'Settings',
         subtitle: 'Control language, visual system, and your session.',
+        openAccount: 'Open account',
+        accountHint: 'Manage {{account}} and open account details inside this panel. Current state: {{state}}.',
         language: 'Language',
         languageHint: 'Language updates instantly across the interface.',
         spanish: 'Spanish',
@@ -564,14 +587,33 @@ export const resources = {
         logout: 'Log out',
         appearanceSection: 'Visual design',
         appearanceHint: 'Neutral light and neutral dark are the new base. Legacy keeps the previous style as a secondary option.',
+        appearanceCardHint: 'Choose a complete visual style for the whole interface. Selection lives inside a dedicated panel.',
+        openAppearance: 'Open appearance',
+        activeAppearance: 'Active',
         themeChoices: {
           'neutral-light': {
             label: 'Neutral light',
-            description: 'Clean, bright, editorial base with soft contrast and white surfaces.'
+            description: 'Clean, bright, editorial base with softer contrast and calmer whites.'
           },
           'neutral-dark': {
             label: 'Neutral dark',
             description: 'Dark version of the new system, with restrained contrast and deep surfaces.'
+          },
+          green: {
+            label: 'Green',
+            description: 'Deep version with soft green accents for a fresher social table feel.'
+          },
+          gold: {
+            label: 'Gold',
+            description: 'Warm restrained accents that push a premium feel without overloading the interface.'
+          },
+          'light-blue': {
+            label: 'Light blue',
+            description: 'Light interface with a blue-gray base, airy but easier on the eyes.'
+          },
+          'dark-green': {
+            label: 'Dark green',
+            description: 'Forest-toned dark variant with controlled contrast and botanical accents.'
           },
           'legacy-dark': {
             label: 'Legacy',

@@ -4,26 +4,35 @@ import { useTranslation } from 'react-i18next';
 import type { AppLanguage, AppThemePreference } from '../../lib/storage';
 import { AppButton } from '../components/AppButton';
 import { AppScreen } from '../components/AppScreen';
+import { Badge } from '../components/Badge';
 import { SurfaceCard } from '../components/SurfaceCard';
-import { radius, spacing, themeOptions, typography, useTheme } from '../theme';
+import { radius, spacing, typography, useTheme } from '../theme';
 
 type SettingsScreenProps = {
+  embedded?: boolean;
+  accountLabel: string;
+  accountStateLabel: string;
   language: AppLanguage;
   themePreference: AppThemePreference;
   isBusy: boolean;
   notice: string | null;
+  onOpenAccount: () => void;
+  onOpenAppearance: () => void;
   onChangeLanguage: (language: AppLanguage) => void;
-  onChangeTheme: (theme: AppThemePreference) => void;
   onLogout: () => void;
 };
 
 export function SettingsScreen({
+  embedded = false,
+  accountLabel,
+  accountStateLabel,
   language,
   themePreference,
   isBusy,
   notice,
+  onOpenAccount,
+  onOpenAppearance,
   onChangeLanguage,
-  onChangeTheme,
   onLogout
 }: SettingsScreenProps) {
   const { t } = useTranslation();
@@ -31,37 +40,30 @@ export function SettingsScreen({
   const styles = createStyles(theme);
 
   return (
-    <AppScreen title={t('settings.title')} subtitle={t('settings.subtitle')}>
+    <AppScreen title={embedded ? undefined : t('settings.title')} subtitle={embedded ? undefined : t('settings.subtitle')}>
+      <SurfaceCard>
+        <Text style={styles.sectionTitle}>{t('common.account')}</Text>
+        <Text style={styles.helper}>{t('settings.accountHint', { account: accountLabel, state: accountStateLabel })}</Text>
+        <AppButton label={t('settings.openAccount')} onPress={onOpenAccount} variant="secondary" />
+      </SurfaceCard>
+
+      <SurfaceCard>
+        <View style={styles.rowHeader}>
+          <View style={styles.rowMeta}>
+            <Text style={styles.sectionTitle}>{t('settings.appearanceSection')}</Text>
+            <Text style={styles.helper}>{t('settings.appearanceCardHint')}</Text>
+          </View>
+          <Badge label={t(`settings.themeChoices.${themePreference}.label`)} tone="accent" />
+        </View>
+        <AppButton label={t('settings.openAppearance')} onPress={onOpenAppearance} variant="secondary" />
+      </SurfaceCard>
+
       <SurfaceCard>
         <Text style={styles.sectionTitle}>{t('settings.language')}</Text>
         <Text style={styles.helper}>{t('settings.languageHint')}</Text>
         <View style={styles.optionRow}>
           <OptionChip label={t('settings.spanish')} active={language === 'es'} onPress={() => onChangeLanguage('es')} />
           <OptionChip label={t('settings.english')} active={language === 'en'} onPress={() => onChangeLanguage('en')} />
-        </View>
-      </SurfaceCard>
-
-      <SurfaceCard>
-        <Text style={styles.sectionTitle}>{t('settings.appearanceSection')}</Text>
-        <Text style={styles.helper}>{t('settings.appearanceHint')}</Text>
-        <View style={styles.themeColumn}>
-          {themeOptions.map((themeOption) => (
-            <Pressable
-              key={themeOption.id}
-              onPress={() => onChangeTheme(themeOption.id)}
-              style={[styles.themeCard, themePreference === themeOption.id && styles.themeCardActive]}
-            >
-              <View style={styles.themeMeta}>
-                <Text style={styles.themeTitle}>{t(`settings.themeChoices.${themeOption.id}.label`)}</Text>
-                <Text style={styles.themeDescription}>{t(`settings.themeChoices.${themeOption.id}.description`)}</Text>
-              </View>
-              <View style={styles.swatchRow}>
-                {themeOption.preview.map((colorValue) => (
-                  <View key={colorValue} style={[styles.swatch, { backgroundColor: colorValue }]} />
-                ))}
-              </View>
-            </Pressable>
-          ))}
         </View>
       </SurfaceCard>
 
@@ -132,46 +134,15 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
     optionLabelActive: {
       color: theme.colors.textPrimary
     },
-    themeColumn: {
-      gap: spacing.sm
-    },
-    themeCard: {
-      borderRadius: radius.md,
-      borderWidth: 1,
-      borderColor: theme.colors.border,
-      backgroundColor: theme.colors.backgroundElevated,
-      padding: spacing.md,
+    rowHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'flex-start',
       gap: spacing.md
     },
-    themeCardActive: {
-      borderColor: theme.colors.primary,
-      backgroundColor: theme.colors.surfaceMuted
-    },
-    themeMeta: {
-      gap: spacing.xs,
-      maxWidth: 720
-    },
-    themeTitle: {
-      color: theme.colors.textPrimary,
-      fontSize: typography.body,
-      fontWeight: '700'
-    },
-    themeDescription: {
-      color: theme.colors.textSecondary,
-      fontSize: typography.body,
-      lineHeight: 24
-    },
-    swatchRow: {
-      flexDirection: 'row',
-      gap: spacing.sm,
-      alignItems: 'center'
-    },
-    swatch: {
-      width: 22,
-      height: 22,
-      borderRadius: 11,
-      borderWidth: 1,
-      borderColor: theme.colors.border
+    rowMeta: {
+      flex: 1,
+      gap: spacing.xs
     },
     notice: {
       color: theme.colors.highlight,

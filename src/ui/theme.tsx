@@ -32,13 +32,14 @@ export type ThemeColors = {
 
 export type AppTheme = {
   id: AppThemePreference;
-  family: 'neutral' | 'legacy';
+  family: 'neutral' | 'legacy' | 'accent';
   mode: 'light' | 'dark';
   colors: ThemeColors;
 };
 
 type ThemeOption = {
   id: AppThemePreference;
+  emphasis: 'light' | 'dark' | 'accent';
   preview: [string, string, string];
 };
 
@@ -138,16 +139,152 @@ const legacyDarkTheme: AppTheme = {
   }
 };
 
+const greenTheme: AppTheme = {
+  id: 'green',
+  family: 'accent',
+  mode: 'dark',
+  colors: {
+    primary: '#CBE8D6',
+    primaryHover: '#B5D7C2',
+    primaryText: '#10241A',
+    secondary: '#92AA9A',
+    background: '#0D1411',
+    backgroundElevated: '#131D18',
+    surface: '#17241D',
+    surfaceMuted: '#1D2D24',
+    border: '#294036',
+    borderStrong: '#355348',
+    textPrimary: '#EEF7F1',
+    textSecondary: '#C6D6CB',
+    textMuted: '#93A79A',
+    error: '#D9736A',
+    warning: '#D1A357',
+    highlight: '#BDE2C8',
+    success: '#7BC495',
+    successMuted: '#183024',
+    successText: '#DCF2E4',
+    badgeAccentBackground: '#203229',
+    badgeNeutralBackground: '#18251F',
+    overlay: 'rgba(5, 10, 8, 0.62)',
+    glowTop: 'transparent',
+    glowBottom: 'transparent'
+  }
+};
+
+const goldTheme: AppTheme = {
+  id: 'gold',
+  family: 'accent',
+  mode: 'dark',
+  colors: {
+    primary: '#E7D0A2',
+    primaryHover: '#D9BC84',
+    primaryText: '#23190A',
+    secondary: '#B4A485',
+    background: '#12100C',
+    backgroundElevated: '#1A1611',
+    surface: '#201B15',
+    surfaceMuted: '#292219',
+    border: '#43382A',
+    borderStrong: '#5B4B37',
+    textPrimary: '#F7F1E6',
+    textSecondary: '#D9CDBB',
+    textMuted: '#A79783',
+    error: '#CF786B',
+    warning: '#D5A04E',
+    highlight: '#E3C27A',
+    success: '#A6BE7F',
+    successMuted: '#2B3422',
+    successText: '#E4EDD5',
+    badgeAccentBackground: '#33281B',
+    badgeNeutralBackground: '#221C15',
+    overlay: 'rgba(10, 8, 5, 0.62)',
+    glowTop: 'transparent',
+    glowBottom: 'transparent'
+  }
+};
+
+const lightBlueTheme: AppTheme = {
+  id: 'light-blue',
+  family: 'accent',
+  mode: 'light',
+  colors: {
+    primary: '#23455B',
+    primaryHover: '#315D76',
+    primaryText: '#F4F8FB',
+    secondary: '#64849A',
+    background: '#E9EFF2',
+    backgroundElevated: '#DFE7EC',
+    surface: '#F8FBFC',
+    surfaceMuted: '#EDF4F7',
+    border: '#CBD7DF',
+    borderStrong: '#B3C2CC',
+    textPrimary: '#173040',
+    textSecondary: '#516674',
+    textMuted: '#7A8E9B',
+    error: '#B85F58',
+    warning: '#B98539',
+    highlight: '#203E53',
+    success: '#3E7C68',
+    successMuted: '#E6F1ED',
+    successText: '#1F4B3D',
+    badgeAccentBackground: '#E2EBF0',
+    badgeNeutralBackground: '#EEF4F7',
+    overlay: 'rgba(8, 16, 22, 0.08)',
+    glowTop: 'transparent',
+    glowBottom: 'transparent'
+  }
+};
+
+const darkGreenTheme: AppTheme = {
+  id: 'dark-green',
+  family: 'accent',
+  mode: 'dark',
+  colors: {
+    primary: '#CFE0B4',
+    primaryHover: '#B9D091',
+    primaryText: '#141C0D',
+    secondary: '#A4B08E',
+    background: '#0B110A',
+    backgroundElevated: '#101711',
+    surface: '#141D15',
+    surfaceMuted: '#1A261C',
+    border: '#2A392B',
+    borderStrong: '#384C39',
+    textPrimary: '#F1F6EB',
+    textSecondary: '#CAD3C2',
+    textMuted: '#95A08D',
+    error: '#D06E67',
+    warning: '#C89A4C',
+    highlight: '#CBDF9F',
+    success: '#97C27B',
+    successMuted: '#213120',
+    successText: '#E3F0D8',
+    badgeAccentBackground: '#233021',
+    badgeNeutralBackground: '#182017',
+    overlay: 'rgba(5, 8, 5, 0.64)',
+    glowTop: 'transparent',
+    glowBottom: 'transparent'
+  }
+};
+
 export const appThemes: Record<AppThemePreference, AppTheme> = {
   'neutral-light': neutralLightTheme,
   'neutral-dark': neutralDarkTheme,
-  'legacy-dark': legacyDarkTheme
+  'legacy-dark': legacyDarkTheme,
+  green: greenTheme,
+  gold: goldTheme,
+  'light-blue': lightBlueTheme,
+  'dark-green': darkGreenTheme
 };
 
 export const themeOptions: ThemeOption[] = [
-  { id: 'neutral-light', preview: ['#ECE7DD', '#F6F2EA', '#171717'] },
-  { id: 'neutral-dark', preview: ['#0E0F0E', '#181B19', '#F2EFE7'] },
-  { id: 'legacy-dark', preview: ['#171311', '#2A221E', '#D6B989'] }
+  { id: 'neutral-light', emphasis: 'light', preview: ['#ECE7DD', '#F6F2EA', '#171717'] },
+  { id: 'neutral-dark', emphasis: 'dark', preview: ['#0E0F0E', '#181B19', '#F2EFE7'] },
+  { id: 'green', emphasis: 'accent', preview: ['#0D1411', '#17241D', '#CBE8D6'] },
+  { id: 'gold', emphasis: 'accent', preview: ['#12100C', '#201B15', '#E7D0A2'] },
+  { id: 'light-blue', emphasis: 'light', preview: ['#E9EFF2', '#F8FBFC', '#23455B'] },
+  { id: 'dark-green', emphasis: 'dark', preview: ['#0B110A', '#141D15', '#CFE0B4'] },
+  { id: 'legacy-dark', emphasis: 'accent', preview: ['#171311', '#2A221E', '#D6B989'] }
 ];
 
 export const spacing = {

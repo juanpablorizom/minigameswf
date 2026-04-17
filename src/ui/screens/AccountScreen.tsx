@@ -9,6 +9,7 @@ import { SurfaceCard } from '../components/SurfaceCard';
 import { radius, spacing, typography, useTheme } from '../theme';
 
 type AccountScreenProps = {
+  embedded?: boolean;
   isGuest: boolean;
   displayName: string | null;
   username: string | null;
@@ -20,6 +21,7 @@ type AccountScreenProps = {
 };
 
 export function AccountScreen({
+  embedded = false,
   isGuest,
   displayName,
   username,
@@ -44,7 +46,7 @@ export function AccountScreen({
   const canLinkEmail = Boolean(linkEmail.trim());
 
   return (
-    <AppScreen title={t('account.title')} subtitle={t('account.subtitle')}>
+    <AppScreen title={embedded ? undefined : t('account.title')} subtitle={embedded ? undefined : t('account.subtitle')}>
       <SurfaceCard>
         <View style={styles.profileHeader}>
           <View style={styles.avatar}>

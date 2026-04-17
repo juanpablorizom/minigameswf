@@ -1,16 +1,17 @@
 import { useEffect, useRef, useState } from 'react';
-import { Linking, Pressable, Share, StyleSheet, Text, View } from 'react-native';
+import { Linking, Modal, Pressable, Share, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { featuredGames, lobbyScenarios } from '../data/mockData';
 import type { RoomDetails } from '../data/rooms';
 import { buildRoomJoinUrl, extractRoomCodeFromValue, normalizeRoomCode } from '../lib/roomLinks';
 import { loadStoredRoomResume, storeRoomResume } from '../lib/storage';
-import type { AppTab, LobbyActionId, LobbyScenario, Player } from './types';
+import type { LobbyActionId, LobbyScenario, Player } from './types';
 import { useAppFlow } from '../state/AppFlowContext';
 import { useAuth } from '../state/AuthContext';
 import { useRoom } from '../state/RoomContext';
 import { AccountScreen } from '../ui/screens/AccountScreen';
+import { AppearanceScreen } from '../ui/screens/AppearanceScreen';
 import { ChooseGamesScreen } from '../ui/screens/ChooseGamesScreen';
 import { GameplayScreen } from '../ui/screens/GameplayScreen';
 import { JoinRoomScreen } from '../ui/screens/JoinRoomScreen';
@@ -206,9 +207,6 @@ export function AppNavigator() {
     roomSettings,
     canGoBack,
     goBack,
-    openAccount,
-    openSettings,
-    openGamesTab,
     openRoom,
     openJoinRoom,
     continueRoom,
@@ -235,6 +233,9 @@ export function AppNavigator() {
   const [joinNotice, setJoinNotice] = useState<string | null>(null);
   const [pendingJoinCode, setPendingJoinCode] = useState<string | null>(null);
   const [isAutoGuestingForJoin, setIsAutoGuestingForJoin] = useState(false);
+  const [isSettingsPanelOpen, setIsSettingsPanelOpen] = useState(false);
+  const [isAccountPanelOpen, setIsAccountPanelOpen] = useState(false);
+  const [isAppearancePanelOpen, setIsAppearancePanelOpen] = useState(false);
   const [resumeRoomReady, setResumeRoomReady] = useState(false);
   const [shouldResumeRoom, setShouldResumeRoom] = useState(false);
   const autoCloseFinishedRoomRef = useRef<string | null>(null);
@@ -276,6 +277,9 @@ export function AppNavigator() {
 
   useEffect(() => {
     if (!session && !isGuest) {
+      setIsAppearancePanelOpen(false);
+      setIsSettingsPanelOpen(false);
+      setIsAccountPanelOpen(false);
       resetToLobby();
     }
   }, [isGuest, resetToLobby, session]);
@@ -672,20 +676,6 @@ export function AppNavigator() {
     }
   }
 
-  function handleTabPress(tab: AppTab) {
-    if (tab === 'account') {
-      openAccount();
-      return;
-    }
-
-    if (tab === 'settings') {
-      openSettings();
-      return;
-    }
-
-    openGamesTab();
-  }
-
   function handleBackPress() {
     goBack();
   }
@@ -984,74 +974,98 @@ export function AppNavigator() {
     );
   }
 
-  function renderTabContent() {
-    if (activeTab === 'account') {
-      return (
-        <AccountScreen
-          isGuest={isGuest}
-          displayName={displayName}
-          username={username}
-          email={email}
-          isBusy={isBusy}
-          notice={accountNotice}
-          onSaveDisplayName={(nextDisplayName) => {
-            void updateDisplayName(nextDisplayName).then((result) => {
-              setAccountNotice(
-                resolveAccountNotice(result.message) ??
-                  (result.error === 'SUPABASE_NOT_CONFIGURED'
-                    ? t('account.notConfigured')
-                    : result.error === 'DISPLAY_NAME_REQUIRED'
-                      ? t('account.displayNameRequired')
-                      : result.error ?? null)
-              );
-            });
-          }}
-          onLinkWithEmail={(nextEmail) => {
-            void linkGuestAccountWithEmail(nextEmail, '').then((result) => {
-              setAccountNotice(
-                resolveAccountNotice(result.message) ??
-                  (result.error === 'SUPABASE_NOT_CONFIGURED' ? t('account.notConfigured') : result.error ?? null)
-              );
-            });
-          }}
-        />
-      );
-    }
+  function renderSettingsPanel() {
+    return (
+      <SettingsScreen
+        embedded
+        accountLabel={displayName ?? username ?? email?.split('@')[0] ?? (isGuest ? t('common.guest') : t('common.player'))}
+        accountStateLabel={isGuest ? t('account.accountStateGuest') : t('account.accountStateAuthenticated')}
+        language={language}
+        themePreference={themePreference}
+        isBusy={isBusy}
+        notice={settingsNotice}
+        onOpenAccount={() => {
+          setAccountNotice(null);
+          setIsAccountPanelOpen(true);
+        }}
+        onOpenAppearance={() => {
+          setSettingsNotice(null);
+          setIsAppearancePanelOpen(true);
+        }}
+        onChangeLanguage={(nextLanguage) => {
+          void changeLanguage(nextLanguage).then((result) => {
+            setSettingsNotice(
+              resolveAccountNotice(result.message) ??
+                (result.error === 'SUPABASE_NOT_CONFIGURED' ? t('account.notConfigured') : result.error ?? null)
+            );
+          });
+        }}
+        onLogout={() => {
+          setIsAppearancePanelOpen(false);
+          setIsAccountPanelOpen(false);
+          setIsSettingsPanelOpen(false);
+          setAccountNotice(null);
+          setSettingsNotice(null);
+          setAuthNotice(null);
+          setJoinNotice(null);
+          setRoomNotice(null);
+          void storeRoomResume(false);
+          void signOut();
+        }}
+      />
+    );
+  }
 
-    if (activeTab === 'settings') {
-      return (
-        <SettingsScreen
-          language={language}
-          themePreference={themePreference}
-          isBusy={isBusy}
-          notice={settingsNotice}
-          onChangeLanguage={(nextLanguage) => {
-            void changeLanguage(nextLanguage).then((result) => {
-              setSettingsNotice(
-                resolveAccountNotice(result.message) ??
-                  (result.error === 'SUPABASE_NOT_CONFIGURED' ? t('account.notConfigured') : result.error ?? null)
-              );
-            });
-          }}
-          onChangeTheme={(nextTheme) => {
-            void changeTheme(nextTheme).then((result) => {
-              setSettingsNotice(result.error ?? null);
-            });
-          }}
-          onLogout={() => {
-            setAccountNotice(null);
-            setSettingsNotice(null);
-            setAuthNotice(null);
-            setJoinNotice(null);
-            setRoomNotice(null);
-            void storeRoomResume(false);
-            void signOut();
-          }}
-        />
-      );
-    }
+  function renderAccountPanel() {
+    return (
+      <AccountScreen
+        embedded
+        isGuest={isGuest}
+        displayName={displayName}
+        username={username}
+        email={email}
+        isBusy={isBusy}
+        notice={accountNotice}
+        onSaveDisplayName={(nextDisplayName) => {
+          void updateDisplayName(nextDisplayName).then((result) => {
+            setAccountNotice(
+              resolveAccountNotice(result.message) ??
+                (result.error === 'SUPABASE_NOT_CONFIGURED'
+                  ? t('account.notConfigured')
+                  : result.error === 'DISPLAY_NAME_REQUIRED'
+                    ? t('account.displayNameRequired')
+                    : result.error ?? null)
+            );
+          });
+        }}
+        onLinkWithEmail={(nextEmail) => {
+          void linkGuestAccountWithEmail(nextEmail, '').then((result) => {
+            setAccountNotice(
+              resolveAccountNotice(result.message) ??
+                (result.error === 'SUPABASE_NOT_CONFIGURED' ? t('account.notConfigured') : result.error ?? null)
+            );
+          });
+        }}
+      />
+    );
+  }
 
-    return renderGamesTab();
+  function renderAppearancePanel() {
+    return (
+      <AppearanceScreen
+        embedded
+        themePreference={themePreference}
+        onChangeTheme={(nextTheme) => {
+          void changeTheme(nextTheme).then((result) => {
+            setSettingsNotice(result.error ?? null);
+
+            if (!result.error) {
+              setIsAppearancePanelOpen(false);
+            }
+          });
+        }}
+      />
+    );
   }
 
   return (
@@ -1059,50 +1073,105 @@ export function AppNavigator() {
       <View style={styles.topBar}>
         <View>
           <Text style={styles.brand}>MiniGamesWF</Text>
-          <Text style={styles.brandSub}>{activeTab === 'games' ? t('common.games') : activeTab === 'account' ? t('common.account') : t('common.settings')}</Text>
+          <Text style={styles.brandSub}>{t('common.games')}</Text>
         </View>
-        {canGoBack ? (
-          <View style={styles.topBarActions}>
-            <Pressable onPress={handleBackPress} style={styles.topBarAction}>
-              <Text style={styles.back}>{t('common.back')}</Text>
-            </Pressable>
-            <Pressable onPress={handleExitPress} style={styles.topBarAction}>
-              <Text style={styles.exit}>{t('common.exit')}</Text>
-            </Pressable>
-          </View>
-        ) : (
-          <View style={styles.statusPill}>
-            <Text style={styles.statusPillLabel}>{isGuest ? t('account.accountStateGuest') : t('account.accountStateAuthenticated')}</Text>
-          </View>
-        )}
+        <View style={styles.topBarActions}>
+          {canGoBack ? (
+            <>
+              <Pressable onPress={handleBackPress} style={styles.topBarAction}>
+                <Text style={styles.back}>{t('common.back')}</Text>
+              </Pressable>
+              <Pressable onPress={handleExitPress} style={styles.topBarAction}>
+                <Text style={styles.exit}>{t('common.exit')}</Text>
+              </Pressable>
+            </>
+          ) : null}
+          <Pressable
+            onPress={() => {
+              setSettingsNotice(null);
+              setIsSettingsPanelOpen(true);
+            }}
+            style={styles.settingsTrigger}
+          >
+            <Text style={styles.settingsTriggerIcon}>⚙</Text>
+            <Text style={styles.settingsTriggerLabel}>{t('common.settings')}</Text>
+          </Pressable>
+        </View>
       </View>
 
-      <View style={styles.content}>{renderTabContent()}</View>
+      <View style={styles.content}>{renderGamesTab()}</View>
 
-      <View style={styles.tabBar}>
-        <TabButton label={t('navigation.accountTab')} active={activeTab === 'account'} onPress={() => handleTabPress('account')} />
-        <TabButton label={t('navigation.gamesTab')} active={activeTab === 'games'} prominent onPress={() => handleTabPress('games')} />
-        <TabButton label={t('navigation.settingsTab')} active={activeTab === 'settings'} onPress={() => handleTabPress('settings')} />
-      </View>
+      <Modal
+        visible={isSettingsPanelOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          setIsAppearancePanelOpen(false);
+          setIsAccountPanelOpen(false);
+          setIsSettingsPanelOpen(false);
+        }}
+      >
+        <View style={styles.overlayBackdrop}>
+          <Pressable
+            style={StyleSheet.absoluteFillObject}
+            onPress={() => {
+              setIsAppearancePanelOpen(false);
+              setIsAccountPanelOpen(false);
+              setIsSettingsPanelOpen(false);
+            }}
+          />
+          <View style={styles.settingsPanel}>
+            <View style={styles.panelHeader}>
+              <Text style={styles.panelTitle}>{t('settings.title')}</Text>
+              <Pressable onPress={() => setIsSettingsPanelOpen(false)} style={styles.panelClose}>
+                <Text style={styles.panelCloseLabel}>{t('auth.modalClose')}</Text>
+              </Pressable>
+            </View>
+            <View style={styles.panelBody}>{renderSettingsPanel()}</View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={isAccountPanelOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setIsAccountPanelOpen(false)}
+      >
+        <View style={styles.overlayBackdrop}>
+          <Pressable style={StyleSheet.absoluteFillObject} onPress={() => setIsAccountPanelOpen(false)} />
+          <View style={styles.accountPanel}>
+            <View style={styles.panelHeader}>
+              <Text style={styles.panelTitle}>{t('account.title')}</Text>
+              <Pressable onPress={() => setIsAccountPanelOpen(false)} style={styles.panelClose}>
+                <Text style={styles.panelCloseLabel}>{t('auth.modalClose')}</Text>
+              </Pressable>
+            </View>
+            <View style={styles.panelBody}>{renderAccountPanel()}</View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={isAppearancePanelOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setIsAppearancePanelOpen(false)}
+      >
+        <View style={styles.overlayBackdrop}>
+          <Pressable style={StyleSheet.absoluteFillObject} onPress={() => setIsAppearancePanelOpen(false)} />
+          <View style={styles.appearancePanel}>
+            <View style={styles.panelHeader}>
+              <Text style={styles.panelTitle}>{t('settings.appearanceSection')}</Text>
+              <Pressable onPress={() => setIsAppearancePanelOpen(false)} style={styles.panelClose}>
+                <Text style={styles.panelCloseLabel}>{t('auth.modalClose')}</Text>
+              </Pressable>
+            </View>
+            <View style={styles.panelBody}>{renderAppearancePanel()}</View>
+          </View>
+        </View>
+      </Modal>
     </View>
-  );
-}
-
-type TabButtonProps = {
-  label: string;
-  active: boolean;
-  prominent?: boolean;
-  onPress: () => void;
-};
-
-function TabButton({ label, active, prominent = false, onPress }: TabButtonProps) {
-  const theme = useTheme();
-  const styles = createStyles(theme);
-
-  return (
-    <Pressable onPress={onPress} style={[styles.tabButton, prominent && styles.tabButtonProminent, active && styles.tabButtonActive]}>
-      <Text style={[styles.tabLabel, active && styles.tabLabelActive]}>{label}</Text>
-    </Pressable>
   );
 }
 
@@ -1170,54 +1239,100 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
     fontSize: typography.body,
     fontWeight: '700'
   },
-  statusPill: {
+  settingsTrigger: {
+    minHeight: 42,
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.border
+  },
+  settingsTriggerIcon: {
+    color: theme.colors.textMuted,
+    fontSize: typography.body,
+    fontWeight: '700'
+  },
+  settingsTriggerLabel: {
+    color: theme.colors.textPrimary,
+    fontSize: typography.body,
+    fontWeight: '700'
+  },
+  overlayBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(10, 10, 12, 0.42)',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.xl,
+    justifyContent: 'flex-start',
+    alignItems: 'flex-end'
+  },
+  settingsPanel: {
+    width: '100%',
+    maxWidth: 620,
+    maxHeight: '88%',
+    borderRadius: radius.lg,
+    overflow: 'hidden',
+    backgroundColor: theme.colors.background,
+    borderWidth: 1,
+    borderColor: theme.colors.border
+  },
+  accountPanel: {
+    width: '100%',
+    maxWidth: 660,
+    maxHeight: '88%',
+    borderRadius: radius.lg,
+    overflow: 'hidden',
+    backgroundColor: theme.colors.background,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    alignSelf: 'center',
+    marginTop: spacing.xl * 1.5
+  },
+  appearancePanel: {
+    width: '100%',
+    maxWidth: 680,
+    maxHeight: '88%',
+    borderRadius: radius.lg,
+    overflow: 'hidden',
+    backgroundColor: theme.colors.background,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    alignSelf: 'center',
+    marginTop: spacing.lg
+  },
+  panelHeader: {
+    minHeight: 64,
+    paddingHorizontal: spacing.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between'
+  },
+  panelTitle: {
+    color: theme.colors.textPrimary,
+    fontSize: typography.section,
+    fontWeight: '800'
+  },
+  panelClose: {
     minHeight: 38,
     borderRadius: radius.pill,
     paddingHorizontal: spacing.md,
+    alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: theme.colors.surface,
     borderWidth: 1,
     borderColor: theme.colors.border
   },
-  statusPillLabel: {
-    color: theme.colors.textSecondary,
-    fontSize: typography.caption,
-    fontWeight: '700',
-    letterSpacing: 0.8
-  },
-  tabBar: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.sm,
-    paddingBottom: spacing.lg,
-    backgroundColor: theme.colors.background
-  },
-  tabButton: {
-    flex: 1,
-    minHeight: 58,
-    borderRadius: radius.md,
-    backgroundColor: theme.colors.surface,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: spacing.sm
-  },
-  tabButtonProminent: {
-    backgroundColor: theme.colors.backgroundElevated
-  },
-  tabButtonActive: {
-    borderColor: theme.colors.primary,
-    backgroundColor: theme.colors.surfaceMuted
-  },
-  tabLabel: {
+  panelCloseLabel: {
     color: theme.colors.textSecondary,
     fontSize: typography.body,
     fontWeight: '700'
   },
-  tabLabelActive: {
-    color: theme.colors.textPrimary
+  panelBody: {
+    flex: 1
   }
   });
 }
