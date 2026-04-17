@@ -8,8 +8,8 @@ import {
   joinPrivateRoomByCode,
   removeRoomMember,
   leaveCurrentRoom,
-  startImpostorVote as startImpostorVoteRequest,
   startImpostorRound as startImpostorRoundRequest,
+  advanceImpostorRound as advanceImpostorRoundRequest,
   castImpostorVote as castImpostorVoteRequest,
   resolveImpostorVote as resolveImpostorVoteRequest,
   subscribeToRoomRealtime,
@@ -38,8 +38,14 @@ type RoomContextValue = {
   joinRoomByCode: (code: string) => Promise<RoomActionResult>;
   removeMember: (memberUserId: string) => Promise<RoomActionResult>;
   leaveRoom: () => Promise<RoomActionResult>;
-  startImpostorRound: (themeCategory: ImpostorCategoryId, impostorCount: number) => Promise<RoomActionResult>;
-  startImpostorVote: (voteDurationSeconds: number) => Promise<RoomActionResult>;
+  startImpostorRound: (
+    themeCategory: ImpostorCategoryId,
+    impostorCount: number,
+    voteDurationSeconds: number,
+    missBehavior: 'repeat' | 'end',
+    balanceRuleEnabled: boolean
+  ) => Promise<RoomActionResult>;
+  advanceImpostorRound: () => Promise<RoomActionResult>;
   castImpostorVote: (targetUserId: string) => Promise<RoomActionResult>;
   resolveImpostorVote: () => Promise<RoomActionResult>;
   saveSelectedGame: (selectedGameId: string | null) => Promise<RoomActionResult>;
@@ -82,6 +88,10 @@ function mapRoomError(error: unknown) {
 
   if (message === 'ROUND_TARGET_ELIMINATED') {
     return 'ROUND_TARGET_ELIMINATED';
+  }
+
+  if (message === 'ROUND_NOT_ACTIVE') {
+    return 'ROUND_NOT_ACTIVE';
   }
 
   return message;
@@ -305,7 +315,7 @@ export function RoomProvider({ children }: PropsWithChildren) {
           setIsBusy(false);
         }
       },
-      startImpostorRound: async (themeCategory, impostorCount) => {
+      startImpostorRound: async (themeCategory, impostorCount, voteDurationSeconds, missBehavior, balanceRuleEnabled) => {
         if (!user || !activeRoom) {
           return { error: 'AUTH_REQUIRED' };
         }
@@ -313,7 +323,14 @@ export function RoomProvider({ children }: PropsWithChildren) {
         setIsBusy(true);
 
         try {
-          await startImpostorRoundRequest(activeRoom.room.id, themeCategory, impostorCount);
+          await startImpostorRoundRequest(
+            activeRoom.room.id,
+            themeCategory,
+            impostorCount,
+            voteDurationSeconds,
+            missBehavior,
+            balanceRuleEnabled
+          );
           const roomDetails = await getRoomDetails(activeRoom.room.id, user.id);
           setActiveRoom(roomDetails);
           return { roomId: activeRoom.room.id };
@@ -323,7 +340,7 @@ export function RoomProvider({ children }: PropsWithChildren) {
           setIsBusy(false);
         }
       },
-      startImpostorVote: async (voteDurationSeconds) => {
+      advanceImpostorRound: async () => {
         if (!user || !activeRoom) {
           return { error: 'AUTH_REQUIRED' };
         }
@@ -331,7 +348,7 @@ export function RoomProvider({ children }: PropsWithChildren) {
         setIsBusy(true);
 
         try {
-          await startImpostorVoteRequest(activeRoom.room.id, voteDurationSeconds);
+          await advanceImpostorRoundRequest(activeRoom.room.id);
           const roomDetails = await getRoomDetails(activeRoom.room.id, user.id);
           setActiveRoom(roomDetails);
           return { roomId: activeRoom.room.id };

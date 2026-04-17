@@ -15,9 +15,9 @@ type RoomSettingsScreenProps = {
 };
 
 const impostorCountOptions = [1, 2, 3];
-const roundOptions = [2, 3, 4];
 const turnOptions = [30, 45, 60];
 const themeOptions: RoomSettings['themeCategory'][] = ['animals', 'countries', 'objects'];
+const missBehaviorOptions: RoomSettings['missBehavior'][] = ['repeat', 'end'];
 
 export function RoomSettingsScreen({ settings, onChangeSettings, onSave }: RoomSettingsScreenProps) {
   const { t } = useTranslation();
@@ -32,7 +32,6 @@ export function RoomSettingsScreen({ settings, onChangeSettings, onSave }: RoomS
         </View>
         <Text style={styles.summaryCopy}>
           {t('roomSettings.summary', {
-            rounds: settings.rounds,
             turnSeconds: settings.turnSeconds,
             impostorCount: settings.impostorCount,
             theme: t(`roomSettings.themeOptions.${settings.themeCategory}`).toLowerCase()
@@ -70,20 +69,6 @@ export function RoomSettingsScreen({ settings, onChangeSettings, onSave }: RoomS
       </SurfaceCard>
 
       <SurfaceCard>
-        <Text style={styles.sectionTitle}>{t('roomSettings.rounds')}</Text>
-        <View style={styles.optionRow}>
-          {roundOptions.map((rounds) => (
-            <OptionChip
-              key={rounds}
-              label={`${rounds}`}
-              active={settings.rounds === rounds}
-              onPress={() => onChangeSettings({ ...settings, rounds })}
-            />
-          ))}
-        </View>
-      </SurfaceCard>
-
-      <SurfaceCard>
         <Text style={styles.sectionTitle}>{t('roomSettings.turnTimer')}</Text>
         <View style={styles.optionRow}>
           {turnOptions.map((turnSeconds) => (
@@ -94,6 +79,38 @@ export function RoomSettingsScreen({ settings, onChangeSettings, onSave }: RoomS
               onPress={() => onChangeSettings({ ...settings, turnSeconds })}
             />
           ))}
+        </View>
+      </SurfaceCard>
+
+      <SurfaceCard>
+        <Text style={styles.sectionTitle}>{t('roomSettings.missBehavior')}</Text>
+        <Text style={styles.summaryCopy}>{t('roomSettings.missBehaviorHint')}</Text>
+        <View style={styles.optionColumn}>
+          {missBehaviorOptions.map((missBehavior) => (
+            <OptionChip
+              key={missBehavior}
+              label={t(`roomSettings.missBehaviorOptions.${missBehavior}`)}
+              active={settings.missBehavior === missBehavior}
+              onPress={() => onChangeSettings({ ...settings, missBehavior })}
+            />
+          ))}
+        </View>
+      </SurfaceCard>
+
+      <SurfaceCard>
+        <Text style={styles.sectionTitle}>{t('roomSettings.balanceRule')}</Text>
+        <Text style={styles.summaryCopy}>{t('roomSettings.balanceRuleHint')}</Text>
+        <View style={styles.optionRow}>
+          <OptionChip
+            label={t('common.on')}
+            active={settings.balanceEndsGame}
+            onPress={() => onChangeSettings({ ...settings, balanceEndsGame: true })}
+          />
+          <OptionChip
+            label={t('common.off')}
+            active={!settings.balanceEndsGame}
+            onPress={() => onChangeSettings({ ...settings, balanceEndsGame: false })}
+          />
         </View>
       </SurfaceCard>
 

@@ -81,6 +81,10 @@ function mapRoomNotice(translate: (key: string, options?: Record<string, unknown
     return translate('gameplay.voteNotOpen');
   }
 
+  if (error === 'ROUND_NOT_ACTIVE') {
+    return translate('gameplay.roundNotReady');
+  }
+
   if (error === 'ROUND_TARGET_NOT_FOUND') {
     return translate('gameplay.voteTargetMissing');
   }
@@ -97,7 +101,7 @@ function buildLobbyScenario(
   isGuest: boolean,
   translate: (key: string, options?: Record<string, unknown>) => string
 ): LobbyScenario {
-  if (!activeRoom) {
+  if (!activeRoom || activeRoom.room.status === 'finished') {
     const baseScenario = isGuest ? lobbyScenarios.guest : lobbyScenarios.noRoom;
 
     return {
@@ -188,7 +192,7 @@ export function AppNavigator() {
     removeMember,
     leaveRoom,
     startImpostorRound,
-    startImpostorVote,
+    advanceImpostorRound,
     castImpostorVote,
     resolveImpostorVote,
     saveSelectedGame,
@@ -233,7 +237,8 @@ export function AppNavigator() {
   const [isAutoGuestingForJoin, setIsAutoGuestingForJoin] = useState(false);
   const [resumeRoomReady, setResumeRoomReady] = useState(false);
   const [shouldResumeRoom, setShouldResumeRoom] = useState(false);
-  const autoAdvanceRoundRef = useRef<string | null>(null);
+  const autoCloseFinishedRoomRef = useRef<string | null>(null);
+  const autoContinueRoundRef = useRef<string | null>(null);
   const hadAccessRef = useRef(false);
   const attemptedRoomResumeRef = useRef(false);
 
@@ -351,7 +356,6 @@ export function AppNavigator() {
 
   useEffect(() => {
     if (!activeRoom?.round) {
-      autoAdvanceRoundRef.current = null;
       return;
     }
 
@@ -363,36 +367,25 @@ export function AppNavigator() {
   }, [activeRoom?.round?.roundId, currentScreen, startGameplay]);
 
   useEffect(() => {
-    if (!activeRoom?.round || !activeRoom.isHost) {
-      autoAdvanceRoundRef.current = null;
+    if (!activeRoom?.round || activeRoom.round.phase !== 'result' || activeRoom.round.status !== 'active') {
+      autoContinueRoundRef.current = null;
       return;
     }
 
-    const round = activeRoom.round;
-    const shouldAdvance =
-      round.phase === 'result' &&
-      round.status === 'finished' &&
-      round.roundNumber < roomSettings.rounds;
+    const continueKey = `${activeRoom.round.roundId}:${activeRoom.round.roundNumber}:${activeRoom.round.expelledUserId ?? 'none'}`;
 
-    if (!shouldAdvance) {
-      autoAdvanceRoundRef.current = null;
+    if (autoContinueRoundRef.current === continueKey) {
       return;
     }
 
-    const advanceKey = `${round.roundId}:${round.roundNumber}`;
-
-    if (autoAdvanceRoundRef.current === advanceKey) {
-      return;
-    }
-
-    autoAdvanceRoundRef.current = advanceKey;
+    autoContinueRoundRef.current = continueKey;
+    setRoomNotice(t('gameplay.nextRoundStarting'));
 
     const timeout = setTimeout(() => {
-      setRoomNotice(t('gameplay.nextRoundStarting'));
-      void startImpostorRound(roomSettings.themeCategory, roomSettings.impostorCount).then((result) => {
-        if (result.error) {
+      void advanceImpostorRound().then((result) => {
+        if (result.error && result.error !== 'ROUND_NOT_ACTIVE') {
           setRoomNotice(mapRoomNotice(t, result.error));
-          autoAdvanceRoundRef.current = null;
+          autoContinueRoundRef.current = null;
           return;
         }
 
@@ -403,7 +396,33 @@ export function AppNavigator() {
     return () => {
       clearTimeout(timeout);
     };
-  }, [activeRoom?.isHost, activeRoom?.round, roomSettings.impostorCount, roomSettings.rounds, roomSettings.themeCategory, startImpostorRound, t]);
+  }, [activeRoom?.round, advanceImpostorRound, t]);
+
+  useEffect(() => {
+    if (!activeRoom || activeRoom.room.status !== 'finished') {
+      autoCloseFinishedRoomRef.current = null;
+      return;
+    }
+
+    const closeKey = `${activeRoom.room.id}:${activeRoom.round?.roundId ?? 'no-round'}`;
+
+    if (autoCloseFinishedRoomRef.current === closeKey) {
+      return;
+    }
+
+    autoCloseFinishedRoomRef.current = closeKey;
+    setRoomNotice(t('gameplay.roomFinishedClosing'));
+
+    const timeout = setTimeout(() => {
+      void leaveRoom().finally(() => {
+        backToLobby();
+      });
+    }, 2200);
+
+    return () => {
+      clearTimeout(timeout);
+    };
+  }, [activeRoom, backToLobby, leaveRoom, t]);
 
   useEffect(() => {
     setRoomScreenActive(
@@ -790,7 +809,13 @@ export function AppNavigator() {
 
             setRoomNotice(t('room.roundStarting'));
 
-            void startImpostorRound(roomSettings.themeCategory, roomSettings.impostorCount).then((result) => {
+            void startImpostorRound(
+              roomSettings.themeCategory,
+              roomSettings.impostorCount,
+              roomSettings.turnSeconds,
+              roomSettings.missBehavior,
+              roomSettings.balanceEndsGame
+            ).then((result) => {
               if (result.error) {
                 setRoomNotice(mapRoomNotice(t, result.error));
                 return;
@@ -860,7 +885,9 @@ export function AppNavigator() {
     }
 
     if (currentScreen === 'gameplay') {
-      const gameplayPlayers: Player[] = (activeRoom?.members ?? []).map((member, index) => ({
+      const gameplayPlayers: Player[] = (activeRoom?.members ?? [])
+        .filter((member) => member.isActive)
+        .map((member, index) => ({
         id: member.userId,
         name: member.displayName,
         status: member.role === 'host' ? 'host' : 'ready',
@@ -875,24 +902,8 @@ export function AppNavigator() {
           activeGame={featuredGames[0]}
           roomSettings={roomSettings}
           roundSetup={activeRoom?.round ?? null}
-          isHost={Boolean(activeRoom?.isHost)}
           isBusy={roomBusy}
           notice={roomNotice}
-          onStartVoting={() => {
-            if (!activeRoom?.isHost) {
-              setRoomNotice(t('room.hostOnlyContinue'));
-              return;
-            }
-
-            void startImpostorVote(roomSettings.turnSeconds).then((result) => {
-              if (result.error) {
-                setRoomNotice(mapRoomNotice(t, result.error));
-                return;
-              }
-
-              setRoomNotice(null);
-            });
-          }}
           onCastVote={(targetUserId) => {
             void castImpostorVote(targetUserId).then((result) => {
               if (result.error) {
@@ -904,28 +915,8 @@ export function AppNavigator() {
             });
           }}
           onResolveVote={() => {
-            if (!activeRoom?.isHost) {
-              return;
-            }
-
             void resolveImpostorVote().then((result) => {
-              if (result.error) {
-                setRoomNotice(mapRoomNotice(t, result.error));
-                return;
-              }
-
-              setRoomNotice(null);
-            });
-          }}
-          onStartNextRound={() => {
-            if (!activeRoom?.isHost) {
-              setRoomNotice(t('room.hostOnlyContinue'));
-              return;
-            }
-
-            setRoomNotice(t('gameplay.nextRoundStarting'));
-            void startImpostorRound(roomSettings.themeCategory, roomSettings.impostorCount).then((result) => {
-              if (result.error) {
+              if (result.error && result.error !== 'ROUND_NOT_VOTING') {
                 setRoomNotice(mapRoomNotice(t, result.error));
                 return;
               }
@@ -941,7 +932,13 @@ export function AppNavigator() {
 
             setRoomNotice(t('room.roundStarting'));
 
-            void startImpostorRound(roomSettings.themeCategory, roomSettings.impostorCount).then((result) => {
+            void startImpostorRound(
+              roomSettings.themeCategory,
+              roomSettings.impostorCount,
+              roomSettings.turnSeconds,
+              roomSettings.missBehavior,
+              roomSettings.balanceEndsGame
+            ).then((result) => {
               if (result.error) {
                 setRoomNotice(mapRoomNotice(t, result.error));
                 return;
@@ -966,7 +963,13 @@ export function AppNavigator() {
 
           setRoomNotice(t('room.roundStarting'));
 
-          void startImpostorRound(roomSettings.themeCategory, roomSettings.impostorCount).then((result) => {
+          void startImpostorRound(
+            roomSettings.themeCategory,
+            roomSettings.impostorCount,
+            roomSettings.turnSeconds,
+            roomSettings.missBehavior,
+            roomSettings.balanceEndsGame
+          ).then((result) => {
             if (result.error) {
               setRoomNotice(mapRoomNotice(t, result.error));
               return;

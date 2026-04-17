@@ -144,15 +144,11 @@ export const sessionRecognitions: ActivityItem[] = [
 export const initialSelectedGameIds = ['impostor'];
 
 export const initialRoomSettings: RoomSettings = {
-  maxPlayers: 8,
-  rounds: 3,
   turnSeconds: 45,
-  privacy: 'Invite only',
-  vibe: 'Balanced',
-  format: 'Casual',
-  chatEnabled: true,
   impostorCount: 1,
-  themeCategory: 'animals'
+  themeCategory: 'animals',
+  missBehavior: 'repeat',
+  balanceEndsGame: true
 };
 
 export const podium: ResultEntry[] = [

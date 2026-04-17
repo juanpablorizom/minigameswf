@@ -65,11 +65,20 @@ create table if not exists public.room_rounds (
   expelled_user_id uuid references auth.users (id) on delete set null,
   phase text not null default 'reveal' check (phase in ('reveal', 'voting', 'result')),
   vote_deadline_at timestamptz,
+  vote_duration_seconds integer not null default 45,
+  miss_behavior text not null default 'repeat' check (miss_behavior in ('repeat', 'end')),
+  balance_rule_enabled boolean not null default true,
+  outcome text not null default 'continue' check (outcome in ('impostors_caught', 'impostors_balanced', 'missed_impostor', 'continue')),
   started_by_user_id uuid not null references auth.users (id) on delete cascade,
   status text not null default 'active' check (status in ('active', 'finished')),
   created_at timestamptz not null default timezone('utc', now()),
   updated_at timestamptz not null default timezone('utc', now())
 );
+
+alter table public.room_rounds add column if not exists vote_duration_seconds integer not null default 45;
+alter table public.room_rounds add column if not exists miss_behavior text not null default 'repeat';
+alter table public.room_rounds add column if not exists balance_rule_enabled boolean not null default true;
+alter table public.room_rounds add column if not exists outcome text not null default 'continue';
 
 create table if not exists public.room_round_votes (
   id uuid primary key default gen_random_uuid(),
@@ -350,7 +359,10 @@ $$;
 create or replace function public.start_impostor_round(
   p_room_id uuid,
   p_theme_category text,
-  p_impostor_count integer default 1
+  p_impostor_count integer default 1,
+  p_vote_duration_seconds integer default 45,
+  p_miss_behavior text default 'repeat',
+  p_balance_rule_enabled boolean default true
 )
 returns public.room_rounds
 language plpgsql
@@ -443,6 +455,10 @@ begin
     expelled_user_id,
     phase,
     vote_deadline_at,
+    vote_duration_seconds,
+    miss_behavior,
+    balance_rule_enabled,
+    outcome,
     started_by_user_id,
     status
   )
@@ -455,8 +471,12 @@ begin
     selected_impostor_ids,
     '{}'::uuid[],
     null,
-    'reveal',
-    null,
+    'voting',
+    timezone('utc', now()) + make_interval(secs => greatest(coalesce(p_vote_duration_seconds, 45), 10)),
+    greatest(coalesce(p_vote_duration_seconds, 45), 10),
+    case when p_miss_behavior = 'end' then 'end' else 'repeat' end,
+    coalesce(p_balance_rule_enabled, true),
+    'continue',
     current_user_id,
     'active'
   )
@@ -475,7 +495,10 @@ begin
     jsonb_build_object(
       'game_id', 'impostor',
       'theme_category', p_theme_category,
-      'impostor_count', total_impostors
+      'impostor_count', total_impostors,
+      'vote_duration_seconds', greatest(coalesce(p_vote_duration_seconds, 45), 10),
+      'miss_behavior', case when p_miss_behavior = 'end' then 'end' else 'repeat' end,
+      'balance_rule_enabled', coalesce(p_balance_rule_enabled, true)
     )
   );
 
@@ -483,9 +506,8 @@ begin
 end;
 $$;
 
-create or replace function public.start_impostor_vote(
-  p_room_id uuid,
-  p_vote_duration_seconds integer default 45
+create or replace function public.advance_impostor_round(
+  p_room_id uuid
 )
 returns public.room_rounds
 language plpgsql
@@ -500,8 +522,8 @@ begin
     raise exception 'AUTH_REQUIRED';
   end if;
 
-  if not private.is_room_host(p_room_id) then
-    raise exception 'ROUND_HOST_ONLY';
+  if not private.is_room_member(p_room_id) then
+    raise exception 'AUTH_REQUIRED';
   end if;
 
   select *
@@ -514,10 +536,16 @@ begin
     raise exception 'ROUND_NOT_FOUND';
   end if;
 
+  if target_round.status <> 'active' or target_round.phase <> 'result' then
+    raise exception 'ROUND_NOT_ACTIVE';
+  end if;
+
   update public.room_rounds
-  set phase = 'voting',
-      vote_deadline_at = timezone('utc', now()) + make_interval(secs => greatest(coalesce(p_vote_duration_seconds, 45), 10)),
+  set round_number = target_round.round_number + 1,
+      phase = 'voting',
+      vote_deadline_at = timezone('utc', now()) + make_interval(secs => greatest(coalesce(target_round.vote_duration_seconds, 45), 10)),
       expelled_user_id = null,
+      outcome = 'continue',
       updated_at = timezone('utc', now())
   where id = target_round.id
   returning * into target_round;
@@ -529,8 +557,8 @@ begin
   values (
     p_room_id,
     current_user_id,
-    'vote_started',
-    jsonb_build_object('round_id', target_round.id)
+    'round_started',
+    jsonb_build_object('round_id', target_round.id, 'round_number', target_round.round_number)
   );
 
   return target_round;
@@ -609,14 +637,18 @@ declare
   target_round public.room_rounds;
   winning_target_id uuid;
   next_eliminated_ids uuid[];
+  remaining_impostor_count integer := 0;
+  remaining_innocent_count integer := 0;
   all_impostors_eliminated boolean := false;
+  impostors_balanced boolean := false;
+  missed_impostor boolean := false;
 begin
   if current_user_id is null then
     raise exception 'AUTH_REQUIRED';
   end if;
 
-  if not private.is_room_host(p_room_id) then
-    raise exception 'ROUND_HOST_ONLY';
+  if not private.is_room_member(p_room_id) then
+    raise exception 'AUTH_REQUIRED';
   end if;
 
   select *
@@ -627,6 +659,10 @@ begin
 
   if target_round.id is null then
     raise exception 'ROUND_NOT_FOUND';
+  end if;
+
+  if target_round.phase <> 'voting' then
+    raise exception 'ROUND_NOT_VOTING';
   end if;
 
   select vote_row.target_user_id
@@ -647,16 +683,54 @@ begin
   end if;
 
   all_impostors_eliminated := coalesce(target_round.impostor_ids <@ coalesce(next_eliminated_ids, '{}'::uuid[]), false);
+  missed_impostor := winning_target_id is null or not (winning_target_id = any(target_round.impostor_ids));
+
+  remaining_impostor_count := (
+    select count(*)
+    from unnest(target_round.impostor_ids) as impostor_id
+    where not (impostor_id = any(coalesce(next_eliminated_ids, '{}'::uuid[])))
+  );
+
+  remaining_innocent_count := greatest(
+    (
+      select count(*)
+      from public.room_members
+      where room_id = p_room_id
+        and is_active = true
+        and not (user_id = any(coalesce(next_eliminated_ids, '{}'::uuid[])))
+    ) - remaining_impostor_count,
+    0
+  );
+
+  impostors_balanced := coalesce(target_round.balance_rule_enabled, true)
+    and remaining_impostor_count > 0
+    and remaining_impostor_count >= remaining_innocent_count;
 
   update public.room_rounds
   set phase = 'result',
       vote_deadline_at = null,
       expelled_user_id = winning_target_id,
       eliminated_user_ids = coalesce(next_eliminated_ids, '{}'::uuid[]),
-      status = case when all_impostors_eliminated then 'finished' else 'active' end,
+      outcome = case
+        when all_impostors_eliminated then 'impostors_caught'
+        when impostors_balanced then 'impostors_balanced'
+        when missed_impostor and target_round.miss_behavior = 'end' then 'missed_impostor'
+        else 'continue'
+      end,
+      status = case
+        when all_impostors_eliminated then 'finished'
+        when impostors_balanced then 'finished'
+        when missed_impostor and target_round.miss_behavior = 'end' then 'finished'
+        else 'active'
+      end,
       updated_at = timezone('utc', now())
   where id = target_round.id
   returning * into target_round;
+
+  update public.rooms
+  set status = case when target_round.status = 'finished' then 'finished' else 'active' end,
+      updated_at = timezone('utc', now())
+  where id = p_room_id;
 
   insert into public.room_activity (room_id, actor_user_id, type, payload)
   values (
@@ -666,7 +740,10 @@ begin
     jsonb_build_object(
       'round_id', target_round.id,
       'expelled_user_id', winning_target_id,
-      'all_impostors_eliminated', all_impostors_eliminated
+      'all_impostors_eliminated', all_impostors_eliminated,
+      'impostors_balanced', impostors_balanced,
+      'missed_impostor', missed_impostor,
+      'outcome', target_round.outcome
     )
   );
 

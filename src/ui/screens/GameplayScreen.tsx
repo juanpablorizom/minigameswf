@@ -14,13 +14,10 @@ type GameplayScreenProps = {
   activeGame: MiniGame;
   roomSettings: RoomSettings;
   roundSetup: ImpostorRoundSetup | null;
-  isHost: boolean;
   isBusy: boolean;
   notice: string | null;
-  onStartVoting: () => void;
   onCastVote: (targetUserId: string) => void;
   onResolveVote: () => void;
-  onStartNextRound: () => void;
   onRevealResults: () => void;
   onPlayAgain: () => void;
 };
@@ -36,13 +33,10 @@ export function GameplayScreen({
   activeGame,
   roomSettings,
   roundSetup,
-  isHost,
   isBusy,
   notice,
-  onStartVoting,
   onCastVote,
-  onResolveVote,
-  onStartNextRound
+  onResolveVote
 }: GameplayScreenProps) {
   const { t } = useTranslation();
   const theme = useTheme();
@@ -79,21 +73,6 @@ export function GameplayScreen({
     };
   }, [roundSetup?.phase, roundSetup?.voteDeadlineAt]);
 
-  useEffect(() => {
-    if (!roundSetup || !isHost || roundSetup.phase !== 'voting' || secondsLeft === null || secondsLeft > 0) {
-      return;
-    }
-
-    const resolutionKey = `${roundSetup.roundId}:${roundSetup.voteDeadlineAt ?? 'no-deadline'}`;
-
-    if (autoResolvedVoteRef.current === resolutionKey) {
-      return;
-    }
-
-    autoResolvedVoteRef.current = resolutionKey;
-    onResolveVote();
-  }, [isHost, onResolveVote, roundSetup, secondsLeft]);
-
   if (activeGame.id !== 'impostor' || !roundSetup) {
     return (
       <AppScreen title={t('gameplay.impostorTitle')} subtitle={t('gameplay.waitingForHostCopy')}>
@@ -113,8 +92,10 @@ export function GameplayScreen({
   const expelledPlayer = players.find((player) => player.id === roundSetup.expelledUserId) ?? null;
   const expelledWasImpostor = expelledPlayer ? roundSetup.impostorIds.includes(expelledPlayer.id) : false;
   const availableVoteTargets = players.filter((player) => !roundSetup.eliminatedUserIds.includes(player.id));
+  const activeVoters = players.filter((player) => !roundSetup.eliminatedUserIds.includes(player.id));
   const remainingImpostorIds = roundSetup.impostorIds.filter((playerId) => !roundSetup.eliminatedUserIds.includes(playerId));
-  const allImpostorsOut = remainingImpostorIds.length === 0;
+  const allImpostorsOut = roundSetup.outcome === 'impostors_caught';
+  const allVotesSubmitted = activeVoters.length > 0 && roundSetup.votes.length >= activeVoters.length;
   const voteSummary = useMemo(() => {
     const counts = new Map<string, number>();
 
@@ -126,29 +107,38 @@ export function GameplayScreen({
   }, [roundSetup.votes]);
 
   const pendingVoteTarget = availableVoteTargets.find((player) => player.id === pendingVoteTargetId) ?? null;
-  const canOpenVoting = roundSetup.phase === 'reveal' || roundSetup.phase === 'result';
   const canVoteNow = roundSetup.phase === 'voting';
-  const shouldShowNextRoundButton = allImpostorsOut && roundSetup.roundNumber < roomSettings.rounds;
-  const shouldShowFinalState = allImpostorsOut && roundSetup.roundNumber >= roomSettings.rounds;
-
   function openVoteFlow() {
-    if (canOpenVoting && isHost) {
-      onStartVoting();
-      setIsVoteModalVisible(true);
-      return;
-    }
-
     if (canVoteNow) {
       setIsVoteModalVisible(true);
     }
   }
+
+  useEffect(() => {
+    if (!roundSetup || roundSetup.phase !== 'voting') {
+      return;
+    }
+
+    if (!allVotesSubmitted && (secondsLeft === null || secondsLeft > 0)) {
+      return;
+    }
+
+    const resolutionKey = `${roundSetup.roundId}:${roundSetup.votes.length}:${secondsLeft ?? 'no-timer'}`;
+
+    if (autoResolvedVoteRef.current === resolutionKey) {
+      return;
+    }
+
+    autoResolvedVoteRef.current = resolutionKey;
+    onResolveVote();
+  }, [allVotesSubmitted, onResolveVote, roundSetup, secondsLeft]);
 
   return (
     <AppScreen title={t('gameplay.impostorTitle')} subtitle={t('gameplay.impostorSubtitle')}>
       <SurfaceCard>
         <View style={styles.headerRow}>
           <Badge label={t(`roomSettings.themeOptions.${roundSetup.categoryId}`)} tone="accent" />
-          <Badge label={t('gameplay.roundNumber', { current: roundSetup.roundNumber, total: roomSettings.rounds })} tone="neutral" />
+          <Badge label={t('gameplay.roundSimple', { current: roundSetup.roundNumber })} tone="neutral" />
         </View>
         <View style={styles.revealCard}>
           <Text style={styles.revealEyebrow}>
@@ -173,7 +163,12 @@ export function GameplayScreen({
         </View>
         <Text style={styles.infoCopy}>
           {roundSetup.phase === 'reveal'
-            ? t('gameplay.votePrompt')
+            ? currentVote
+              ? t('gameplay.voteRegisteredFor', {
+                  player:
+                    players.find((player) => player.id === currentVote.targetUserId)?.name ?? t('common.player')
+                })
+              : t('gameplay.voteOpen')
             : roundSetup.phase === 'voting'
               ? currentVote
                 ? t('gameplay.voteRegisteredFor', {
@@ -186,37 +181,13 @@ export function GameplayScreen({
                 : t('gameplay.votePending')}
         </Text>
 
-        <AppButton
-          label={
-            roundSetup.phase === 'result'
-              ? allImpostorsOut
-                ? shouldShowNextRoundButton
-                  ? t('gameplay.nextRound')
-                  : t('gameplay.finishMatch')
-                : t('gameplay.openVoting')
-              : t('gameplay.votePrimary')
-          }
-          onPress={() => {
-            if (roundSetup.phase === 'result') {
-              if (allImpostorsOut) {
-                if (shouldShowNextRoundButton) {
-                  onStartNextRound();
-                }
-                return;
-              }
-
-              openVoteFlow();
-              return;
-            }
-
-            openVoteFlow();
-          }}
-          disabled={
-            isBusy ||
-            (!isHost && canOpenVoting) ||
-            shouldShowFinalState
-          }
-        />
+        {roundSetup.phase !== 'result' ? (
+          <AppButton
+            label={t('gameplay.votePrimary')}
+            onPress={openVoteFlow}
+            disabled={isBusy || !canVoteNow}
+          />
+        ) : null}
       </SurfaceCard>
 
       <SurfaceCard>
@@ -264,10 +235,12 @@ export function GameplayScreen({
           </Text>
           <Text style={styles.infoCopy}>
             {allImpostorsOut
-              ? shouldShowNextRoundButton
-                ? t('gameplay.nextRoundAutoHost')
-                : t('gameplay.matchFinished')
-              : t('gameplay.remainingImpostors', { count: remainingImpostorIds.length })}
+              ? t('gameplay.matchFinished')
+              : roundSetup.outcome === 'impostors_balanced'
+                ? t('gameplay.balanceWin', { count: remainingImpostorIds.length })
+                : roundSetup.outcome === 'missed_impostor'
+                  ? t('gameplay.missedImpostorEnd')
+                  : t('gameplay.nextRoundAuto')}
           </Text>
         </SurfaceCard>
       ) : null}

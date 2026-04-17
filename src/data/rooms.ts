@@ -114,6 +114,10 @@ function buildRoomErrorMessage(message: string) {
     return 'ROUND_TARGET_ELIMINATED';
   }
 
+  if (message.includes('ROUND_NOT_ACTIVE')) {
+    return 'ROUND_NOT_ACTIVE';
+  }
+
   if (message.includes('Failed to fetch') || message.includes('fetch failed') || message.includes('Network request failed')) {
     return 'BACKEND_UNREACHABLE';
   }
@@ -311,12 +315,16 @@ function mapRoomRound(round: RoomRoundRow | null, votes: RoomRoundVoteRow[] = []
     expelledUserId: round.expelled_user_id,
     phase: round.phase,
     voteDeadlineAt: round.vote_deadline_at,
+    voteDurationSeconds: round.vote_duration_seconds,
+    missBehavior: round.miss_behavior,
+    balanceEndsGame: round.balance_rule_enabled,
     votes: votes.map((vote) => ({
       voterUserId: vote.voter_user_id,
       targetUserId: vote.target_user_id
     })),
     startedAt: round.created_at,
-    status: round.status
+    status: round.status,
+    outcome: round.outcome
   };
 }
 
@@ -489,11 +497,21 @@ export async function removeRoomMember(roomId: string, memberUserId: string) {
   return normalizeResult(data as RoomMemberRow | RoomMemberRow[] | null);
 }
 
-export async function startImpostorRound(roomId: string, themeCategory: ImpostorCategoryId, impostorCount: number) {
+export async function startImpostorRound(
+  roomId: string,
+  themeCategory: ImpostorCategoryId,
+  impostorCount: number,
+  voteDurationSeconds: number,
+  missBehavior: 'repeat' | 'end',
+  balanceRuleEnabled: boolean
+) {
   const { data, error } = await supabase.rpc('start_impostor_round', {
     p_room_id: roomId,
     p_theme_category: themeCategory,
-    p_impostor_count: impostorCount
+    p_impostor_count: impostorCount,
+    p_vote_duration_seconds: voteDurationSeconds,
+    p_miss_behavior: missBehavior,
+    p_balance_rule_enabled: balanceRuleEnabled
   });
 
   if (error) {
@@ -503,10 +521,9 @@ export async function startImpostorRound(roomId: string, themeCategory: Impostor
   return mapRoomRound(normalizeResult(data as RoomRoundRow | RoomRoundRow[] | null));
 }
 
-export async function startImpostorVote(roomId: string, voteDurationSeconds: number) {
-  const { data, error } = await supabase.rpc('start_impostor_vote', {
-    p_room_id: roomId,
-    p_vote_duration_seconds: voteDurationSeconds
+export async function advanceImpostorRound(roomId: string) {
+  const { data, error } = await supabase.rpc('advance_impostor_round', {
+    p_room_id: roomId
   });
 
   if (error) {

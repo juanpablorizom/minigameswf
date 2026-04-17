@@ -173,10 +173,11 @@ export function PrivateRoomScreen({
           <Text style={styles.sectionTitle}>{t('room.partySetup')}</Text>
           {canManageRoom ? <AppButton label={t('room.adjust')} onPress={onOpenSettings} variant="ghost" /> : null}
         </View>
-        <Text style={styles.itemSubtitle}>{t('room.roundsLine', { value: settings.rounds })}</Text>
         <Text style={styles.itemSubtitle}>{t('room.impostorCountLine', { value: settings.impostorCount })}</Text>
         <Text style={styles.itemSubtitle}>{t('room.themeLine', { value: themeLabel(settings.themeCategory) })}</Text>
         <Text style={styles.itemSubtitle}>{t('room.turnTimerLine', { value: settings.turnSeconds })}</Text>
+        <Text style={styles.itemSubtitle}>{t(`room.missBehaviorLine.${settings.missBehavior}`)}</Text>
+        <Text style={styles.itemSubtitle}>{t(settings.balanceEndsGame ? 'room.balanceRuleOn' : 'room.balanceRuleOff')}</Text>
       </SurfaceCard>
 
       <SurfaceCard>

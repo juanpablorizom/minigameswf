@@ -5,6 +5,8 @@ export type RoomVisibility = 'private';
 export type RoomMemberRole = 'host' | 'member';
 export type RoomRoundStatus = 'active' | 'finished';
 export type RoomRoundPhase = 'reveal' | 'voting' | 'result';
+export type RoomMissBehavior = 'repeat' | 'end';
+export type RoomRoundOutcome = 'impostors_caught' | 'impostors_balanced' | 'missed_impostor' | 'continue';
 
 export type Database = {
   public: {
@@ -166,6 +168,10 @@ export type Database = {
           expelled_user_id: string | null;
           phase: RoomRoundPhase;
           vote_deadline_at: string | null;
+          vote_duration_seconds: number;
+          miss_behavior: RoomMissBehavior;
+          balance_rule_enabled: boolean;
+          outcome: RoomRoundOutcome;
           started_by_user_id: string;
           status: RoomRoundStatus;
           created_at: string;
@@ -183,6 +189,10 @@ export type Database = {
           expelled_user_id?: string | null;
           phase?: RoomRoundPhase;
           vote_deadline_at?: string | null;
+          vote_duration_seconds?: number;
+          miss_behavior?: RoomMissBehavior;
+          balance_rule_enabled?: boolean;
+          outcome?: RoomRoundOutcome;
           started_by_user_id: string;
           status?: RoomRoundStatus;
           created_at?: string;
@@ -200,6 +210,10 @@ export type Database = {
           expelled_user_id?: string | null;
           phase?: RoomRoundPhase;
           vote_deadline_at?: string | null;
+          vote_duration_seconds?: number;
+          miss_behavior?: RoomMissBehavior;
+          balance_rule_enabled?: boolean;
+          outcome?: RoomRoundOutcome;
           started_by_user_id?: string;
           status?: RoomRoundStatus;
           created_at?: string;
@@ -261,13 +275,15 @@ export type Database = {
           p_room_id: string;
           p_theme_category: string;
           p_impostor_count: number;
+          p_vote_duration_seconds?: number;
+          p_miss_behavior?: RoomMissBehavior;
+          p_balance_rule_enabled?: boolean;
         };
         Returns: Database['public']['Tables']['room_rounds']['Row'][];
       };
-      start_impostor_vote: {
+      advance_impostor_round: {
         Args: {
           p_room_id: string;
-          p_vote_duration_seconds?: number;
         };
         Returns: Database['public']['Tables']['room_rounds']['Row'][];
       };

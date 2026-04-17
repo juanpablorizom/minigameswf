@@ -31,11 +31,15 @@ export function buildImpostorRound(players: Player[], settings: RoomSettings): I
       impostorIds: [],
       eliminatedUserIds: [],
       expelledUserId: null,
-      phase: 'reveal',
+      phase: 'voting',
       voteDeadlineAt: null,
+      voteDurationSeconds: settings.turnSeconds,
+      missBehavior: settings.missBehavior,
+      balanceEndsGame: settings.balanceEndsGame,
       votes: [],
       startedAt: new Date().toISOString(),
-      status: 'active'
+      status: 'active',
+      outcome: 'continue'
     };
   }
 
@@ -52,10 +56,14 @@ export function buildImpostorRound(players: Player[], settings: RoomSettings): I
     impostorIds,
     eliminatedUserIds: [],
     expelledUserId: null,
-    phase: 'reveal',
+    phase: 'voting',
     voteDeadlineAt: null,
+    voteDurationSeconds: settings.turnSeconds,
+    missBehavior: settings.missBehavior,
+    balanceEndsGame: settings.balanceEndsGame,
     votes: [],
     startedAt: new Date().toISOString(),
-    status: 'active'
+    status: 'active',
+    outcome: 'continue'
   };
 }

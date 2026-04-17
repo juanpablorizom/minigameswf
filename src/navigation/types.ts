@@ -104,15 +104,11 @@ export type ResultEntry = {
 };
 
 export type RoomSettings = {
-  maxPlayers: number;
-  rounds: number;
   turnSeconds: number;
-  privacy: 'Invite only' | 'Friends of friends';
-  vibe: 'Balanced' | 'Fast' | 'Talkative';
-  format: 'Casual' | 'Competitive';
-  chatEnabled: boolean;
   impostorCount: number;
   themeCategory: ImpostorCategoryId;
+  missBehavior: 'repeat' | 'end';
+  balanceEndsGame: boolean;
 };
 
 export type ImpostorRoundSetup = {
@@ -125,10 +121,14 @@ export type ImpostorRoundSetup = {
   expelledUserId: string | null;
   phase: 'reveal' | 'voting' | 'result';
   voteDeadlineAt: string | null;
+  voteDurationSeconds: number;
+  missBehavior: 'repeat' | 'end';
+  balanceEndsGame: boolean;
   votes: Array<{
     voterUserId: string;
     targetUserId: string;
   }>;
   startedAt: string;
   status: 'active' | 'finished';
+  outcome: 'impostors_caught' | 'impostors_balanced' | 'missed_impostor' | 'continue';
 };
