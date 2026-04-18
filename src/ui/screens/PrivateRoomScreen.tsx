@@ -146,8 +146,8 @@ export function PrivateRoomScreen({
 
       <SurfaceCard>
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>{t('room.currentMode')}</Text>
-          {canManageRoom ? <AppButton label={t('room.change')} onPress={onChooseGames} variant="ghost" /> : null}
+          <Text style={styles.sectionTitle}>{t('room.gameModes')}</Text>
+          {canManageRoom ? <AppButton label={t('room.chooseGame')} onPress={onChooseGames} variant="ghost" /> : null}
         </View>
         {selectedGame ? (
           <View style={styles.listRow}>
@@ -167,8 +167,8 @@ export function PrivateRoomScreen({
 
       <SurfaceCard>
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>{t('room.partySetup')}</Text>
-          {canManageRoom ? <AppButton label={t('room.adjust')} onPress={onOpenSettings} variant="ghost" /> : null}
+          <Text style={styles.sectionTitle}>{t('room.gameSetup')}</Text>
+          {canManageRoom ? <AppButton label={t('room.configureGame')} onPress={onOpenSettings} variant="ghost" /> : null}
         </View>
         <Text style={styles.itemSubtitle}>{t('room.impostorCountLine', { value: settings.impostorCount })}</Text>
         <Text style={styles.itemSubtitle}>{t('room.themeLine', { value: themeLabel(settings.themeCategory) })}</Text>

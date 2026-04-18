@@ -785,7 +785,8 @@ export function AppNavigator() {
     }
 
     if (currentScreen === 'room' && activeRoom) {
-      const selectedGame = featuredGames[0] ?? null;
+      const selectedGame =
+        featuredGames.find((game) => game.id === activeRoom.room.selected_game_id) ?? featuredGames[0] ?? null;
 
       return (
         <PrivateRoomScreen
@@ -802,7 +803,9 @@ export function AppNavigator() {
           onShareCode={() => {
             void shareRoomCode();
           }}
-          onChooseGames={openChooseGames}
+          onChooseGames={() => {
+            setIsGamesCatalogOpen(true);
+          }}
           onOpenSettings={openRoomSettings}
           onStart={() => {
             if (!activeRoom.isHost) {
@@ -1077,11 +1080,20 @@ export function AppNavigator() {
     return (
       <GamesCatalogScreen
         onSelectImpostor={() => {
-          setIsGamesCatalogOpen(false);
-
           if (activeRoom) {
-            openChooseGames();
+            void saveSelectedGame('impostor').then((result) => {
+              if (result.error) {
+                setRoomNotice(mapRoomNotice(t, result.error));
+                return;
+              }
+
+              setRoomNotice(null);
+              setIsGamesCatalogOpen(false);
+            });
+            return;
           }
+
+          setIsGamesCatalogOpen(false);
         }}
       />
     );
@@ -1096,9 +1108,7 @@ export function AppNavigator() {
               name: displayName ?? username ?? email?.split('@')[0] ?? (isGuest ? t('common.guest') : t('common.player'))
             })}
           </Text>
-          <Text style={styles.headerStatus}>
-            {isGuest ? t('lobby.guestStatus') : t('account.accountStateAuthenticated')}
-          </Text>
+          {isGuest ? <Text style={styles.headerStatus}>{t('lobby.guestHeaderStatus')}</Text> : null}
         </View>
         <View style={styles.topBarActions}>
           {canGoBack ? (
