@@ -29,7 +29,19 @@ export type MiniGame = {
 };
 
 export type ImpostorMode = 'friends' | 'multiplayer';
-export type ImpostorCategoryId = 'animals' | 'countries' | 'objects';
+export type ImpostorCategoryId =
+  | 'animals'
+  | 'countries'
+  | 'objects'
+  | 'famous-people'
+  | 'football-players'
+  | 'movies-series'
+  | 'youtubers'
+  | 'basketball'
+  | 'f1'
+  | 'singers'
+  | 'cartoons-fictional'
+  | 'world-foods';
 
 export type LobbyScenarioKey = 'guest' | 'noRoom' | 'activeRoom' | 'invited' | 'returning';
 

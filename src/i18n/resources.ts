@@ -293,8 +293,17 @@ export const resources = {
         },
         themeOptions: {
           animals: 'Animales',
-          countries: 'Países',
-          objects: 'Objetos'
+          countries: 'Países y capitales',
+          objects: 'Objetos',
+          'famous-people': 'Actores famosos',
+          'football-players': 'Jugadores de fútbol',
+          'movies-series': 'Películas y series',
+          youtubers: 'Youtubers',
+          basketball: 'Basquetbol',
+          f1: 'F1',
+          singers: 'Cantantes',
+          'cartoons-fictional': 'Caricaturas y personajes ficticios',
+          'world-foods': 'Comidas del mundo'
         }
       },
       joinRoom: {
@@ -749,8 +758,17 @@ export const resources = {
         },
         themeOptions: {
           animals: 'Animals',
-          countries: 'Countries',
-          objects: 'Objects'
+          countries: 'Countries and capitals',
+          objects: 'Objects',
+          'famous-people': 'Famous actors',
+          'football-players': 'Football players',
+          'movies-series': 'Movies and series',
+          youtubers: 'YouTubers',
+          basketball: 'Basketball',
+          f1: 'F1',
+          singers: 'Singers',
+          'cartoons-fictional': 'Cartoons and fictional characters',
+          'world-foods': 'World foods'
         }
       },
       joinRoom: {

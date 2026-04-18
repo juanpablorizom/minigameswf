@@ -58,7 +58,22 @@ create table if not exists public.room_rounds (
   room_id uuid not null unique references public.rooms (id) on delete cascade,
   round_number integer not null default 1,
   game_id text not null default 'impostor',
-  theme_category text not null check (theme_category in ('animals', 'countries', 'objects')),
+  theme_category text not null check (
+    theme_category in (
+      'animals',
+      'countries',
+      'objects',
+      'famous-people',
+      'football-players',
+      'movies-series',
+      'youtubers',
+      'basketball',
+      'f1',
+      'singers',
+      'cartoons-fictional',
+      'world-foods'
+    )
+  ),
   secret_word text not null,
   impostor_ids uuid[] not null default '{}'::uuid[],
   eliminated_user_ids uuid[] not null default '{}'::uuid[],
@@ -418,8 +433,17 @@ begin
 
   theme_words := case p_theme_category
     when 'animals' then array['Leon', 'Tigre', 'Elefante', 'Jirafa', 'Delfin', 'Lobo', 'Pinguino', 'Cebra', 'Koala', 'Zorro', 'Rinoceronte', 'Hipopotamo']
-    when 'countries' then array['Mexico', 'Japon', 'Italia', 'Brasil', 'Canada', 'Argentina', 'Francia', 'India', 'Egipto', 'Australia', 'Portugal', 'Colombia']
+    when 'countries' then array['Mexico', 'Ciudad de Mexico', 'Japon', 'Tokio', 'Italia', 'Roma', 'Brasil', 'Brasilia', 'Canada', 'Ottawa', 'Argentina', 'Buenos Aires', 'Francia', 'Paris', 'India', 'Nueva Delhi', 'Egipto', 'El Cairo', 'Australia', 'Canberra', 'Portugal', 'Lisboa', 'Colombia', 'Bogota', 'España', 'Madrid', 'Alemania', 'Berlin', 'Reino Unido', 'Londres', 'Estados Unidos', 'Washington D. C.', 'China', 'Pekin', 'Rusia', 'Moscu', 'Corea del Sur', 'Seul', 'Indonesia', 'Yakarta', 'Tailandia', 'Bangkok', 'Chile', 'Santiago', 'Peru', 'Lima', 'Marruecos', 'Rabat']
     when 'objects' then array['Brujula', 'Lampara', 'Martillo', 'Mochila', 'Reloj', 'Camara', 'Paraguas', 'Llave', 'Telefono', 'Binoculares', 'Microfono', 'Guitarra']
+    when 'famous-people' then array['Zendaya', 'Margot Robbie', 'Tom Holland', 'Keanu Reeves', 'Emma Stone', 'Ryan Gosling', 'Jenna Ortega', 'Pedro Pascal', 'Timothee Chalamet', 'Ana de Armas', 'Robert Downey Jr.', 'Scarlett Johansson', 'Leonardo DiCaprio', 'Natalie Portman', 'Denzel Washington', 'Meryl Streep', 'Jennifer Lawrence', 'Christian Bale', 'Angelina Jolie', 'Chris Hemsworth', 'Florence Pugh']
+    when 'football-players' then array['Lionel Messi', 'Cristiano Ronaldo', 'Kylian Mbappe', 'Neymar', 'Erling Haaland', 'Kevin De Bruyne', 'Luka Modric', 'Jude Bellingham', 'Antoine Griezmann', 'Vinicius Jr.', 'Rodri', 'Harry Kane', 'Mohamed Salah', 'Robert Lewandowski', 'Sergio Ramos', 'Ronaldinho', 'Zinedine Zidane', 'Andres Iniesta', 'Xavi', 'Thierry Henry']
+    when 'movies-series' then array['Breaking Bad', 'Stranger Things', 'Game of Thrones', 'Friends', 'The Office', 'Harry Potter', 'Star Wars', 'Avengers', 'Spider-Man', 'The Batman', 'Titanic', 'Avatar', 'Interstellar', 'The Simpsons', 'Narcos', 'Wednesday', 'Dark', 'The Last of Us', 'Shrek', 'Toy Story']
+    when 'youtubers' then array['MrBeast', 'Ibai', 'AuronPlay', 'Rubius', 'Luisito Comunica', 'Fernanfloo', 'JuanSGuarnizo', 'Fede Vigevani', 'Kimberly Loaiza', 'Dross', 'Nate Gentile', 'ElMariana', 'Vegetta777', 'Wismichu', 'HolaSoyGerman', 'ThatWasEpic', 'Markiplier', 'PewDiePie', 'IShowSpeed', 'Kai Cenat']
+    when 'basketball' then array['Michael Jordan', 'LeBron James', 'Stephen Curry', 'Kobe Bryant', 'Shaquille O''Neal', 'Magic Johnson', 'Larry Bird', 'Kevin Durant', 'Giannis Antetokounmpo', 'Nikola Jokic', 'Luka Doncic', 'Jayson Tatum', 'Kawhi Leonard', 'Allen Iverson', 'Tim Duncan', 'Dirk Nowitzki', 'James Harden', 'Damian Lillard', 'Anthony Davis', 'Victor Wembanyama']
+    when 'f1' then array['Max Verstappen', 'Lewis Hamilton', 'Fernando Alonso', 'Charles Leclerc', 'Lando Norris', 'Carlos Sainz', 'Sergio Perez', 'George Russell', 'Oscar Piastri', 'Ayrton Senna', 'Michael Schumacher', 'Sebastian Vettel', 'Jenson Button', 'Kimi Raikkonen', 'Valtteri Bottas', 'Daniel Ricciardo', 'Nico Rosberg', 'Mika Hakkinen', 'Alain Prost', 'Niki Lauda']
+    when 'singers' then array['Taylor Swift', 'Bad Bunny', 'Shakira', 'Billie Eilish', 'Ariana Grande', 'Karol G', 'Drake', 'Dua Lipa', 'The Weeknd', 'Rosalia', 'Feid', 'Bruno Mars', 'Rihanna', 'Ed Sheeran', 'Justin Bieber', 'Miley Cyrus', 'Selena Gomez', 'Olivia Rodrigo', 'Katy Perry', 'SZA']
+    when 'cartoons-fictional' then array['Mickey Mouse', 'Bugs Bunny', 'SpongeBob', 'Goku', 'Naruto', 'Luffy', 'Batman', 'Superman', 'Spider-Man', 'Iron Man', 'Elsa', 'Shrek', 'Woody', 'Buzz Lightyear', 'Pikachu', 'Ash Ketchum', 'Scooby-Doo', 'Tom', 'Jerry', 'Hello Kitty']
+    when 'world-foods' then array['Tacos', 'Pizza', 'Sushi', 'Ramen', 'Paella', 'Hamburguesa', 'Lasagna', 'Ceviche', 'Pho', 'Falafel', 'Croissant', 'Arepas', 'Empanadas', 'Pad Thai', 'Curry', 'Burrito', 'Chilaquiles', 'Gelato', 'Dim sum', 'Poutine']
     else null
   end;
 

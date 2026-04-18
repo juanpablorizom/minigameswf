@@ -17,7 +17,20 @@ type RoomSettingsScreenProps = {
 
 const impostorCountOptions = [1, 2, 3, 4];
 const turnOptions = [30, 45, 60];
-const themeOptions: RoomSettings['themeCategory'][] = ['animals', 'countries', 'objects'];
+const themeOptions: RoomSettings['themeCategory'][] = [
+  'animals',
+  'countries',
+  'objects',
+  'famous-people',
+  'football-players',
+  'movies-series',
+  'youtubers',
+  'basketball',
+  'f1',
+  'singers',
+  'cartoons-fictional',
+  'world-foods'
+];
 const missBehaviorOptions: RoomSettings['missBehavior'][] = ['repeat', 'end'];
 
 export function RoomSettingsScreen({ settings, onChangeSettings, onSave, embedded = false }: RoomSettingsScreenProps) {
