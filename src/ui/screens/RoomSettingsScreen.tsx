@@ -36,13 +36,11 @@ export function RoomSettingsScreen({ settings, onChangeSettings, onSave, embedde
   const { t } = useTranslation();
   const theme = useTheme();
   const styles = createStyles(theme);
-  const canUseBalanceRule = settings.missBehavior === 'repeat';
 
   function handleMissBehaviorChange(nextMissBehavior: RoomSettings['missBehavior']) {
     onChangeSettings({
       ...settings,
-      missBehavior: nextMissBehavior,
-      balanceEndsGame: nextMissBehavior === 'repeat' ? settings.balanceEndsGame || true : false
+      missBehavior: nextMissBehavior
     });
   }
 
@@ -103,27 +101,6 @@ export function RoomSettingsScreen({ settings, onChangeSettings, onSave, embedde
               onPress={() => handleMissBehaviorChange(missBehavior)}
             />
           ))}
-        </View>
-      </SurfaceCard>
-
-      <SurfaceCard>
-        <Text style={styles.sectionTitle}>{t('roomSettings.balanceRule')}</Text>
-        <Text style={styles.summaryCopy}>
-          {canUseBalanceRule ? t('roomSettings.balanceRuleHint') : t('roomSettings.balanceRuleDisabledHint')}
-        </Text>
-        <View style={styles.optionRow}>
-          <OptionChip
-            label={t('common.on')}
-            active={canUseBalanceRule && settings.balanceEndsGame}
-            disabled={!canUseBalanceRule}
-            onPress={() => onChangeSettings({ ...settings, balanceEndsGame: true })}
-          />
-          <OptionChip
-            label={t('common.off')}
-            active={!canUseBalanceRule || !settings.balanceEndsGame}
-            disabled={!canUseBalanceRule}
-            onPress={() => onChangeSettings({ ...settings, balanceEndsGame: false })}
-          />
         </View>
       </SurfaceCard>
 
