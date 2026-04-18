@@ -12,19 +12,21 @@ type RoomSettingsScreenProps = {
   settings: RoomSettings;
   onChangeSettings: (next: RoomSettings) => void;
   onSave: () => void;
+  embedded?: boolean;
 };
 
-const impostorCountOptions = [1, 2, 3];
+const impostorCountOptions = [1, 2, 3, 4];
 const turnOptions = [30, 45, 60];
 const themeOptions: RoomSettings['themeCategory'][] = ['animals', 'countries', 'objects'];
 const missBehaviorOptions: RoomSettings['missBehavior'][] = ['repeat', 'end'];
 
-export function RoomSettingsScreen({ settings, onChangeSettings, onSave }: RoomSettingsScreenProps) {
+export function RoomSettingsScreen({ settings, onChangeSettings, onSave, embedded = false }: RoomSettingsScreenProps) {
   const { t } = useTranslation();
   const theme = useTheme();
   const styles = createStyles(theme);
-  return (
-    <AppScreen title={t('roomSettings.title')} subtitle={t('roomSettings.subtitle')}>
+
+  const content = (
+    <>
       <SurfaceCard>
         <View style={styles.summaryHeader}>
           <Text style={styles.sectionTitle}>{t('roomSettings.profileTitle')}</Text>
@@ -114,7 +116,17 @@ export function RoomSettingsScreen({ settings, onChangeSettings, onSave }: RoomS
         </View>
       </SurfaceCard>
 
-      <AppButton label={t('roomSettings.save')} onPress={onSave} />
+      {!embedded ? <AppButton label={t('roomSettings.save')} onPress={onSave} /> : null}
+    </>
+  );
+
+  if (embedded) {
+    return <View style={styles.embeddedContent}>{content}</View>;
+  }
+
+  return (
+    <AppScreen title={t('roomSettings.title')} subtitle={t('roomSettings.subtitle')}>
+      {content}
     </AppScreen>
   );
 }
@@ -161,6 +173,9 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
   },
   optionColumn: {
     gap: spacing.sm
+  },
+  embeddedContent: {
+    gap: spacing.lg
   },
   optionChip: {
     minHeight: 46,

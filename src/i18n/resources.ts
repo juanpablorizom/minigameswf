@@ -10,6 +10,7 @@ export const resources = {
         loading: 'Cargando',
         guest: 'Invitado',
         player: 'Jugador',
+        cancel: 'Cancelar',
         stay: 'Quedarse',
         continue: 'Continuar',
         on: 'Activado',
@@ -249,6 +250,8 @@ export const resources = {
       roomSettings: {
         title: 'Configuración del juego',
         subtitle: 'Ajusta el modo seleccionado. Por ahora la sala usa Impostor y aquí defines sus reglas antes de iniciar la ronda.',
+        modalTitle: 'Configuración - {{game}}',
+        modalSubtitle: 'Cambia las reglas de la partida actual sin salir de la sala.',
         profileTitle: 'Perfil de la sala de hoy',
         chatOn: 'Chat activado',
         chatOff: 'Chat desactivado',
@@ -464,6 +467,7 @@ export const resources = {
         loading: 'Loading',
         guest: 'Guest',
         player: 'Player',
+        cancel: 'Cancel',
         stay: 'Stay',
         continue: 'Continue',
         on: 'On',
@@ -702,6 +706,8 @@ export const resources = {
       roomSettings: {
         title: 'Game settings',
         subtitle: 'Adjust the selected mode. For now the room runs Impostor and this is where you define its rules before the round starts.',
+        modalTitle: 'Settings - {{game}}',
+        modalSubtitle: 'Change the current match rules without leaving the room.',
         profileTitle: "Tonight's room profile",
         chatOn: 'Chat on',
         chatOff: 'Chat off',

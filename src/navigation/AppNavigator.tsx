@@ -24,6 +24,7 @@ import { ScanRoomScreen } from '../ui/screens/ScanRoomScreen';
 import { SettingsScreen } from '../ui/screens/SettingsScreen';
 import { WelcomeScreen } from '../ui/screens/WelcomeScreen';
 import { AppButton } from '../ui/components/AppButton';
+import { GameSettingsModal } from '../ui/components/GameSettingsModal';
 import { radius, spacing, typography, useTheme } from '../ui/theme';
 
 function mapRoomNotice(translate: (key: string, options?: Record<string, unknown>) => string, error?: string | null) {
@@ -187,7 +188,6 @@ export function AppNavigator() {
     resumeLastActivity,
     openQuickPlay,
     openChooseGames,
-    openRoomSettings,
     openScanRoom,
     toggleGameSelection,
     hydrateSelectedGame,
@@ -212,6 +212,8 @@ export function AppNavigator() {
   const [isAppearancePanelOpen, setIsAppearancePanelOpen] = useState(false);
   const [isGamesCatalogOpen, setIsGamesCatalogOpen] = useState(false);
   const [isLeaveRoomConfirmOpen, setIsLeaveRoomConfirmOpen] = useState(false);
+  const [isGameSettingsOpen, setIsGameSettingsOpen] = useState(false);
+  const [draftRoomSettings, setDraftRoomSettings] = useState(roomSettings);
   const [resumeRoomReady, setResumeRoomReady] = useState(false);
   const [shouldResumeRoom, setShouldResumeRoom] = useState(false);
   const autoCloseFinishedRoomRef = useRef<string | null>(null);
@@ -344,6 +346,12 @@ export function AppNavigator() {
       hydrateSelectedGame(activeRoom.room.selected_game_id);
     }
   }, [activeRoom?.room.selected_game_id, hydrateSelectedGame]);
+
+  useEffect(() => {
+    if (!isGameSettingsOpen) {
+      setDraftRoomSettings(roomSettings);
+    }
+  }, [isGameSettingsOpen, roomSettings]);
 
   useEffect(() => {
     if (!activeRoom?.round) {
@@ -806,7 +814,10 @@ export function AppNavigator() {
           onChooseGames={() => {
             setIsGamesCatalogOpen(true);
           }}
-          onOpenSettings={openRoomSettings}
+          onOpenSettings={() => {
+            setDraftRoomSettings(roomSettings);
+            setIsGameSettingsOpen(true);
+          }}
           onStart={() => {
             if (!activeRoom.isHost) {
               setRoomNotice(t('room.hostOnlyContinue'));
@@ -1238,6 +1249,21 @@ export function AppNavigator() {
           </View>
         </Modal>
       ) : null}
+
+      <GameSettingsModal
+        visible={isGameSettingsOpen}
+        gameLabel={t(`gameMeta.names.${activeRoom?.room.selected_game_id ?? 'impostor'}`)}
+        settings={draftRoomSettings}
+        onChangeSettings={setDraftRoomSettings}
+        onCancel={() => {
+          setDraftRoomSettings(roomSettings);
+          setIsGameSettingsOpen(false);
+        }}
+        onSave={() => {
+          updateRoomSettings(draftRoomSettings);
+          setIsGameSettingsOpen(false);
+        }}
+      />
 
       {isLeaveRoomConfirmOpen ? (
         <Modal visible transparent animationType="fade" onRequestClose={() => setIsLeaveRoomConfirmOpen(false)}>
