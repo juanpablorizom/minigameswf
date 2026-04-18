@@ -31,7 +31,7 @@ export function LobbyScreen({ displayName, scenario, onAction, notice = null }: 
   };
 
   return (
-    <AppScreen title={t('lobby.headerGreeting', { name: displayName })} subtitle={scenario.statusLabel}>
+    <AppScreen>
       <SurfaceCard>
         <Text style={styles.heroTitle}>{scenario.title}</Text>
         <Text style={styles.copy}>{scenario.subtitle}</Text>

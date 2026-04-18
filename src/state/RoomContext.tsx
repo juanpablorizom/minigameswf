@@ -8,6 +8,7 @@ import {
   joinPrivateRoomByCode,
   removeRoomMember,
   leaveCurrentRoom,
+  closeRoomForHost,
   startImpostorRound as startImpostorRoundRequest,
   advanceImpostorRound as advanceImpostorRoundRequest,
   castImpostorVote as castImpostorVoteRequest,
@@ -146,15 +147,11 @@ export function RoomProvider({ children }: PropsWithChildren) {
       }
 
       try {
-        if (!isMounted) {
-          return;
-        }
-
-        await refreshResolvedActiveRoom();
-
         if (isMounted) {
           setIsReady(true);
         }
+
+        await refreshResolvedActiveRoom();
       } catch {
         if (isMounted) {
           setActiveRoom(null);
@@ -301,15 +298,24 @@ export function RoomProvider({ children }: PropsWithChildren) {
           return { error: 'AUTH_REQUIRED' };
         }
 
+        const roomId = activeRoom.room.id;
+        const wasHost = activeRoom.isHost;
+        const previousRoom = activeRoom;
+
         setIsBusy(true);
+        setActiveRoom(null);
+        setSyncState('idle');
+        setSyncNotice(null);
 
         try {
-          await leaveCurrentRoom(activeRoom.room.id, user.id);
-          setActiveRoom(null);
-          setSyncState('idle');
-          setSyncNotice(null);
-          return { roomId: activeRoom.room.id };
+          if (wasHost) {
+            await closeRoomForHost(roomId, user.id);
+          }
+
+          await leaveCurrentRoom(roomId, user.id);
+          return { roomId };
         } catch (error) {
+          setActiveRoom(previousRoom);
           return { error: mapRoomError(error) };
         } finally {
           setIsBusy(false);

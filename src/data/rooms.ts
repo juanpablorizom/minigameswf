@@ -329,17 +329,21 @@ function mapRoomRound(round: RoomRoundRow | null, votes: RoomRoundVoteRow[] = []
 }
 
 export async function getRoomDetails(roomId: string, currentUserId: string): Promise<RoomDetails | null> {
-  const room = await getRoom(roomId);
+  const [room, members, activity, round] = await Promise.all([
+    getRoom(roomId),
+    getRoomMembers(roomId),
+    getRoomActivity(roomId),
+    getRoomRound(roomId)
+  ]);
 
   if (!room) {
     return null;
   }
 
-  const members = await getRoomMembers(roomId);
-  const profiles = await getProfilesForUsers(members.map((member) => member.user_id));
-  const activity = await getRoomActivity(roomId);
-  const round = await getRoomRound(roomId);
-  const roundVotes = await getRoomRoundVotes(round?.id ?? null);
+  const [profiles, roundVotes] = await Promise.all([
+    getProfilesForUsers(members.map((member) => member.user_id)),
+    getRoomRoundVotes(round?.id ?? null)
+  ]);
   const profilesById = new Map(profiles.map((profile) => [profile.id, profile]));
 
   const memberViews = members.map((member) => {
@@ -478,6 +482,18 @@ export async function leaveCurrentRoom(roomId: string, userId: string) {
     .update({ is_active: false })
     .eq('room_id', roomId)
     .eq('user_id', userId);
+
+  if (error) {
+    throw new Error(buildRoomErrorMessage(error.message));
+  }
+}
+
+export async function closeRoomForHost(roomId: string, userId: string) {
+  const { error } = await supabase
+    .from('rooms')
+    .update({ status: 'finished' })
+    .eq('id', roomId)
+    .eq('host_user_id', userId);
 
   if (error) {
     throw new Error(buildRoomErrorMessage(error.message));

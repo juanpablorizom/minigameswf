@@ -209,12 +209,14 @@ export function AppNavigator() {
   const [isSettingsPanelOpen, setIsSettingsPanelOpen] = useState(false);
   const [isAccountPanelOpen, setIsAccountPanelOpen] = useState(false);
   const [isAppearancePanelOpen, setIsAppearancePanelOpen] = useState(false);
+  const [isLeaveRoomConfirmOpen, setIsLeaveRoomConfirmOpen] = useState(false);
   const [resumeRoomReady, setResumeRoomReady] = useState(false);
   const [shouldResumeRoom, setShouldResumeRoom] = useState(false);
   const autoCloseFinishedRoomRef = useRef<string | null>(null);
   const autoContinueRoundRef = useRef<string | null>(null);
   const hadAccessRef = useRef(false);
   const attemptedRoomResumeRef = useRef(false);
+  const roomFlowScreens = ['room', 'chooseGames', 'roomSettings', 'gameplay', 'results'] as const;
 
   function mapAuthNotice(error?: string | null) {
     if (!error) {
@@ -297,7 +299,7 @@ export function AppNavigator() {
     const shouldPersistResume =
       activeTab === 'games' &&
       Boolean(activeRoom) &&
-      ['room', 'chooseGames', 'roomSettings', 'gameplay', 'results'].includes(currentScreen);
+      roomFlowScreens.includes(currentScreen as (typeof roomFlowScreens)[number]);
 
     void storeRoomResume(shouldPersistResume);
     setShouldResumeRoom(shouldPersistResume);
@@ -305,7 +307,7 @@ export function AppNavigator() {
     if (!shouldPersistResume) {
       attemptedRoomResumeRef.current = false;
     }
-  }, [activeRoom, activeTab, currentScreen, isReady, resumeRoomReady, roomsReady]);
+  }, [activeRoom, activeTab, currentScreen, isReady, resumeRoomReady, roomFlowScreens, roomsReady]);
 
   useEffect(() => {
     if (!resumeRoomReady || attemptedRoomResumeRef.current) {
@@ -324,6 +326,16 @@ export function AppNavigator() {
       setShouldResumeRoom(false);
     }
   }, [activeRoom, continueRoom, currentScreen, resumeRoomReady, roomBusy, shouldResumeRoom]);
+
+  useEffect(() => {
+    if (!roomsReady || activeRoom || !roomFlowScreens.includes(currentScreen as (typeof roomFlowScreens)[number])) {
+      return;
+    }
+
+    setIsLeaveRoomConfirmOpen(false);
+    setRoomNotice(t('lobby.errors.noActiveRoomFallback'));
+    backToLobby();
+  }, [activeRoom, backToLobby, currentScreen, roomFlowScreens, roomsReady, t]);
 
   useEffect(() => {
     if (activeRoom?.room.selected_game_id) {
@@ -404,9 +416,9 @@ export function AppNavigator() {
   useEffect(() => {
     setRoomScreenActive(
       activeTab === 'games' &&
-        ['room', 'chooseGames', 'roomSettings', 'gameplay', 'results'].includes(currentScreen)
+        roomFlowScreens.includes(currentScreen as (typeof roomFlowScreens)[number])
     );
-  }, [activeTab, currentScreen, setRoomScreenActive]);
+  }, [activeTab, currentScreen, roomFlowScreens, setRoomScreenActive]);
 
   useEffect(() => {
     if (session || isGuest) {
@@ -653,8 +665,35 @@ export function AppNavigator() {
     goBack();
   }
 
+  function requestLeaveRoom() {
+    if (!activeRoom || !roomFlowScreens.includes(currentScreen as (typeof roomFlowScreens)[number])) {
+      backToLobby();
+      return;
+    }
+
+    setIsLeaveRoomConfirmOpen(true);
+  }
+
+  function confirmLeaveRoom() {
+    const wasHost = activeRoom?.isHost ?? false;
+
+    setIsLeaveRoomConfirmOpen(false);
+    setRoomNotice(null);
+    void storeRoomResume(false);
+
+    void leaveRoom().then((result) => {
+      if (result.error) {
+        setRoomNotice(mapRoomNotice(t, result.error));
+        return;
+      }
+
+      setRoomNotice(wasHost ? t('room.roomClosedNotice') : t('room.roomLeftNotice'));
+      backToLobby();
+    });
+  }
+
   function handleExitPress() {
-    backToLobby();
+    requestLeaveRoom();
   }
 
   function renderGamesTab() {
@@ -798,15 +837,7 @@ export function AppNavigator() {
             });
           }}
           onLeaveRoom={() => {
-            void leaveRoom().then((result) => {
-              if (result.error) {
-                setRoomNotice(mapRoomNotice(t, result.error));
-                return;
-              }
-
-              setRoomNotice(null);
-              backToLobby();
-            });
+            requestLeaveRoom();
           }}
         />
       );
@@ -1074,76 +1105,95 @@ export function AppNavigator() {
 
       <View style={styles.content}>{renderGamesTab()}</View>
 
-      <Modal
-        visible={isSettingsPanelOpen}
-        transparent
-        animationType="fade"
-        onRequestClose={() => {
-          setIsAppearancePanelOpen(false);
-          setIsAccountPanelOpen(false);
-          setIsSettingsPanelOpen(false);
-        }}
-      >
-        <View style={styles.overlayBackdrop}>
-          <Pressable
-            style={StyleSheet.absoluteFillObject}
-            onPress={() => {
-              setIsAppearancePanelOpen(false);
-              setIsAccountPanelOpen(false);
-              setIsSettingsPanelOpen(false);
-            }}
-          />
-          <View style={styles.settingsPanel}>
-            <View style={styles.panelHeader}>
-              <Text style={styles.panelTitle}>{t('settings.title')}</Text>
-              <Pressable onPress={() => setIsSettingsPanelOpen(false)} style={styles.panelClose}>
-                <Text style={styles.panelCloseLabel}>{t('auth.modalClose')}</Text>
-              </Pressable>
+      {isSettingsPanelOpen ? (
+        <Modal
+          visible
+          transparent
+          animationType="fade"
+          onRequestClose={() => {
+            setIsAppearancePanelOpen(false);
+            setIsAccountPanelOpen(false);
+            setIsSettingsPanelOpen(false);
+          }}
+        >
+          <View style={styles.overlayBackdrop}>
+            <Pressable
+              style={StyleSheet.absoluteFillObject}
+              onPress={() => {
+                setIsAppearancePanelOpen(false);
+                setIsAccountPanelOpen(false);
+                setIsSettingsPanelOpen(false);
+              }}
+            />
+            <View style={styles.settingsPanel}>
+              <View style={styles.panelHeader}>
+                <Text style={styles.panelTitle}>{t('settings.title')}</Text>
+                <Pressable onPress={() => setIsSettingsPanelOpen(false)} style={styles.panelClose}>
+                  <Text style={styles.panelCloseLabel}>{t('auth.modalClose')}</Text>
+                </Pressable>
+              </View>
+              <View style={styles.panelBody}>{renderSettingsPanel()}</View>
             </View>
-            <View style={styles.panelBody}>{renderSettingsPanel()}</View>
           </View>
-        </View>
-      </Modal>
+        </Modal>
+      ) : null}
 
-      <Modal
-        visible={isAccountPanelOpen}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setIsAccountPanelOpen(false)}
-      >
-        <View style={styles.overlayBackdrop}>
-          <Pressable style={StyleSheet.absoluteFillObject} onPress={() => setIsAccountPanelOpen(false)} />
-          <View style={styles.accountPanel}>
-            <View style={styles.panelHeader}>
-              <Text style={styles.panelTitle}>{t('account.title')}</Text>
-              <Pressable onPress={() => setIsAccountPanelOpen(false)} style={styles.panelClose}>
-                <Text style={styles.panelCloseLabel}>{t('auth.modalClose')}</Text>
-              </Pressable>
+      {isAccountPanelOpen ? (
+        <Modal visible transparent animationType="fade" onRequestClose={() => setIsAccountPanelOpen(false)}>
+          <View style={styles.overlayBackdrop}>
+            <Pressable style={StyleSheet.absoluteFillObject} onPress={() => setIsAccountPanelOpen(false)} />
+            <View style={styles.accountPanel}>
+              <View style={styles.panelHeader}>
+                <Text style={styles.panelTitle}>{t('account.title')}</Text>
+                <Pressable onPress={() => setIsAccountPanelOpen(false)} style={styles.panelClose}>
+                  <Text style={styles.panelCloseLabel}>{t('auth.modalClose')}</Text>
+                </Pressable>
+              </View>
+              <View style={styles.panelBody}>{renderAccountPanel()}</View>
             </View>
-            <View style={styles.panelBody}>{renderAccountPanel()}</View>
           </View>
-        </View>
-      </Modal>
+        </Modal>
+      ) : null}
 
-      <Modal
-        visible={isAppearancePanelOpen}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setIsAppearancePanelOpen(false)}
-      >
-        <View style={styles.overlayBackdrop}>
-          <Pressable style={StyleSheet.absoluteFillObject} onPress={() => setIsAppearancePanelOpen(false)} />
-          <View style={styles.appearancePanel}>
-            <View style={styles.panelHeader}>
-              <Text style={styles.panelTitle}>{t('settings.appearanceSection')}</Text>
-              <Pressable onPress={() => setIsAppearancePanelOpen(false)} style={styles.panelClose}>
-                <Text style={styles.panelCloseLabel}>{t('auth.modalClose')}</Text>
-              </Pressable>
+      {isAppearancePanelOpen ? (
+        <Modal visible transparent animationType="fade" onRequestClose={() => setIsAppearancePanelOpen(false)}>
+          <View style={styles.overlayBackdrop}>
+            <Pressable style={StyleSheet.absoluteFillObject} onPress={() => setIsAppearancePanelOpen(false)} />
+            <View style={styles.appearancePanel}>
+              <View style={styles.panelHeader}>
+                <Text style={styles.panelTitle}>{t('settings.appearanceSection')}</Text>
+                <Pressable onPress={() => setIsAppearancePanelOpen(false)} style={styles.panelClose}>
+                  <Text style={styles.panelCloseLabel}>{t('auth.modalClose')}</Text>
+                </Pressable>
+              </View>
+              <View style={styles.panelBody}>{renderAppearancePanel()}</View>
             </View>
-            <View style={styles.panelBody}>{renderAppearancePanel()}</View>
           </View>
-        </View>
-      </Modal>
+        </Modal>
+      ) : null}
+
+      {isLeaveRoomConfirmOpen ? (
+        <Modal visible transparent animationType="fade" onRequestClose={() => setIsLeaveRoomConfirmOpen(false)}>
+          <View style={styles.overlayBackdropCentered}>
+            <Pressable style={StyleSheet.absoluteFillObject} onPress={() => setIsLeaveRoomConfirmOpen(false)} />
+            <View style={styles.confirmPanel}>
+              <Text style={styles.panelTitle}>
+                {activeRoom?.isHost ? t('room.leaveConfirmHostTitle') : t('room.leaveConfirmMemberTitle')}
+              </Text>
+              <Text style={styles.confirmCopy}>
+                {activeRoom?.isHost ? t('room.leaveConfirmHostBody') : t('room.leaveConfirmMemberBody')}
+              </Text>
+              <View style={styles.confirmActions}>
+                <AppButton label={t('common.stay')} variant="secondary" onPress={() => setIsLeaveRoomConfirmOpen(false)} />
+                <AppButton
+                  label={activeRoom?.isHost ? t('room.leaveConfirmHostAction') : t('room.leaveConfirmMemberAction')}
+                  onPress={confirmLeaveRoom}
+                />
+              </View>
+            </View>
+          </View>
+        </Modal>
+      ) : null}
     </View>
   );
 }
