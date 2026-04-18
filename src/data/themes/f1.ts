@@ -18,7 +18,22 @@ const f1 = [
   'Nico Rosberg',
   'Mika Hakkinen',
   'Alain Prost',
-  'Niki Lauda'
+  'Niki Lauda',
+  'Pierre Gasly',
+  'Esteban Ocon',
+  'Lance Stroll',
+  'Yuki Tsunoda',
+  'Alexander Albon',
+  'Kevin Magnussen',
+  'Nico Hulkenberg',
+  'Zhou Guanyu',
+  'Logan Sargeant',
+  'Jack Doohan',
+  'Oliver Bearman',
+  'Felipe Massa',
+  'Ralf Schumacher',
+  'Giancarlo Fisichella',
+  'Juan Pablo Montoya'
 ];
 
 export default f1;
