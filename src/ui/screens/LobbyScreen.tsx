@@ -16,7 +16,7 @@ type LobbyScreenProps = {
   notice?: string | null;
 };
 
-export function LobbyScreen({ displayName, scenario, onAction, notice = null }: LobbyScreenProps) {
+export function LobbyScreen({ displayName: _displayName, scenario, onAction, notice = null }: LobbyScreenProps) {
   const { t } = useTranslation();
   const theme = useTheme();
   const styles = createStyles(theme);

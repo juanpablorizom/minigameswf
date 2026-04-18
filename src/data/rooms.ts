@@ -4,7 +4,6 @@ import type { ImpostorRoundSetup, ImpostorCategoryId } from '../navigation/types
 
 export type RoomRow = Database['public']['Tables']['rooms']['Row'];
 export type RoomMemberRow = Database['public']['Tables']['room_members']['Row'];
-export type RoomActivityRow = Database['public']['Tables']['room_activity']['Row'];
 export type RoomRoundRow = Database['public']['Tables']['room_rounds']['Row'];
 export type RoomRoundVoteRow = Database['public']['Tables']['room_round_votes']['Row'];
 export type ProfileRow = Database['public']['Tables']['profiles']['Row'];
@@ -21,17 +20,9 @@ export type RoomMemberView = {
   isCurrentUser: boolean;
 };
 
-export type RoomActivityView = {
-  id: string;
-  title: string;
-  subtitle: string;
-  createdAt: string;
-};
-
 export type RoomDetails = {
   room: RoomRow;
   members: RoomMemberView[];
-  activity: RoomActivityView[];
   round: ImpostorRoundSetup | null;
   currentUserRole: RoomMemberRole | null;
   isHost: boolean;
@@ -253,21 +244,6 @@ async function getProfilesForUsers(userIds: string[]) {
   return data ?? [];
 }
 
-async function getRoomActivity(roomId: string) {
-  const { data, error } = await supabase
-    .from('room_activity')
-    .select('*')
-    .eq('room_id', roomId)
-    .order('created_at', { ascending: false })
-    .limit(8);
-
-  if (error) {
-    throw new Error(buildRoomErrorMessage(error.message));
-  }
-
-  return data ?? [];
-}
-
 async function getRoomRound(roomId: string) {
   const { data, error } = await supabase
     .from('room_rounds')
@@ -329,10 +305,9 @@ function mapRoomRound(round: RoomRoundRow | null, votes: RoomRoundVoteRow[] = []
 }
 
 export async function getRoomDetails(roomId: string, currentUserId: string): Promise<RoomDetails | null> {
-  const [room, members, activity, round] = await Promise.all([
+  const [room, members, round] = await Promise.all([
     getRoom(roomId),
     getRoomMembers(roomId),
-    getRoomActivity(roomId),
     getRoomRound(roomId)
   ]);
 
@@ -362,78 +337,11 @@ export async function getRoomDetails(roomId: string, currentUserId: string): Pro
     } satisfies RoomMemberView;
   });
 
-  const activityViews = activity.map((entry) => {
-    const actorProfile = entry.actor_user_id ? profilesById.get(entry.actor_user_id) : null;
-    const actorLabel = actorProfile?.display_name ?? actorProfile?.username ?? 'Someone';
-
-    if (entry.type === 'room_created') {
-      return {
-        id: entry.id,
-        title: `${actorLabel} opened the room`,
-        subtitle: `Code ${room.code} is ready to share.`,
-        createdAt: entry.created_at
-      } satisfies RoomActivityView;
-    }
-
-    if (entry.type === 'member_joined') {
-      return {
-        id: entry.id,
-        title: `${actorLabel} joined the room`,
-        subtitle: 'The party lineup was updated.',
-        createdAt: entry.created_at
-      } satisfies RoomActivityView;
-    }
-
-    if (entry.type === 'member_removed') {
-      return {
-        id: entry.id,
-        title: `${actorLabel} removed a member`,
-        subtitle: 'The room lineup was updated.',
-        createdAt: entry.created_at
-      } satisfies RoomActivityView;
-    }
-
-    if (entry.type === 'round_started') {
-      return {
-        id: entry.id,
-        title: `${actorLabel} started an Impostor round`,
-        subtitle: 'The room moved into gameplay.',
-        createdAt: entry.created_at
-      } satisfies RoomActivityView;
-    }
-
-    if (entry.type === 'vote_started') {
-      return {
-        id: entry.id,
-        title: `${actorLabel} opened the vote`,
-        subtitle: 'The room can vote now.',
-        createdAt: entry.created_at
-      } satisfies RoomActivityView;
-    }
-
-    if (entry.type === 'vote_resolved') {
-      return {
-        id: entry.id,
-        title: `${actorLabel} closed the vote`,
-        subtitle: 'The room revealed who got expelled.',
-        createdAt: entry.created_at
-      } satisfies RoomActivityView;
-    }
-
-    return {
-      id: entry.id,
-      title: entry.type,
-      subtitle: 'Room activity updated.',
-      createdAt: entry.created_at
-    } satisfies RoomActivityView;
-  });
-
   const currentMember = memberViews.find((member) => member.userId === currentUserId) ?? null;
 
   return {
     room,
     members: memberViews,
-    activity: activityViews,
     round: mapRoomRound(round, roundVotes),
     currentUserRole: currentMember?.role ?? null,
     isHost: currentMember?.role === 'host'

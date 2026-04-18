@@ -240,6 +240,11 @@ export const resources = {
         selectImpostor: 'Usar Impostor',
         save: 'Guardar juego'
       },
+      gamesCatalog: {
+        title: 'Juegos',
+        subtitle: 'Por ahora solo Impostor está disponible. Los demás espacios quedan reservados para próximos juegos.',
+        futureSlot: 'Próximamente'
+      },
       roomSettings: {
         title: 'Ajustes de sala',
         subtitle: 'Configura solo lo que cambia una ronda de Impostor: cuántos impostores hay, qué temática sale y cuánto dura la votación.',
@@ -367,10 +372,7 @@ export const resources = {
         flowLine: 'Ritmo: {{value}}',
         chatLine: 'Chat: {{value}}',
         chatEnabled: 'Activado',
-        chatDisabled: 'Desactivado',
-        activityTitle: 'Actividad de sala',
-        activityLive: 'En vivo',
-        activityEmpty: 'La actividad de la sala aparecerá aquí cuando entren miembros y la partida avance.'
+        chatDisabled: 'Desactivado'
       },
       gameplay: {
         impostorTitle: 'Impostor',
@@ -690,6 +692,11 @@ export const resources = {
         selectImpostor: 'Use Impostor',
         save: 'Save game'
       },
+      gamesCatalog: {
+        title: 'Games',
+        subtitle: 'For now only Impostor is available. The remaining slots stay reserved for upcoming games.',
+        futureSlot: 'Coming soon'
+      },
       roomSettings: {
         title: 'Room settings',
         subtitle: 'Set only what changes an Impostor round: how many impostors there are, which theme to use, and how long voting lasts.',
@@ -817,10 +824,7 @@ export const resources = {
         flowLine: 'Flow: {{value}}',
         chatLine: 'Chat: {{value}}',
         chatEnabled: 'On',
-        chatDisabled: 'Off',
-        activityTitle: 'Party activity',
-        activityLive: 'Live',
-        activityEmpty: 'Room activity will appear here as members join and the party moves forward.'
+        chatDisabled: 'Off'
       },
       gameplay: {
         impostorTitle: 'Impostor',

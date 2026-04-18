@@ -13,6 +13,7 @@ import { useRoom } from '../state/RoomContext';
 import { AccountScreen } from '../ui/screens/AccountScreen';
 import { AppearanceScreen } from '../ui/screens/AppearanceScreen';
 import { ChooseGamesScreen } from '../ui/screens/ChooseGamesScreen';
+import { GamesCatalogScreen } from '../ui/screens/GamesCatalogScreen';
 import { GameplayScreen } from '../ui/screens/GameplayScreen';
 import { JoinRoomScreen } from '../ui/screens/JoinRoomScreen';
 import { LobbyScreen } from '../ui/screens/LobbyScreen';
@@ -209,6 +210,7 @@ export function AppNavigator() {
   const [isSettingsPanelOpen, setIsSettingsPanelOpen] = useState(false);
   const [isAccountPanelOpen, setIsAccountPanelOpen] = useState(false);
   const [isAppearancePanelOpen, setIsAppearancePanelOpen] = useState(false);
+  const [isGamesCatalogOpen, setIsGamesCatalogOpen] = useState(false);
   const [isLeaveRoomConfirmOpen, setIsLeaveRoomConfirmOpen] = useState(false);
   const [resumeRoomReady, setResumeRoomReady] = useState(false);
   const [shouldResumeRoom, setShouldResumeRoom] = useState(false);
@@ -791,7 +793,6 @@ export function AppNavigator() {
           roomUrl={buildRoomJoinUrl(activeRoom.room.code)}
           roomStatus={activeRoom.room.status}
           members={activeRoom.members}
-          activity={activeRoom.activity}
           selectedGame={selectedGame}
           settings={roomSettings}
           canManageRoom={activeRoom.isHost}
@@ -1072,12 +1073,32 @@ export function AppNavigator() {
     );
   }
 
+  function renderGamesCatalogPanel() {
+    return (
+      <GamesCatalogScreen
+        onSelectImpostor={() => {
+          setIsGamesCatalogOpen(false);
+
+          if (activeRoom) {
+            openChooseGames();
+          }
+        }}
+      />
+    );
+  }
+
   return (
     <View style={styles.container}>
       <View style={styles.topBar}>
-        <View>
-          <Text style={styles.brand}>MiniGamesWF</Text>
-          <Text style={styles.brandSub}>{t('common.games')}</Text>
+        <View style={styles.headerIdentity}>
+          <Text style={styles.headerGreeting}>
+            {t('lobby.headerGreeting', {
+              name: displayName ?? username ?? email?.split('@')[0] ?? (isGuest ? t('common.guest') : t('common.player'))
+            })}
+          </Text>
+          <Text style={styles.headerStatus}>
+            {isGuest ? t('lobby.guestStatus') : t('account.accountStateAuthenticated')}
+          </Text>
         </View>
         <View style={styles.topBarActions}>
           {canGoBack ? (
@@ -1092,10 +1113,26 @@ export function AppNavigator() {
           ) : null}
           <Pressable
             onPress={() => {
+              setIsGamesCatalogOpen(true);
+            }}
+            style={({ pressed, hovered }) => [
+              styles.catalogTrigger,
+              hovered && styles.catalogTriggerHover,
+              pressed && styles.catalogTriggerPressed
+            ]}
+          >
+            <Text style={styles.catalogTriggerLabel}>{t('common.games')}</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => {
               setSettingsNotice(null);
               setIsSettingsPanelOpen(true);
             }}
-            style={styles.settingsTrigger}
+            style={({ pressed, hovered }) => [
+              styles.settingsTrigger,
+              hovered && styles.settingsTriggerHover,
+              pressed && styles.settingsTriggerPressed
+            ]}
           >
             <Text style={styles.settingsTriggerIcon}>⚙</Text>
             <Text style={styles.settingsTriggerLabel}>{t('common.settings')}</Text>
@@ -1172,6 +1209,26 @@ export function AppNavigator() {
         </Modal>
       ) : null}
 
+      {isGamesCatalogOpen ? (
+        <Modal visible transparent animationType="fade" onRequestClose={() => setIsGamesCatalogOpen(false)}>
+          <View style={styles.overlayBackdropCentered}>
+            <Pressable style={StyleSheet.absoluteFillObject} onPress={() => setIsGamesCatalogOpen(false)} />
+            <View style={styles.gamesCatalogPanel}>
+              <View style={styles.panelHeader}>
+                <Text style={styles.panelTitle}>{t('gamesCatalog.title')}</Text>
+                <Pressable onPress={() => setIsGamesCatalogOpen(false)} style={styles.panelClose}>
+                  <Text style={styles.panelCloseLabel}>{t('auth.modalClose')}</Text>
+                </Pressable>
+              </View>
+              <View style={styles.panelBody}>
+                <Text style={styles.catalogCopy}>{t('gamesCatalog.subtitle')}</Text>
+                {renderGamesCatalogPanel()}
+              </View>
+            </View>
+          </View>
+        </Modal>
+      ) : null}
+
       {isLeaveRoomConfirmOpen ? (
         <Modal visible transparent animationType="fade" onRequestClose={() => setIsLeaveRoomConfirmOpen(false)}>
           <View style={styles.overlayBackdropCentered}>
@@ -1241,16 +1298,19 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
     color: theme.colors.textSecondary,
     fontSize: typography.body
   },
-  brand: {
+  headerIdentity: {
+    flex: 1,
+    gap: spacing.xs
+  },
+  headerGreeting: {
     color: theme.colors.textPrimary,
-    fontSize: typography.body,
+    fontSize: typography.title,
     fontWeight: '800'
   },
-  brandSub: {
-    color: theme.colors.textMuted,
+  headerStatus: {
+    color: theme.colors.textSecondary,
     fontSize: typography.caption,
-    textTransform: 'uppercase',
-    letterSpacing: 1.2
+    fontWeight: '600'
   },
   back: {
     color: theme.colors.highlight,
@@ -1273,12 +1333,41 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
     borderWidth: 1,
     borderColor: theme.colors.border
   },
+  settingsTriggerHover: {
+    borderColor: theme.colors.borderStrong,
+    backgroundColor: theme.colors.surfaceMuted
+  },
+  settingsTriggerPressed: {
+    transform: [{ scale: 0.985 }]
+  },
   settingsTriggerIcon: {
     color: theme.colors.textMuted,
     fontSize: typography.body,
     fontWeight: '700'
   },
   settingsTriggerLabel: {
+    color: theme.colors.textPrimary,
+    fontSize: typography.body,
+    fontWeight: '700'
+  },
+  catalogTrigger: {
+    minHeight: 42,
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.backgroundElevated,
+    borderWidth: 1,
+    borderColor: theme.colors.border
+  },
+  catalogTriggerHover: {
+    borderColor: theme.colors.borderStrong,
+    backgroundColor: theme.colors.surfaceMuted
+  },
+  catalogTriggerPressed: {
+    transform: [{ scale: 0.985 }]
+  },
+  catalogTriggerLabel: {
     color: theme.colors.textPrimary,
     fontSize: typography.body,
     fontWeight: '700'
@@ -1325,6 +1414,17 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
     alignSelf: 'center',
     marginTop: spacing.lg
   },
+  gamesCatalogPanel: {
+    width: '100%',
+    maxWidth: 900,
+    maxHeight: '88%',
+    borderRadius: radius.lg,
+    overflow: 'hidden',
+    backgroundColor: theme.colors.background,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    alignSelf: 'center'
+  },
   panelHeader: {
     minHeight: 64,
     paddingHorizontal: spacing.lg,
@@ -1356,6 +1456,40 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
   },
   panelBody: {
     flex: 1
+  },
+  catalogCopy: {
+    color: theme.colors.textSecondary,
+    fontSize: typography.body,
+    lineHeight: 24,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.lg
+  },
+  overlayBackdropCentered: {
+    flex: 1,
+    backgroundColor: 'rgba(10, 10, 12, 0.52)',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.xl,
+    justifyContent: 'center',
+    alignItems: 'center'
+  },
+  confirmPanel: {
+    width: '100%',
+    maxWidth: 520,
+    borderRadius: radius.lg,
+    backgroundColor: theme.colors.background,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    padding: spacing.lg,
+    gap: spacing.md
+  },
+  confirmCopy: {
+    color: theme.colors.textSecondary,
+    fontSize: typography.body,
+    lineHeight: 24
+  },
+  confirmActions: {
+    flexDirection: 'row',
+    gap: spacing.sm
   }
   });
 }

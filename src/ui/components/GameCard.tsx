@@ -1,3 +1,4 @@
+import type { ImageSourcePropType } from 'react-native';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { controls, layout, radius, spacing } from '../system/layout';
@@ -5,36 +6,61 @@ import { textStyles } from '../system/typography';
 import { useTheme } from '../theme';
 
 type GameCardProps = {
-  title: string;
-  imageSource: number;
+  title?: string;
+  imageSource?: ImageSourcePropType;
   selected?: boolean;
+  inactive?: boolean;
+  showHelpButton?: boolean;
+  placeholderLabel?: string;
   onPress: () => void;
   onHelpPress?: () => void;
 };
 
-export function GameCard({ title, imageSource, selected = false, onPress, onHelpPress }: GameCardProps) {
+export function GameCard({
+  title,
+  imageSource,
+  selected = false,
+  inactive = false,
+  showHelpButton = true,
+  placeholderLabel = 'Coming soon',
+  onPress,
+  onHelpPress
+}: GameCardProps) {
   const theme = useTheme();
   const styles = createStyles(theme);
 
   return (
     <Pressable
       onPress={onPress}
+      disabled={inactive}
       style={({ pressed, hovered }) => [
         styles.card,
         selected && styles.cardSelected,
+        inactive && styles.cardInactive,
         hovered && styles.cardHover,
         pressed && styles.cardPressed
       ]}
     >
-      <Pressable onPress={onHelpPress ?? (() => {})} style={({ pressed }) => [styles.helpButton, pressed && styles.helpButtonPressed]}>
-        <Text style={styles.helpLabel}>?</Text>
-      </Pressable>
+      {showHelpButton && !inactive ? (
+        <Pressable onPress={onHelpPress ?? (() => {})} style={({ pressed }) => [styles.helpButton, pressed && styles.helpButtonPressed]}>
+          <Text style={styles.helpLabel}>?</Text>
+        </Pressable>
+      ) : (
+        <View style={styles.placeholderTopGap} />
+      )}
 
       <View style={styles.mediaWrap}>
-        <Image source={imageSource} resizeMode="contain" style={styles.image} />
+        {imageSource ? (
+          <Image source={imageSource} resizeMode="contain" style={styles.image} />
+        ) : (
+          <View style={styles.placeholderWrap}>
+            <Text style={styles.placeholderPlus}>+</Text>
+            <Text style={styles.placeholderLabel}>{placeholderLabel}</Text>
+          </View>
+        )}
       </View>
 
-      <Text style={styles.title}>{title}</Text>
+      {title ? <Text style={[styles.title, inactive && styles.titleInactive]}>{title}</Text> : null}
     </Pressable>
   );
 }
@@ -54,6 +80,11 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
     },
     cardSelected: {
       borderColor: theme.colors.primary
+    },
+    cardInactive: {
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.backgroundElevated,
+      opacity: 0.92
     },
     cardHover: {
       borderColor: theme.colors.borderStrong,
@@ -80,6 +111,11 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
       color: theme.colors.textSecondary,
       ...textStyles.bodyStrong
     },
+    placeholderTopGap: {
+      alignSelf: 'flex-end',
+      width: controls.iconSize + 12,
+      height: controls.iconSize + 12
+    },
     mediaWrap: {
       flex: 1,
       alignItems: 'center',
@@ -94,6 +130,29 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
       color: theme.colors.textPrimary,
       textAlign: 'center',
       ...textStyles.section
+    },
+    titleInactive: {
+      color: theme.colors.textMuted
+    },
+    placeholderWrap: {
+      width: '100%',
+      height: 220,
+      borderRadius: radius.md,
+      borderWidth: 1,
+      borderStyle: 'dashed',
+      borderColor: theme.colors.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: spacing.sm,
+      backgroundColor: theme.colors.surfaceMuted
+    },
+    placeholderPlus: {
+      color: theme.colors.textMuted,
+      ...textStyles.title
+    },
+    placeholderLabel: {
+      color: theme.colors.textMuted,
+      ...textStyles.body
     }
   });
 }

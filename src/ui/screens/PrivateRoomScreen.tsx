@@ -2,8 +2,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import { useTranslation } from 'react-i18next';
 
-import type { RoomActivityView, RoomMemberView } from '../../data/rooms';
-import type { RoomRealtimeState } from '../../data/rooms';
+import type { RoomMemberView, RoomRealtimeState } from '../../data/rooms';
 import type { MiniGame, RoomSettings } from '../../navigation/types';
 import { AppButton } from '../components/AppButton';
 import { AppScreen } from '../components/AppScreen';
@@ -16,7 +15,6 @@ type PrivateRoomScreenProps = {
   roomUrl: string;
   roomStatus: 'waiting' | 'active' | 'finished';
   members: RoomMemberView[];
-  activity: RoomActivityView[];
   selectedGame: MiniGame | null;
   settings: RoomSettings;
   canManageRoom: boolean;
@@ -36,7 +34,6 @@ export function PrivateRoomScreen({
   roomUrl,
   roomStatus,
   members,
-  activity,
   selectedGame,
   settings,
   canManageRoom,
@@ -180,25 +177,6 @@ export function PrivateRoomScreen({
         <Text style={styles.itemSubtitle}>{t(settings.balanceEndsGame ? 'room.balanceRuleOn' : 'room.balanceRuleOff')}</Text>
       </SurfaceCard>
 
-      <SurfaceCard>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>{t('room.activityTitle')}</Text>
-          <Badge label={t('room.activityLive')} tone="success" />
-        </View>
-        {activity.length ? (
-          activity.map((item) => (
-            <View key={item.id} style={styles.activityRow}>
-              <View style={styles.activityMarker} />
-              <View style={styles.listMeta}>
-                <Text style={styles.itemTitle}>{item.title}</Text>
-                <Text style={styles.itemSubtitle}>{item.subtitle}</Text>
-              </View>
-            </View>
-          ))
-        ) : (
-          <Text style={styles.itemSubtitle}>{t('room.activityEmpty')}</Text>
-        )}
-      </SurfaceCard>
     </AppScreen>
   );
 }
@@ -336,18 +314,6 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
     color: theme.colors.textMuted,
     fontSize: typography.caption,
     lineHeight: 18
-  },
-  activityRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing.md
-  },
-  activityMarker: {
-    width: 10,
-    height: 10,
-    borderRadius: 999,
-    backgroundColor: theme.colors.success,
-    marginTop: 6
   }
   });
 }
