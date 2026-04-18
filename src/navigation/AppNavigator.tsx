@@ -697,7 +697,11 @@ export function AppNavigator() {
         return;
       }
 
-      setRoomNotice(wasHost ? t('room.roomClosedNotice') : t('room.roomLeftNotice'));
+      setRoomNotice(
+        wasHost
+          ? t('room.roomClosedNotice', { defaultValue: 'La sala se cerró correctamente.' })
+          : t('room.roomLeftNotice', { defaultValue: 'Saliste de la sala.' })
+      );
       backToLobby();
     });
   }

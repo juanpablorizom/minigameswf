@@ -51,7 +51,6 @@ export function LobbyScreen({ displayName: _displayName, scenario, onAction, not
         </View>
         {(scenario.key === 'guest' || scenario.key === 'noRoom') ? (
           <View style={styles.pillRow}>
-            <AppButton label={t('lobby.quickPlay')} onPress={() => onAction('quickPlay')} variant="ghost" />
             <AppButton label={t('lobby.scanQr')} onPress={() => onAction('scanQr')} variant="ghost" />
           </View>
         ) : null}

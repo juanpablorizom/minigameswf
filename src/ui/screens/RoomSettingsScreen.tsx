@@ -4,7 +4,6 @@ import { useTranslation } from 'react-i18next';
 import type { RoomSettings } from '../../navigation/types';
 import { AppButton } from '../components/AppButton';
 import { AppScreen } from '../components/AppScreen';
-import { Badge } from '../components/Badge';
 import { SurfaceCard } from '../components/SurfaceCard';
 import { radius, spacing, typography, useTheme } from '../theme';
 
@@ -37,23 +36,18 @@ export function RoomSettingsScreen({ settings, onChangeSettings, onSave, embedde
   const { t } = useTranslation();
   const theme = useTheme();
   const styles = createStyles(theme);
+  const canUseBalanceRule = settings.missBehavior === 'repeat';
+
+  function handleMissBehaviorChange(nextMissBehavior: RoomSettings['missBehavior']) {
+    onChangeSettings({
+      ...settings,
+      missBehavior: nextMissBehavior,
+      balanceEndsGame: nextMissBehavior === 'repeat' ? settings.balanceEndsGame || true : false
+    });
+  }
 
   const content = (
     <>
-      <SurfaceCard>
-        <View style={styles.summaryHeader}>
-          <Text style={styles.sectionTitle}>{t('roomSettings.profileTitle')}</Text>
-          <Badge label={t('gameMeta.names.impostor')} tone="accent" />
-        </View>
-        <Text style={styles.summaryCopy}>
-          {t('roomSettings.summary', {
-            turnSeconds: settings.turnSeconds,
-            impostorCount: settings.impostorCount,
-            theme: t(`roomSettings.themeOptions.${settings.themeCategory}`).toLowerCase()
-          })}
-        </Text>
-      </SurfaceCard>
-
       <SurfaceCard>
         <Text style={styles.sectionTitle}>{t('roomSettings.impostorCount')}</Text>
         <View style={styles.optionRow}>
@@ -106,7 +100,7 @@ export function RoomSettingsScreen({ settings, onChangeSettings, onSave, embedde
               key={missBehavior}
               label={t(`roomSettings.missBehaviorOptions.${missBehavior}`)}
               active={settings.missBehavior === missBehavior}
-              onPress={() => onChangeSettings({ ...settings, missBehavior })}
+              onPress={() => handleMissBehaviorChange(missBehavior)}
             />
           ))}
         </View>
@@ -114,16 +108,20 @@ export function RoomSettingsScreen({ settings, onChangeSettings, onSave, embedde
 
       <SurfaceCard>
         <Text style={styles.sectionTitle}>{t('roomSettings.balanceRule')}</Text>
-        <Text style={styles.summaryCopy}>{t('roomSettings.balanceRuleHint')}</Text>
+        <Text style={styles.summaryCopy}>
+          {canUseBalanceRule ? t('roomSettings.balanceRuleHint') : t('roomSettings.balanceRuleDisabledHint')}
+        </Text>
         <View style={styles.optionRow}>
           <OptionChip
             label={t('common.on')}
-            active={settings.balanceEndsGame}
+            active={canUseBalanceRule && settings.balanceEndsGame}
+            disabled={!canUseBalanceRule}
             onPress={() => onChangeSettings({ ...settings, balanceEndsGame: true })}
           />
           <OptionChip
             label={t('common.off')}
-            active={!settings.balanceEndsGame}
+            active={!canUseBalanceRule || !settings.balanceEndsGame}
+            disabled={!canUseBalanceRule}
             onPress={() => onChangeSettings({ ...settings, balanceEndsGame: false })}
           />
         </View>
@@ -147,16 +145,17 @@ export function RoomSettingsScreen({ settings, onChangeSettings, onSave, embedde
 type OptionChipProps = {
   label: string;
   active: boolean;
+  disabled?: boolean;
   onPress: () => void;
 };
 
-function OptionChip({ label, active, onPress }: OptionChipProps) {
+function OptionChip({ label, active, disabled = false, onPress }: OptionChipProps) {
   const theme = useTheme();
   const styles = createStyles(theme);
 
   return (
-    <Pressable onPress={onPress} style={[styles.optionChip, active && styles.optionChipActive]}>
-      <Text style={[styles.optionLabel, active && styles.optionLabelActive]}>{label}</Text>
+    <Pressable disabled={disabled} onPress={onPress} style={[styles.optionChip, active && styles.optionChipActive, disabled && styles.optionChipDisabled]}>
+      <Text style={[styles.optionLabel, active && styles.optionLabelActive, disabled && styles.optionLabelDisabled]}>{label}</Text>
     </Pressable>
   );
 }
@@ -167,12 +166,6 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
     color: theme.colors.textPrimary,
     fontSize: typography.section,
     fontWeight: '700'
-  },
-  summaryHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: spacing.md
   },
   summaryCopy: {
     color: theme.colors.textSecondary,
@@ -203,6 +196,9 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
     backgroundColor: theme.colors.successMuted,
     borderColor: theme.colors.success
   },
+  optionChipDisabled: {
+    opacity: 0.5
+  },
   optionLabel: {
     color: theme.colors.textSecondary,
     fontSize: typography.body,
@@ -210,6 +206,9 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
   },
   optionLabelActive: {
     color: theme.colors.successText
+  },
+  optionLabelDisabled: {
+    color: theme.colors.textMuted
   }
   });
 }

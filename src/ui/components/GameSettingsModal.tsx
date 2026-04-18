@@ -37,7 +37,6 @@ export function GameSettingsModal({
           <View style={styles.header}>
             <View style={styles.headerCopy}>
               <Text style={styles.title}>{t('roomSettings.modalTitle', { game: gameLabel })}</Text>
-              <Text style={styles.subtitle}>{t('roomSettings.modalSubtitle')}</Text>
             </View>
             <Pressable onPress={onCancel} style={styles.closeButton}>
               <Text style={styles.closeLabel}>{t('auth.modalClose')}</Text>
@@ -94,17 +93,11 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
       gap: spacing.md
     },
     headerCopy: {
-      flex: 1,
-      gap: spacing.xs
+      flex: 1
     },
     title: {
       color: theme.colors.textPrimary,
-      ...textStyles.sectionTitle
-    },
-    subtitle: {
-      color: theme.colors.textSecondary,
-      fontSize: typography.body,
-      lineHeight: 22
+      ...textStyles.title
     },
     closeButton: {
       minHeight: controls.minHeight,
