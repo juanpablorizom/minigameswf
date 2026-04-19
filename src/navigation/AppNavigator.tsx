@@ -218,6 +218,7 @@ export function AppNavigator() {
   const [shouldResumeRoom, setShouldResumeRoom] = useState(false);
   const autoCloseFinishedRoomRef = useRef<string | null>(null);
   const autoContinueRoundRef = useRef<string | null>(null);
+  const autoCloseSinglePlayerRoomRef = useRef<string | null>(null);
   const hadAccessRef = useRef(false);
   const attemptedRoomResumeRef = useRef(false);
   const roomFlowScreens = ['room', 'chooseGames', 'roomSettings', 'gameplay', 'results'] as const;
@@ -413,14 +414,48 @@ export function AppNavigator() {
     setRoomNotice(t('gameplay.roomFinishedClosing'));
 
     const timeout = setTimeout(() => {
-      void leaveRoom().finally(() => {
-        backToLobby();
+      setIsLeaveRoomConfirmOpen(false);
+      setIsGameSettingsOpen(false);
+      setIsGamesCatalogOpen(false);
+      backToLobby();
+      void leaveRoom().then((result) => {
+        if (!result.error) {
+          setRoomNotice(t('room.roomClosedNotice', { defaultValue: 'La sala se cerró correctamente.' }));
+        }
       });
     }, 2200);
 
     return () => {
       clearTimeout(timeout);
     };
+  }, [activeRoom, backToLobby, leaveRoom, t]);
+
+  useEffect(() => {
+    if (!activeRoom || activeRoom.room.status !== 'active') {
+      autoCloseSinglePlayerRoomRef.current = null;
+      return;
+    }
+
+    const activeMemberCount = activeRoom.members.filter((member) => member.isActive).length;
+
+    if (activeMemberCount > 1) {
+      autoCloseSinglePlayerRoomRef.current = null;
+      return;
+    }
+
+    const closeKey = `${activeRoom.room.id}:${activeRoom.room.status}:${activeMemberCount}`;
+
+    if (autoCloseSinglePlayerRoomRef.current === closeKey) {
+      return;
+    }
+
+    autoCloseSinglePlayerRoomRef.current = closeKey;
+    setRoomNotice(t('room.roomClosedNotice', { defaultValue: 'La sala se cerró correctamente.' }));
+    setIsLeaveRoomConfirmOpen(false);
+    setIsGameSettingsOpen(false);
+    setIsGamesCatalogOpen(false);
+    backToLobby();
+    void leaveRoom();
   }, [activeRoom, backToLobby, leaveRoom, t]);
 
   useEffect(() => {
@@ -716,6 +751,17 @@ export function AppNavigator() {
   }
 
   function renderGamesTab() {
+    if (!activeRoom && roomFlowScreens.includes(currentScreen as (typeof roomFlowScreens)[number])) {
+      return (
+        <LobbyScreen
+          displayName={displayName ?? email?.split('@')[0] ?? (isGuest ? t('common.guest') : t('common.player'))}
+          scenario={resolvedLobbyScenario}
+          onAction={handleLobbyAction}
+          notice={roomNotice ?? t('lobby.errors.noActiveRoomFallback')}
+        />
+      );
+    }
+
     if (currentScreen === 'lobby') {
       return (
         <LobbyScreen
@@ -863,17 +909,6 @@ export function AppNavigator() {
           onLeaveRoom={() => {
             requestLeaveRoom();
           }}
-        />
-      );
-    }
-
-    if (currentScreen === 'room' && !activeRoom) {
-      return (
-        <LobbyScreen
-          displayName={displayName ?? email?.split('@')[0] ?? (isGuest ? t('common.guest') : t('common.player'))}
-          scenario={resolvedLobbyScenario}
-          onAction={handleLobbyAction}
-          notice={t('lobby.errors.noActiveRoomFallback')}
         />
       );
     }
