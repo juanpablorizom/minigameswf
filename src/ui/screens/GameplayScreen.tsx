@@ -14,10 +14,12 @@ type GameplayScreenProps = {
   activeGame: MiniGame;
   roomSettings: RoomSettings;
   roundSetup: ImpostorRoundSetup | null;
+  canManageRoom: boolean;
   isBusy: boolean;
   notice: string | null;
   onCastVote: (targetUserId: string) => void;
   onResolveVote: () => void;
+  onBackToRoom: () => void;
   onRevealResults: () => void;
   onPlayAgain: () => void;
 };
@@ -33,16 +35,18 @@ export function GameplayScreen({
   activeGame,
   roomSettings,
   roundSetup,
+  canManageRoom,
   isBusy,
   notice,
   onCastVote,
-  onResolveVote
+  onResolveVote,
+  onBackToRoom,
+  onPlayAgain
 }: GameplayScreenProps) {
   const { t } = useTranslation();
   const theme = useTheme();
   const styles = createStyles(theme);
   const [isVoteModalVisible, setIsVoteModalVisible] = useState(false);
-  const [isResultModalVisible, setIsResultModalVisible] = useState(false);
   const [pendingVoteTargetId, setPendingVoteTargetId] = useState<string | null>(null);
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
   const autoResolvedVoteRef = useRef<string | null>(null);
@@ -50,10 +54,6 @@ export function GameplayScreen({
   useEffect(() => {
     setIsVoteModalVisible(false);
     setPendingVoteTargetId(null);
-  }, [roundSetup?.roundId, roundSetup?.phase, roundSetup?.expelledUserId]);
-
-  useEffect(() => {
-    setIsResultModalVisible(roundSetup?.phase === 'result');
   }, [roundSetup?.roundId, roundSetup?.phase, roundSetup?.expelledUserId]);
 
   useEffect(() => {
@@ -100,7 +100,15 @@ export function GameplayScreen({
   const activeVoters = players.filter((player) => !roundSetup.eliminatedUserIds.includes(player.id));
   const remainingImpostorIds = roundSetup.impostorIds.filter((playerId) => !roundSetup.eliminatedUserIds.includes(playerId));
   const allImpostorsOut = roundSetup.outcome === 'impostors_caught';
+  const isResultPhase = roundSetup.phase === 'result';
   const allVotesSubmitted = activeVoters.length > 0 && roundSetup.votes.length >= activeVoters.length;
+  const resultModalHint = allImpostorsOut
+    ? null
+    : roundSetup.outcome === 'impostors_balanced'
+      ? t('gameplay.balanceWin', { count: remainingImpostorIds.length })
+      : roundSetup.outcome === 'missed_impostor'
+        ? t('gameplay.missedImpostorEnd')
+        : t('gameplay.nextRoundAuto');
   const voteSummary = useMemo(() => {
     const counts = new Map<string, number>();
 
@@ -219,7 +227,7 @@ export function GameplayScreen({
                 {receivedVotes > 0 && roundSetup.phase === 'voting' ? (
                   <Badge label={t('gameplay.voteCount', { count: receivedVotes })} tone="neutral" />
                 ) : null}
-                {roundSetup.expelledUserId === player.id ? <Badge label={t('gameplay.expelled')} tone="accent" /> : null}
+                {roundSetup.expelledUserId === player.id ? <Badge label={t('gameplay.eliminated')} tone="accent" /> : null}
               </View>
             </View>
           );
@@ -270,9 +278,8 @@ export function GameplayScreen({
         </View>
       </Modal>
 
-      <Modal visible={isResultModalVisible} transparent animationType="fade" onRequestClose={() => setIsResultModalVisible(false)}>
+      <Modal visible={isResultPhase} transparent animationType="fade" onRequestClose={() => {}}>
         <View style={styles.modalBackdrop}>
-          <Pressable style={StyleSheet.absoluteFillObject} onPress={() => setIsResultModalVisible(false)} />
           <View style={styles.resultModalCard}>
             <Text style={styles.resultModalTitle}>
               {expelledWasImpostor ? t('gameplay.voteSuccessTitle') : t('gameplay.voteFailTitle')}
@@ -284,16 +291,24 @@ export function GameplayScreen({
                   : t('gameplay.revealedCivilian', { player: expelledPlayer.name })
                 : t('gameplay.votePending')}
             </Text>
-            <Text style={styles.resultModalHint}>
-              {allImpostorsOut
-                ? t('gameplay.matchFinished')
-                : roundSetup.outcome === 'impostors_balanced'
-                  ? t('gameplay.balanceWin', { count: remainingImpostorIds.length })
-                  : roundSetup.outcome === 'missed_impostor'
-                    ? t('gameplay.missedImpostorEnd')
-                    : t('gameplay.nextRoundAuto')}
-            </Text>
-            <AppButton label={t('auth.modalClose')} onPress={() => setIsResultModalVisible(false)} variant="secondary" />
+            {resultModalHint ? <Text style={styles.resultModalHint}>{resultModalHint}</Text> : null}
+            {canManageRoom ? (
+              <View style={styles.modalActions}>
+                <AppButton
+                  label={roundSetup.status === 'finished' ? t('gameplay.playAgain') : t('gameplay.nextRound')}
+                  onPress={onPlayAgain}
+                  disabled={isBusy}
+                />
+                <AppButton
+                  label={t('gameplay.backToRoom')}
+                  onPress={onBackToRoom}
+                  variant="secondary"
+                  disabled={isBusy}
+                />
+              </View>
+            ) : (
+              <Text style={styles.resultModalWait}>{t('gameplay.waitingForHostDecision')}</Text>
+            )}
           </View>
         </View>
       </Modal>
@@ -462,6 +477,12 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
       color: theme.colors.textSecondary,
       fontSize: typography.body,
       lineHeight: 22
+    },
+    resultModalWait: {
+      color: theme.colors.textSecondary,
+      fontSize: typography.body,
+      lineHeight: 22,
+      textAlign: 'center'
     }
   });
 }

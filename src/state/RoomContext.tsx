@@ -13,6 +13,7 @@ import {
   advanceImpostorRound as advanceImpostorRoundRequest,
   castImpostorVote as castImpostorVoteRequest,
   resolveImpostorVote as resolveImpostorVoteRequest,
+  returnRoomToLobby as returnRoomToLobbyRequest,
   subscribeToRoomRealtime,
   updateRoomMemberPresence,
   updateRoomSelectedGame,
@@ -49,6 +50,7 @@ type RoomContextValue = {
   advanceImpostorRound: () => Promise<RoomActionResult>;
   castImpostorVote: (targetUserId: string) => Promise<RoomActionResult>;
   resolveImpostorVote: () => Promise<RoomActionResult>;
+  returnRoomToLobby: () => Promise<RoomActionResult>;
   saveSelectedGame: (selectedGameId: string | null) => Promise<RoomActionResult>;
   markRoomActive: () => Promise<RoomActionResult>;
   setRoomScreenActive: (isActive: boolean) => void;
@@ -214,7 +216,7 @@ export function RoomProvider({ children }: PropsWithChildren) {
     const shouldPoll =
       syncState !== 'live' ||
       activeRoom.room.status === 'waiting' ||
-      (activeRoom.room.status === 'active' && !activeRoom.round);
+      activeRoom.room.status === 'active';
 
     if (!shouldPoll) {
       return;
@@ -224,7 +226,7 @@ export function RoomProvider({ children }: PropsWithChildren) {
       void refreshResolvedActiveRoom().catch(() => {
         // Polling is only a safety net when realtime hasn't fully caught up.
       });
-    }, 2000);
+    }, activeRoom.room.status === 'active' ? 1500 : 2000);
 
     return () => {
       clearInterval(interval);
@@ -416,6 +418,24 @@ export function RoomProvider({ children }: PropsWithChildren) {
 
         try {
           await resolveImpostorVoteRequest(activeRoom.room.id);
+          const roomDetails = await getRoomDetails(activeRoom.room.id, user.id);
+          setActiveRoom(roomDetails);
+          return { roomId: activeRoom.room.id };
+        } catch (error) {
+          return { error: mapRoomError(error) };
+        } finally {
+          setIsBusy(false);
+        }
+      },
+      returnRoomToLobby: async () => {
+        if (!user || !activeRoom) {
+          return { error: 'AUTH_REQUIRED' };
+        }
+
+        setIsBusy(true);
+
+        try {
+          await returnRoomToLobbyRequest(activeRoom.room.id);
           const roomDetails = await getRoomDetails(activeRoom.room.id, user.id);
           setActiveRoom(roomDetails);
           return { roomId: activeRoom.room.id };

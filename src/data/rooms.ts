@@ -510,6 +510,18 @@ export async function resolveImpostorVote(roomId: string) {
   return mapRoomRound(normalizeResult(data as RoomRoundRow | RoomRoundRow[] | null));
 }
 
+export async function returnRoomToLobby(roomId: string) {
+  const { data, error } = await supabase.rpc('return_room_to_lobby', {
+    p_room_id: roomId
+  });
+
+  if (error) {
+    throw new Error(buildRoomErrorMessage(error.message));
+  }
+
+  return normalizeResult(data as RoomRow | RoomRow[] | null);
+}
+
 export function subscribeToRoomRealtime({
   roomId,
   onRoomChange,

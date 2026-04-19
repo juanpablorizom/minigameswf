@@ -775,6 +775,60 @@ begin
 end;
 $$;
 
+create or replace function public.return_room_to_lobby(
+  p_room_id uuid
+)
+returns public.rooms
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  current_user_id uuid := auth.uid();
+  target_room public.rooms;
+begin
+  if current_user_id is null then
+    raise exception 'AUTH_REQUIRED';
+  end if;
+
+  select *
+  into target_room
+  from public.rooms
+  where id = p_room_id
+  limit 1;
+
+  if target_room.id is null then
+    raise exception 'ROOM_NOT_FOUND';
+  end if;
+
+  if target_room.host_user_id <> current_user_id then
+    raise exception 'ROUND_HOST_ONLY';
+  end if;
+
+  delete from public.room_round_votes
+  where room_id = p_room_id;
+
+  delete from public.room_rounds
+  where room_id = p_room_id;
+
+  update public.rooms
+  set status = 'waiting',
+      updated_at = timezone('utc', now())
+  where id = p_room_id
+  returning * into target_room;
+
+  insert into public.room_activity (room_id, actor_user_id, type, payload)
+  values (
+    p_room_id,
+    current_user_id,
+    'room_reset',
+    jsonb_build_object('destination', 'room')
+  );
+
+  return target_room;
+end;
+$$;
+
 create or replace function public.handle_new_user()
 returns trigger
 language plpgsql

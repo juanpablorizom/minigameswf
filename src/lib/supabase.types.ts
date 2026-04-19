@@ -300,6 +300,12 @@ export type Database = {
         };
         Returns: Database['public']['Tables']['room_rounds']['Row'][];
       };
+      return_room_to_lobby: {
+        Args: {
+          p_room_id: string;
+        };
+        Returns: Database['public']['Tables']['rooms']['Row'][];
+      };
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;

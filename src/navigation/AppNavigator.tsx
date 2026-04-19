@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { Linking, Modal, Pressable, Share, StyleSheet, Text, View } from 'react-native';
+import { Linking, Modal, Pressable, Share, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { featuredGames, lobbyScenarios } from '../data/mockData';
+import { impostorThemeWords } from '../data/themes';
 import type { RoomDetails } from '../data/rooms';
 import { buildRoomJoinUrl, extractRoomCodeFromValue, normalizeRoomCode } from '../lib/roomLinks';
 import { loadStoredRoomResume, storeRoomResume } from '../lib/storage';
@@ -134,8 +135,11 @@ function buildLobbyScenario(
 
 export function AppNavigator() {
   const { t } = useTranslation();
+  const { width } = useWindowDimensions();
   const theme = useTheme();
-  const styles = createStyles(theme);
+  const isCompactScreen = width < 820;
+  const isNarrowScreen = width < 540;
+  const styles = createStyles(theme, isCompactScreen, isNarrowScreen);
   const {
     isReady,
     isBusy,
@@ -168,9 +172,9 @@ export function AppNavigator() {
     removeMember,
     leaveRoom,
     startImpostorRound,
-    advanceImpostorRound,
     castImpostorVote,
     resolveImpostorVote,
+    returnRoomToLobby,
     saveSelectedGame,
     setRoomScreenActive
   } = useRoom();
@@ -216,8 +220,6 @@ export function AppNavigator() {
   const [draftRoomSettings, setDraftRoomSettings] = useState(roomSettings);
   const [resumeRoomReady, setResumeRoomReady] = useState(false);
   const [shouldResumeRoom, setShouldResumeRoom] = useState(false);
-  const autoCloseFinishedRoomRef = useRef<string | null>(null);
-  const autoContinueRoundRef = useRef<string | null>(null);
   const autoCloseSinglePlayerRoomRef = useRef<string | null>(null);
   const hadAccessRef = useRef(false);
   const attemptedRoomResumeRef = useRef(false);
@@ -253,6 +255,35 @@ export function AppNavigator() {
     }
 
     return error;
+  }
+
+  function canStartSelectedTheme() {
+    return Boolean(impostorThemeWords[roomSettings.themeCategory]?.length);
+  }
+
+  function runStartImpostorRound(onSuccess?: () => void) {
+    if (!canStartSelectedTheme()) {
+      setRoomNotice(t('room.themeUnavailable'));
+      return;
+    }
+
+    setRoomNotice(t('room.roundStarting'));
+
+    void startImpostorRound(
+      roomSettings.themeCategory,
+      roomSettings.impostorCount,
+      roomSettings.turnSeconds,
+      roomSettings.missBehavior,
+      roomSettings.balanceEndsGame
+    ).then((result) => {
+      if (result.error) {
+        setRoomNotice(mapRoomNotice(t, result.error));
+        return;
+      }
+
+      setRoomNotice(null);
+      onSuccess?.();
+    });
   }
 
   useEffect(() => {
@@ -364,76 +395,15 @@ export function AppNavigator() {
     }
 
     startGameplay();
-  }, [activeRoom?.round?.roundId, currentScreen, startGameplay]);
+  }, [activeRoom?.round?.roundId, activeRoom?.round?.phase, activeRoom?.round?.status, currentScreen, startGameplay]);
 
   useEffect(() => {
-    if (!activeRoom?.round || activeRoom.round.phase !== 'result' || activeRoom.round.status !== 'active') {
-      autoContinueRoundRef.current = null;
+    if (!activeRoom || activeRoom.round || (currentScreen !== 'gameplay' && currentScreen !== 'results')) {
       return;
     }
 
-    if (!activeRoom.isHost) {
-      autoContinueRoundRef.current = null;
-      return;
-    }
-
-    const continueKey = `${activeRoom.round.roundId}:${activeRoom.round.roundNumber}:${activeRoom.round.expelledUserId ?? 'none'}`;
-
-    if (autoContinueRoundRef.current === continueKey) {
-      return;
-    }
-
-    autoContinueRoundRef.current = continueKey;
-    setRoomNotice(t('gameplay.nextRoundStarting'));
-
-    const timeout = setTimeout(() => {
-      void advanceImpostorRound().then((result) => {
-        if (result.error && result.error !== 'ROUND_NOT_ACTIVE') {
-          setRoomNotice(mapRoomNotice(t, result.error));
-          autoContinueRoundRef.current = null;
-          return;
-        }
-
-        setRoomNotice(null);
-      });
-    }, 5000);
-
-    return () => {
-      clearTimeout(timeout);
-    };
-  }, [activeRoom?.round, advanceImpostorRound, t]);
-
-  useEffect(() => {
-    if (!activeRoom || activeRoom.room.status !== 'finished') {
-      autoCloseFinishedRoomRef.current = null;
-      return;
-    }
-
-    const closeKey = `${activeRoom.room.id}:${activeRoom.round?.roundId ?? 'no-round'}`;
-
-    if (autoCloseFinishedRoomRef.current === closeKey) {
-      return;
-    }
-
-    autoCloseFinishedRoomRef.current = closeKey;
-    setRoomNotice(t('gameplay.roomFinishedClosing'));
-
-    const timeout = setTimeout(() => {
-      setIsLeaveRoomConfirmOpen(false);
-      setIsGameSettingsOpen(false);
-      setIsGamesCatalogOpen(false);
-      backToLobby();
-      void leaveRoom().then((result) => {
-        if (!result.error) {
-          setRoomNotice(t('room.roomClosedNotice', { defaultValue: 'La sala se cerró correctamente.' }));
-        }
-      });
-    }, 2200);
-
-    return () => {
-      clearTimeout(timeout);
-    };
-  }, [activeRoom, backToLobby, leaveRoom, t]);
+    continueRoom();
+  }, [activeRoom, continueRoom, currentScreen]);
 
   useEffect(() => {
     if (!activeRoom || activeRoom.room.status !== 'active') {
@@ -884,22 +854,7 @@ export function AppNavigator() {
               return;
             }
 
-            setRoomNotice(t('room.roundStarting'));
-
-            void startImpostorRound(
-              roomSettings.themeCategory,
-              roomSettings.impostorCount,
-              roomSettings.turnSeconds,
-              roomSettings.missBehavior,
-              roomSettings.balanceEndsGame
-            ).then((result) => {
-              if (result.error) {
-                setRoomNotice(mapRoomNotice(t, result.error));
-                return;
-              }
-
-              setRoomNotice(null);
-            });
+            runStartImpostorRound();
           }}
           onRemoveMember={(memberUserId) => {
             void removeMember(memberUserId).then((result) => {
@@ -960,6 +915,7 @@ export function AppNavigator() {
           activeGame={featuredGames[0]}
           roomSettings={roomSettings}
           roundSetup={activeRoom?.round ?? null}
+          canManageRoom={activeRoom?.isHost ?? false}
           isBusy={roomBusy}
           notice={roomNotice}
           onCastVote={(targetUserId) => {
@@ -982,27 +938,30 @@ export function AppNavigator() {
               setRoomNotice(null);
             });
           }}
-          onPlayAgain={() => {
+          onBackToRoom={() => {
             if (!activeRoom?.isHost) {
               setRoomNotice(t('room.hostOnlyContinue'));
               return;
             }
 
-            setRoomNotice(t('room.roundStarting'));
-
-            void startImpostorRound(
-              roomSettings.themeCategory,
-              roomSettings.impostorCount,
-              roomSettings.turnSeconds,
-              roomSettings.missBehavior,
-              roomSettings.balanceEndsGame
-            ).then((result) => {
+            setRoomNotice(t('gameplay.returningToRoom'));
+            void returnRoomToLobby().then((result) => {
               if (result.error) {
                 setRoomNotice(mapRoomNotice(t, result.error));
                 return;
               }
 
               setRoomNotice(null);
+              continueRoom();
+            });
+          }}
+          onPlayAgain={() => {
+            if (!activeRoom?.isHost) {
+              setRoomNotice(t('room.hostOnlyContinue'));
+              return;
+            }
+
+            runStartImpostorRound(() => {
               playAgain();
             });
           }}
@@ -1019,21 +978,7 @@ export function AppNavigator() {
             return;
           }
 
-          setRoomNotice(t('room.roundStarting'));
-
-          void startImpostorRound(
-            roomSettings.themeCategory,
-            roomSettings.impostorCount,
-            roomSettings.turnSeconds,
-            roomSettings.missBehavior,
-            roomSettings.balanceEndsGame
-          ).then((result) => {
-            if (result.error) {
-              setRoomNotice(mapRoomNotice(t, result.error));
-              return;
-            }
-
-            setRoomNotice(null);
+          runStartImpostorRound(() => {
             playAgain();
           });
         }}
@@ -1340,29 +1285,38 @@ export function AppNavigator() {
   );
 }
 
-function createStyles(theme: ReturnType<typeof useTheme>) {
+function createStyles(theme: ReturnType<typeof useTheme>, isCompactScreen: boolean, isNarrowScreen: boolean) {
   return StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background
   },
   topBar: {
-    paddingTop: 20,
-    paddingHorizontal: spacing.lg,
+    paddingTop: isCompactScreen ? spacing.md : 20,
+    paddingHorizontal: isCompactScreen ? spacing.md : spacing.lg,
     paddingBottom: spacing.md,
-    flexDirection: 'row',
+    flexDirection: isCompactScreen ? 'column' : 'row',
+    flexWrap: 'wrap',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: isCompactScreen ? 'stretch' : 'center',
+    gap: spacing.md,
     backgroundColor: theme.colors.background
   },
   topBarActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    rowGap: spacing.sm,
+    justifyContent: 'flex-start',
+    width: isCompactScreen ? '100%' : undefined,
+    alignSelf: isCompactScreen ? 'stretch' : 'auto'
   },
   topBarAction: {
     paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.sm
+    paddingHorizontal: spacing.sm,
+    minHeight: 38,
+    justifyContent: 'center'
   },
   content: {
     flex: 1
@@ -1384,18 +1338,25 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
     fontSize: typography.body
   },
   headerIdentity: {
-    flex: 1,
-    gap: spacing.xs
+    flexGrow: isCompactScreen ? 0 : 1,
+    flexShrink: 1,
+    flexBasis: isCompactScreen ? '100%' : 'auto',
+    width: isCompactScreen ? '100%' : undefined,
+    gap: spacing.xs,
+    minWidth: 0,
+    maxWidth: isCompactScreen ? '100%' : '58%'
   },
   headerGreeting: {
     color: theme.colors.textPrimary,
-    fontSize: typography.title,
-    fontWeight: '800'
+    fontSize: isNarrowScreen ? typography.section : typography.title,
+    fontWeight: '800',
+    flexShrink: 1
   },
   headerStatus: {
     color: theme.colors.textSecondary,
     fontSize: typography.caption,
-    fontWeight: '600'
+    fontWeight: '600',
+    flexShrink: 1
   },
   back: {
     color: theme.colors.highlight,
@@ -1416,7 +1377,8 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
     gap: spacing.xs,
     backgroundColor: theme.colors.surface,
     borderWidth: 1,
-    borderColor: theme.colors.border
+    borderColor: theme.colors.border,
+    flexShrink: 1
   },
   settingsTriggerHover: {
     borderColor: theme.colors.borderStrong,
@@ -1433,7 +1395,8 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
   settingsTriggerLabel: {
     color: theme.colors.textPrimary,
     fontSize: typography.body,
-    fontWeight: '700'
+    fontWeight: '700',
+    flexShrink: 1
   },
   catalogTrigger: {
     minHeight: 42,
@@ -1443,7 +1406,8 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
     justifyContent: 'center',
     backgroundColor: theme.colors.backgroundElevated,
     borderWidth: 1,
-    borderColor: theme.colors.border
+    borderColor: theme.colors.border,
+    flexShrink: 1
   },
   catalogTriggerHover: {
     borderColor: theme.colors.borderStrong,
@@ -1460,8 +1424,8 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
   overlayBackdrop: {
     flex: 1,
     backgroundColor: 'rgba(10, 10, 12, 0.42)',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.xl,
+    paddingHorizontal: isCompactScreen ? spacing.md : spacing.lg,
+    paddingVertical: isCompactScreen ? spacing.lg : spacing.xl,
     justifyContent: 'flex-start',
     alignItems: 'flex-end'
   },
@@ -1477,7 +1441,7 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
   },
   accountPanel: {
     width: '100%',
-    maxWidth: 660,
+    maxWidth: isCompactScreen ? 620 : 660,
     maxHeight: '88%',
     borderRadius: radius.lg,
     overflow: 'hidden',
@@ -1485,11 +1449,11 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
     borderWidth: 1,
     borderColor: theme.colors.border,
     alignSelf: 'center',
-    marginTop: spacing.xl * 1.5
+    marginTop: isCompactScreen ? spacing.lg : spacing.xl * 1.5
   },
   appearancePanel: {
     width: '100%',
-    maxWidth: 680,
+    maxWidth: isCompactScreen ? 640 : 680,
     maxHeight: '88%',
     borderRadius: radius.lg,
     overflow: 'hidden',
@@ -1501,7 +1465,7 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
   },
   gamesCatalogPanel: {
     width: '100%',
-    maxWidth: 900,
+    maxWidth: isCompactScreen ? 680 : 900,
     maxHeight: '88%',
     borderRadius: radius.lg,
     overflow: 'hidden',
@@ -1546,14 +1510,14 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
     color: theme.colors.textSecondary,
     fontSize: typography.body,
     lineHeight: 24,
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.lg
+    paddingHorizontal: isCompactScreen ? spacing.md : spacing.lg,
+    paddingTop: isCompactScreen ? spacing.md : spacing.lg
   },
   overlayBackdropCentered: {
     flex: 1,
     backgroundColor: 'rgba(10, 10, 12, 0.52)',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.xl,
+    paddingHorizontal: isCompactScreen ? spacing.md : spacing.lg,
+    paddingVertical: isCompactScreen ? spacing.lg : spacing.xl,
     justifyContent: 'center',
     alignItems: 'center'
   },
@@ -1574,7 +1538,8 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
   },
   confirmActions: {
     flexDirection: 'row',
-    gap: spacing.sm
+    gap: spacing.sm,
+    flexWrap: 'wrap'
   }
   });
 }
