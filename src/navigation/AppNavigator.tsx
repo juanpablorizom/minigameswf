@@ -372,6 +372,11 @@ export function AppNavigator() {
       return;
     }
 
+    if (!activeRoom.isHost) {
+      autoContinueRoundRef.current = null;
+      return;
+    }
+
     const continueKey = `${activeRoom.round.roundId}:${activeRoom.round.roundNumber}:${activeRoom.round.expelledUserId ?? 'none'}`;
 
     if (autoContinueRoundRef.current === continueKey) {
@@ -391,7 +396,7 @@ export function AppNavigator() {
 
         setRoomNotice(null);
       });
-    }, 2600);
+    }, 5000);
 
     return () => {
       clearTimeout(timeout);
