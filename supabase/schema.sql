@@ -90,6 +90,27 @@ create table if not exists public.room_rounds (
   updated_at timestamptz not null default timezone('utc', now())
 );
 
+alter table public.room_rounds
+drop constraint if exists room_rounds_theme_category_check;
+
+alter table public.room_rounds
+add constraint room_rounds_theme_category_check check (
+  theme_category in (
+    'animals',
+    'countries',
+    'objects',
+    'famous-people',
+    'football-players',
+    'movies-series',
+    'youtubers',
+    'basketball',
+    'f1',
+    'singers',
+    'cartoons-fictional',
+    'world-foods'
+  )
+);
+
 alter table public.room_rounds add column if not exists vote_duration_seconds integer not null default 45;
 alter table public.room_rounds add column if not exists miss_behavior text not null default 'repeat';
 alter table public.room_rounds add column if not exists balance_rule_enabled boolean not null default true;

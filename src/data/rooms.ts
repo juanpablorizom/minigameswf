@@ -52,7 +52,8 @@ function buildRoomErrorMessage(message: string) {
     message.includes('column room_rounds.round_number does not exist') ||
     message.includes('column "round_number" does not exist') ||
     message.includes('column room_rounds.phase does not exist') ||
-    message.includes('relation "public.room_round_votes" does not exist')
+    message.includes('relation "public.room_round_votes" does not exist') ||
+    message.includes('room_rounds_theme_category_check')
   ) {
     return 'ROOMS_BACKEND_NOT_CONFIGURED';
   }
