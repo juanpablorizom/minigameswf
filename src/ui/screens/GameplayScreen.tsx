@@ -42,6 +42,7 @@ export function GameplayScreen({
   const theme = useTheme();
   const styles = createStyles(theme);
   const [isVoteModalVisible, setIsVoteModalVisible] = useState(false);
+  const [isResultModalVisible, setIsResultModalVisible] = useState(false);
   const [pendingVoteTargetId, setPendingVoteTargetId] = useState<string | null>(null);
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
   const autoResolvedVoteRef = useRef<string | null>(null);
@@ -49,6 +50,10 @@ export function GameplayScreen({
   useEffect(() => {
     setIsVoteModalVisible(false);
     setPendingVoteTargetId(null);
+  }, [roundSetup?.roundId, roundSetup?.phase, roundSetup?.expelledUserId]);
+
+  useEffect(() => {
+    setIsResultModalVisible(roundSetup?.phase === 'result');
   }, [roundSetup?.roundId, roundSetup?.phase, roundSetup?.expelledUserId]);
 
   useEffect(() => {
@@ -221,30 +226,6 @@ export function GameplayScreen({
         })}
       </SurfaceCard>
 
-      {roundSetup.phase === 'result' ? (
-        <SurfaceCard>
-          <Text style={styles.infoTitle}>
-            {expelledWasImpostor ? t('gameplay.voteSuccessTitle') : t('gameplay.voteFailTitle')}
-          </Text>
-          <Text style={styles.infoCopy}>
-            {expelledPlayer
-              ? expelledWasImpostor
-                ? t('gameplay.revealedImpostor', { player: expelledPlayer.name })
-                : t('gameplay.revealedCivilian', { player: expelledPlayer.name })
-              : t('gameplay.votePending')}
-          </Text>
-          <Text style={styles.infoCopy}>
-            {allImpostorsOut
-              ? t('gameplay.matchFinished')
-              : roundSetup.outcome === 'impostors_balanced'
-                ? t('gameplay.balanceWin', { count: remainingImpostorIds.length })
-                : roundSetup.outcome === 'missed_impostor'
-                  ? t('gameplay.missedImpostorEnd')
-                  : t('gameplay.nextRoundAuto')}
-          </Text>
-        </SurfaceCard>
-      ) : null}
-
       {notice ? <Text style={styles.notice}>{notice}</Text> : null}
 
       <Modal visible={isVoteModalVisible} transparent animationType="fade" onRequestClose={() => setIsVoteModalVisible(false)}>
@@ -285,6 +266,34 @@ export function GameplayScreen({
                 disabled={!pendingVoteTarget || isBusy}
               />
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={isResultModalVisible} transparent animationType="fade" onRequestClose={() => setIsResultModalVisible(false)}>
+        <View style={styles.modalBackdrop}>
+          <Pressable style={StyleSheet.absoluteFillObject} onPress={() => setIsResultModalVisible(false)} />
+          <View style={styles.resultModalCard}>
+            <Text style={styles.resultModalTitle}>
+              {expelledWasImpostor ? t('gameplay.voteSuccessTitle') : t('gameplay.voteFailTitle')}
+            </Text>
+            <Text style={styles.resultModalBody}>
+              {expelledPlayer
+                ? expelledWasImpostor
+                  ? t('gameplay.revealedImpostor', { player: expelledPlayer.name })
+                  : t('gameplay.revealedCivilian', { player: expelledPlayer.name })
+                : t('gameplay.votePending')}
+            </Text>
+            <Text style={styles.resultModalHint}>
+              {allImpostorsOut
+                ? t('gameplay.matchFinished')
+                : roundSetup.outcome === 'impostors_balanced'
+                  ? t('gameplay.balanceWin', { count: remainingImpostorIds.length })
+                  : roundSetup.outcome === 'missed_impostor'
+                    ? t('gameplay.missedImpostorEnd')
+                    : t('gameplay.nextRoundAuto')}
+            </Text>
+            <AppButton label={t('auth.modalClose')} onPress={() => setIsResultModalVisible(false)} variant="secondary" />
           </View>
         </View>
       </Modal>
@@ -429,6 +438,30 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
     },
     modalActions: {
       gap: spacing.sm
+    },
+    resultModalCard: {
+      borderRadius: radius.lg,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.surface,
+      padding: spacing.xl,
+      gap: spacing.md
+    },
+    resultModalTitle: {
+      color: theme.colors.textPrimary,
+      fontSize: typography.title,
+      fontWeight: '800'
+    },
+    resultModalBody: {
+      color: theme.colors.textPrimary,
+      fontSize: typography.section,
+      fontWeight: '700',
+      lineHeight: 34
+    },
+    resultModalHint: {
+      color: theme.colors.textSecondary,
+      fontSize: typography.body,
+      lineHeight: 22
     }
   });
 }
