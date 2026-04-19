@@ -1104,6 +1104,78 @@ export function AppNavigator() {
     );
   }
 
+  function renderRoundResultOverlay() {
+    if (!activeRoom?.round || activeRoom.round.phase !== 'result') {
+      return null;
+    }
+
+    const round = activeRoom.round;
+    const expelledPlayer = activeRoom.members.find((member) => member.userId === round.expelledUserId) ?? null;
+    const expelledWasImpostor = expelledPlayer ? round.impostorIds.includes(expelledPlayer.userId) : false;
+    const remainingImpostorIds = round.impostorIds.filter((playerId) => !round.eliminatedUserIds.includes(playerId));
+    const resultHint =
+      round.outcome === 'impostors_balanced'
+        ? t('gameplay.balanceWin', { count: remainingImpostorIds.length })
+        : round.outcome === 'missed_impostor'
+          ? t('gameplay.missedImpostorEnd')
+          : round.outcome === 'continue'
+            ? t('gameplay.nextRoundAuto')
+            : null;
+
+    return (
+      <Modal visible transparent animationType="fade" onRequestClose={() => {}}>
+        <View style={styles.overlayBackdropCentered}>
+          <View style={styles.resultPanel}>
+            <Text style={styles.resultTitle}>
+              {expelledWasImpostor ? t('gameplay.voteSuccessTitle') : t('gameplay.voteFailTitle')}
+            </Text>
+            <Text style={styles.resultBody}>
+              {expelledPlayer
+                ? expelledWasImpostor
+                  ? t('gameplay.revealedImpostor', { player: expelledPlayer.displayName })
+                  : t('gameplay.revealedCivilian', { player: expelledPlayer.displayName })
+                : t('gameplay.votePending')}
+            </Text>
+            {resultHint ? <Text style={styles.resultHint}>{resultHint}</Text> : null}
+
+            {activeRoom.isHost ? (
+              <View style={styles.confirmActions}>
+                <AppButton
+                  label={round.status === 'finished' ? t('gameplay.playAgain') : t('gameplay.nextRound')}
+                  onPress={() => {
+                    runStartImpostorRound(() => {
+                      playAgain();
+                    });
+                  }}
+                  disabled={roomBusy}
+                />
+                <AppButton
+                  label={t('gameplay.backToRoom')}
+                  onPress={() => {
+                    setRoomNotice(t('gameplay.returningToRoom'));
+                    void returnRoomToLobby().then((result) => {
+                      if (result.error) {
+                        setRoomNotice(mapRoomNotice(t, result.error));
+                        return;
+                      }
+
+                      setRoomNotice(null);
+                      continueRoom();
+                    });
+                  }}
+                  variant="secondary"
+                  disabled={roomBusy}
+                />
+              </View>
+            ) : (
+              <Text style={styles.resultWait}>{t('gameplay.waitingForHostDecision')}</Text>
+            )}
+          </View>
+        </View>
+      </Modal>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <View style={styles.topBar}>
@@ -1258,6 +1330,8 @@ export function AppNavigator() {
           setIsGameSettingsOpen(false);
         }}
       />
+
+      {renderRoundResultOverlay()}
 
       {isLeaveRoomConfirmOpen ? (
         <Modal visible transparent animationType="fade" onRequestClose={() => setIsLeaveRoomConfirmOpen(false)}>
@@ -1530,6 +1604,38 @@ function createStyles(theme: ReturnType<typeof useTheme>, isCompactScreen: boole
     borderColor: theme.colors.border,
     padding: spacing.lg,
     gap: spacing.md
+  },
+  resultPanel: {
+    width: '100%',
+    maxWidth: 560,
+    borderRadius: radius.lg,
+    backgroundColor: theme.colors.background,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    padding: spacing.xl,
+    gap: spacing.md
+  },
+  resultTitle: {
+    color: theme.colors.textPrimary,
+    fontSize: typography.title,
+    fontWeight: '800'
+  },
+  resultBody: {
+    color: theme.colors.textPrimary,
+    fontSize: typography.section,
+    fontWeight: '700',
+    lineHeight: 34
+  },
+  resultHint: {
+    color: theme.colors.textSecondary,
+    fontSize: typography.body,
+    lineHeight: 24
+  },
+  resultWait: {
+    color: theme.colors.textSecondary,
+    fontSize: typography.body,
+    lineHeight: 24,
+    textAlign: 'center'
   },
   confirmCopy: {
     color: theme.colors.textSecondary,

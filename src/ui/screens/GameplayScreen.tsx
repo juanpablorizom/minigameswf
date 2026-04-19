@@ -278,40 +278,6 @@ export function GameplayScreen({
         </View>
       </Modal>
 
-      <Modal visible={isResultPhase} transparent animationType="fade" onRequestClose={() => {}}>
-        <View style={styles.modalBackdrop}>
-          <View style={styles.resultModalCard}>
-            <Text style={styles.resultModalTitle}>
-              {expelledWasImpostor ? t('gameplay.voteSuccessTitle') : t('gameplay.voteFailTitle')}
-            </Text>
-            <Text style={styles.resultModalBody}>
-              {expelledPlayer
-                ? expelledWasImpostor
-                  ? t('gameplay.revealedImpostor', { player: expelledPlayer.name })
-                  : t('gameplay.revealedCivilian', { player: expelledPlayer.name })
-                : t('gameplay.votePending')}
-            </Text>
-            {resultModalHint ? <Text style={styles.resultModalHint}>{resultModalHint}</Text> : null}
-            {canManageRoom ? (
-              <View style={styles.modalActions}>
-                <AppButton
-                  label={roundSetup.status === 'finished' ? t('gameplay.playAgain') : t('gameplay.nextRound')}
-                  onPress={onPlayAgain}
-                  disabled={isBusy}
-                />
-                <AppButton
-                  label={t('gameplay.backToRoom')}
-                  onPress={onBackToRoom}
-                  variant="secondary"
-                  disabled={isBusy}
-                />
-              </View>
-            ) : (
-              <Text style={styles.resultModalWait}>{t('gameplay.waitingForHostDecision')}</Text>
-            )}
-          </View>
-        </View>
-      </Modal>
     </AppScreen>
   );
 }
@@ -454,35 +420,5 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
     modalActions: {
       gap: spacing.sm
     },
-    resultModalCard: {
-      borderRadius: radius.lg,
-      borderWidth: 1,
-      borderColor: theme.colors.border,
-      backgroundColor: theme.colors.surface,
-      padding: spacing.xl,
-      gap: spacing.md
-    },
-    resultModalTitle: {
-      color: theme.colors.textPrimary,
-      fontSize: typography.title,
-      fontWeight: '800'
-    },
-    resultModalBody: {
-      color: theme.colors.textPrimary,
-      fontSize: typography.section,
-      fontWeight: '700',
-      lineHeight: 34
-    },
-    resultModalHint: {
-      color: theme.colors.textSecondary,
-      fontSize: typography.body,
-      lineHeight: 22
-    },
-    resultModalWait: {
-      color: theme.colors.textSecondary,
-      fontSize: typography.body,
-      lineHeight: 22,
-      textAlign: 'center'
-    }
   });
 }
