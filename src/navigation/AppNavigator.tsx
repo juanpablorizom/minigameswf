@@ -688,8 +688,14 @@ export function AppNavigator() {
     const wasHost = activeRoom?.isHost ?? false;
 
     setIsLeaveRoomConfirmOpen(false);
+    setIsGameSettingsOpen(false);
+    setIsGamesCatalogOpen(false);
+    setIsAppearancePanelOpen(false);
+    setIsAccountPanelOpen(false);
+    setIsSettingsPanelOpen(false);
     setRoomNotice(null);
     void storeRoomResume(false);
+    backToLobby();
 
     void leaveRoom().then((result) => {
       if (result.error) {
@@ -702,7 +708,6 @@ export function AppNavigator() {
           ? t('room.roomClosedNotice', { defaultValue: 'La sala se cerró correctamente.' })
           : t('room.roomLeftNotice', { defaultValue: 'Saliste de la sala.' })
       );
-      backToLobby();
     });
   }
 

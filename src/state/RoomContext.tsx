@@ -208,6 +208,31 @@ export function RoomProvider({ children }: PropsWithChildren) {
 
   useEffect(() => {
     if (!activeRoom?.room.id || !user) {
+      return;
+    }
+
+    const shouldPoll =
+      syncState !== 'live' ||
+      activeRoom.room.status === 'waiting' ||
+      (activeRoom.room.status === 'active' && !activeRoom.round);
+
+    if (!shouldPoll) {
+      return;
+    }
+
+    const interval = setInterval(() => {
+      void refreshResolvedActiveRoom().catch(() => {
+        // Polling is only a safety net when realtime hasn't fully caught up.
+      });
+    }, 2000);
+
+    return () => {
+      clearInterval(interval);
+    };
+  }, [activeRoom?.room.id, activeRoom?.room.status, activeRoom?.round, refreshResolvedActiveRoom, syncState, user]);
+
+  useEffect(() => {
+    if (!activeRoom?.room.id || !user) {
       lastPresenceRef.current = null;
       return;
     }

@@ -227,6 +227,30 @@ async function getRoomMembers(roomId: string) {
   return data ?? [];
 }
 
+async function closeRoomIfSingleMemberLeft(roomId: string) {
+  const { count, error } = await supabase
+    .from('room_members')
+    .select('id', { count: 'exact', head: true })
+    .eq('room_id', roomId)
+    .eq('is_active', true);
+
+  if (error) {
+    throw new Error(buildRoomErrorMessage(error.message));
+  }
+
+  if ((count ?? 0) <= 1) {
+    const { error: closeError } = await supabase
+      .from('rooms')
+      .update({ status: 'finished' })
+      .eq('id', roomId)
+      .in('status', ['waiting', 'active']);
+
+    if (closeError) {
+      throw new Error(buildRoomErrorMessage(closeError.message));
+    }
+  }
+}
+
 async function getProfilesForUsers(userIds: string[]) {
   if (!userIds.length) {
     return [];
@@ -394,6 +418,8 @@ export async function leaveCurrentRoom(roomId: string, userId: string) {
   if (error) {
     throw new Error(buildRoomErrorMessage(error.message));
   }
+
+  await closeRoomIfSingleMemberLeft(roomId);
 }
 
 export async function closeRoomForHost(roomId: string, userId: string) {
@@ -417,6 +443,8 @@ export async function removeRoomMember(roomId: string, memberUserId: string) {
   if (error) {
     throw new Error(buildRoomErrorMessage(error.message));
   }
+
+  await closeRoomIfSingleMemberLeft(roomId);
 
   return normalizeResult(data as RoomMemberRow | RoomMemberRow[] | null);
 }

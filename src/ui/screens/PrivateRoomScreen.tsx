@@ -97,9 +97,9 @@ export function PrivateRoomScreen({
           <AppButton label={t('room.shareCode')} onPress={onShareCode} variant="secondary" />
           {canManageRoom ? <AppButton label={t('room.configureRoom')} onPress={onOpenSettings} variant="ghost" /> : null}
           {canManageRoom ? (
-            <AppButton label={roomStatus === 'active' ? t('room.returnToGame') : t('room.continueToGame')} onPress={onStart} disabled={isBusy} />
+            <AppButton label={t('room.startGame')} onPress={onStart} disabled={isBusy} />
           ) : null}
-          <AppButton label={t('room.leaveRoom')} onPress={onLeaveRoom} variant="ghost" disabled={isBusy} />
+          <AppButton label={canManageRoom ? t('room.closeRoom') : t('room.leaveRoom')} onPress={onLeaveRoom} variant="ghost" disabled={isBusy} />
         </View>
         <View style={styles.qrSection}>
           <View style={styles.qrCard}>
