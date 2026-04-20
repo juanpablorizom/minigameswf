@@ -215,8 +215,7 @@ export function RoomProvider({ children }: PropsWithChildren) {
 
     const shouldPoll =
       syncState !== 'live' ||
-      activeRoom.room.status === 'waiting' ||
-      activeRoom.room.status === 'active';
+      (activeRoom.room.status === 'active' && !activeRoom.round);
 
     if (!shouldPoll) {
       return;
@@ -226,7 +225,7 @@ export function RoomProvider({ children }: PropsWithChildren) {
       void refreshResolvedActiveRoom().catch(() => {
         // Polling is only a safety net when realtime hasn't fully caught up.
       });
-    }, activeRoom.room.status === 'active' ? 1500 : 2000);
+    }, activeRoom.room.status === 'active' ? 1800 : 2500);
 
     return () => {
       clearInterval(interval);

@@ -17,7 +17,11 @@ function shuffle<T>(items: T[]) {
   return copy;
 }
 
-export function buildImpostorRound(players: Player[], settings: RoomSettings): ImpostorRoundSetup {
+export function buildImpostorRound(
+  players: Player[],
+  settings: RoomSettings,
+  previousRound?: Pick<ImpostorRoundSetup, 'impostorIds'> | null
+): ImpostorRoundSetup {
   const eligiblePlayers = players.filter((player) => player.status !== 'invited');
   const safePlayers = eligiblePlayers.length ? eligiblePlayers : players;
   const words = impostorThemeWords[settings.themeCategory];
@@ -44,7 +48,10 @@ export function buildImpostorRound(players: Player[], settings: RoomSettings): I
   }
 
   const totalImpostors = Math.min(Math.max(settings.impostorCount, 1), Math.max(1, safePlayers.length - 1 || 1));
-  const impostorIds = shuffle(safePlayers)
+  const previousImpostorIds = new Set(previousRound?.impostorIds ?? []);
+  const preferredPlayers = shuffle(safePlayers.filter((player) => !previousImpostorIds.has(player.id)));
+  const fallbackPlayers = shuffle(safePlayers.filter((player) => !preferredPlayers.some((preferred) => preferred.id === player.id)));
+  const impostorIds = [...preferredPlayers, ...fallbackPlayers]
     .slice(0, totalImpostors)
     .map((player) => player.id);
 

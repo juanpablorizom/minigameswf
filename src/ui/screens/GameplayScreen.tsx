@@ -172,6 +172,7 @@ export function GameplayScreen({
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>{t('gameplay.voteSection')}</Text>
           {canVoteNow && secondsLeft !== null ? <Badge label={t('gameplay.voteTimer', { time: formatSeconds(secondsLeft) })} tone="success" /> : null}
+          {canVoteNow && secondsLeft === null ? <Badge label={t('roomSettings.turnTimerOptions.none')} tone="neutral" /> : null}
           {roundSetup.phase === 'result' ? <Badge label={t('gameplay.voteClosed')} tone="neutral" /> : null}
         </View>
         <Text style={styles.infoCopy}>
@@ -188,7 +189,9 @@ export function GameplayScreen({
                     player:
                       players.find((player) => player.id === currentVote.targetUserId)?.name ?? t('common.player')
                   })
-                : t('gameplay.voteOpen')
+                : secondsLeft === null
+                  ? t('gameplay.voteOpenNoTimer')
+                  : t('gameplay.voteOpen')
               : expelledPlayer
                 ? t('gameplay.voteResultLine', { player: expelledPlayer.name })
                 : t('gameplay.votePending')}

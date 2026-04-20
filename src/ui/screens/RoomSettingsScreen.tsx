@@ -15,7 +15,7 @@ type RoomSettingsScreenProps = {
 };
 
 const impostorCountOptions = [1, 2, 3, 4];
-const turnOptions = [30, 45, 60];
+const turnOptions = [0, 30, 45, 60, 300];
 const themeOptions: RoomSettings['themeCategory'][] = [
   'animals',
   'countries',
@@ -81,7 +81,13 @@ export function RoomSettingsScreen({ settings, onChangeSettings, onSave, embedde
           {turnOptions.map((turnSeconds) => (
             <OptionChip
               key={turnSeconds}
-              label={`${turnSeconds}s`}
+              label={
+                turnSeconds === 0
+                  ? t('roomSettings.turnTimerOptions.none')
+                  : turnSeconds === 300
+                    ? t('roomSettings.turnTimerOptions.fiveMinutes')
+                    : `${turnSeconds}s`
+              }
               active={settings.turnSeconds === turnSeconds}
               onPress={() => onChangeSettings({ ...settings, turnSeconds })}
             />

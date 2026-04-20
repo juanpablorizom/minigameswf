@@ -411,6 +411,7 @@ declare
   member_count integer := 0;
   total_impostors integer := 1;
   previous_round_number integer := 0;
+  previous_impostor_ids uuid[] := '{}'::uuid[];
   theme_words text[];
   selected_word text;
   selected_impostor_ids uuid[];
@@ -452,6 +453,13 @@ begin
   from public.room_rounds
   where room_id = p_room_id;
 
+  select coalesce(room_rounds.impostor_ids, '{}'::uuid[])
+  into previous_impostor_ids
+  from public.room_rounds
+  where room_id = p_room_id
+  order by round_number desc
+  limit 1;
+
   theme_words := case p_theme_category
     when 'animals' then array['Leon', 'Tigre', 'Elefante', 'Jirafa', 'Delfin', 'Lobo', 'Pinguino', 'Cebra', 'Koala', 'Zorro', 'Rinoceronte', 'Hipopotamo']
     when 'countries' then array['Mexico', 'Ciudad de Mexico', 'Japon', 'Tokio', 'Italia', 'Roma', 'Brasil', 'Brasilia', 'Canada', 'Ottawa', 'Argentina', 'Buenos Aires', 'Francia', 'Paris', 'India', 'Nueva Delhi', 'Egipto', 'El Cairo', 'Australia', 'Canberra', 'Portugal', 'Lisboa', 'Colombia', 'Bogota', 'España', 'Madrid', 'Alemania', 'Berlin', 'Reino Unido', 'Londres', 'Estados Unidos', 'Washington D. C.', 'China', 'Pekin', 'Rusia', 'Moscu', 'Corea del Sur', 'Seul', 'Indonesia', 'Yakarta', 'Tailandia', 'Bangkok', 'Chile', 'Santiago', 'Peru', 'Lima', 'Marruecos', 'Rabat']
@@ -475,15 +483,39 @@ begin
   selected_word := theme_words[1 + floor(random() * array_length(theme_words, 1))::integer];
 
   selected_impostor_ids := (
-    select coalesce(array_agg(member_pick.user_id), '{}'::uuid[])
-    from (
-      select user_id
+    with active_members as (
+      select distinct room_members.user_id
       from public.room_members
-      where room_id = p_room_id
-        and is_active = true
+      where room_members.room_id = p_room_id
+        and room_members.is_active = true
+    ),
+    preferred_members as (
+      select active_members.user_id
+      from active_members
+      where not (active_members.user_id = any(coalesce(previous_impostor_ids, '{}'::uuid[])))
       order by random()
       limit total_impostors
-    ) as member_pick
+    ),
+    fallback_members as (
+      select active_members.user_id
+      from active_members
+      where not exists (
+        select 1
+        from preferred_members
+        where preferred_members.user_id = active_members.user_id
+      )
+      order by random()
+      limit greatest(total_impostors - (select count(*) from preferred_members), 0)
+    ),
+    merged_members as (
+      select user_id
+      from preferred_members
+      union all
+      select user_id
+      from fallback_members
+    )
+    select coalesce(array_agg(merged_members.user_id), '{}'::uuid[])
+    from merged_members
   );
 
   delete from public.room_rounds
@@ -517,8 +549,11 @@ begin
     '{}'::uuid[],
     null,
     'voting',
-    timezone('utc', now()) + make_interval(secs => greatest(coalesce(p_vote_duration_seconds, 45), 10)),
-    greatest(coalesce(p_vote_duration_seconds, 45), 10),
+    case
+      when coalesce(p_vote_duration_seconds, 45) <= 0 then null
+      else timezone('utc', now()) + make_interval(secs => greatest(coalesce(p_vote_duration_seconds, 45), 10))
+    end,
+    greatest(coalesce(p_vote_duration_seconds, 45), 0),
     case when p_miss_behavior = 'end' then 'end' else 'repeat' end,
     coalesce(p_balance_rule_enabled, true),
     'continue',
@@ -541,7 +576,7 @@ begin
       'game_id', 'impostor',
       'theme_category', p_theme_category,
       'impostor_count', total_impostors,
-      'vote_duration_seconds', greatest(coalesce(p_vote_duration_seconds, 45), 10),
+      'vote_duration_seconds', greatest(coalesce(p_vote_duration_seconds, 45), 0),
       'miss_behavior', case when p_miss_behavior = 'end' then 'end' else 'repeat' end,
       'balance_rule_enabled', coalesce(p_balance_rule_enabled, true)
     )
@@ -588,7 +623,10 @@ begin
   update public.room_rounds
   set round_number = target_round.round_number + 1,
       phase = 'voting',
-      vote_deadline_at = timezone('utc', now()) + make_interval(secs => greatest(coalesce(target_round.vote_duration_seconds, 45), 10)),
+      vote_deadline_at = case
+        when coalesce(target_round.vote_duration_seconds, 45) <= 0 then null
+        else timezone('utc', now()) + make_interval(secs => greatest(coalesce(target_round.vote_duration_seconds, 45), 10))
+      end,
       expelled_user_id = null,
       outcome = 'continue',
       updated_at = timezone('utc', now())
@@ -773,7 +811,7 @@ begin
   returning * into target_round;
 
   update public.rooms
-  set status = case when target_round.status = 'finished' then 'finished' else 'active' end,
+  set status = 'active',
       updated_at = timezone('utc', now())
   where id = p_room_id;
 

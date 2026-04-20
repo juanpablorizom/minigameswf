@@ -14,7 +14,8 @@ export const resources = {
         stay: 'Quedarse',
         continue: 'Continuar',
         on: 'Activado',
-        off: 'Desactivado'
+        off: 'Desactivado',
+        secondsShort: 's'
       },
       auth: {
         badge: 'MiniGamesWF',
@@ -265,6 +266,10 @@ export const resources = {
         maxPlayers: 'Máximo de jugadores',
         rounds: 'Rondas',
         turnTimer: 'Temporizador por turno',
+        turnTimerOptions: {
+          none: 'Sin tiempo',
+          fiveMinutes: '5 min'
+        },
         missBehavior: 'Qué pasa si no sale un impostor',
         missBehaviorHint: 'Decide si la partida termina de inmediato o si continúa otra ronda cuando expulsan a un inocente.',
         missBehaviorOptions: {
@@ -385,7 +390,7 @@ export const resources = {
         impostorCountLine: 'Impostores: {{value}}',
         themeLine: 'Temática: {{value}}',
         themeUnavailable: 'La temática elegida ya no está disponible.',
-        turnTimerLine: 'Temporizador: {{value}} segundos',
+        turnTimerLine: 'Temporizador: {{value}}',
         missBehaviorLine: {
           repeat: 'Si fallan el voto: se juega otra ronda',
           end: 'Si fallan el voto: termina la partida'
@@ -428,6 +433,7 @@ export const resources = {
         voteSection: 'Votación',
         votePrompt: 'Cuando el host abra la votación, podrás elegir a quién sacar de la ronda.',
         voteOpen: 'La votación está abierta. Elige a quién expulsar.',
+        voteOpenNoTimer: 'La votación está abierta y terminará cuando todos hayan votado.',
         votePrimary: 'Votar',
         voteRegistered: 'Tu voto ya quedó registrado.',
         voteRegisteredFor: 'Tu voto actual va contra {{player}}.',
@@ -496,7 +502,8 @@ export const resources = {
         stay: 'Stay',
         continue: 'Continue',
         on: 'On',
-        off: 'Off'
+        off: 'Off',
+        secondsShort: 's'
       },
       auth: {
         badge: 'MiniGamesWF',
@@ -746,6 +753,10 @@ export const resources = {
         maxPlayers: 'Max players',
         rounds: 'Rounds',
         turnTimer: 'Turn timer',
+        turnTimerOptions: {
+          none: 'No timer',
+          fiveMinutes: '5 min'
+        },
         missBehavior: 'If no impostor is expelled',
         missBehaviorHint: 'Choose whether the match ends immediately or continues into another round after a wrong vote.',
         missBehaviorOptions: {
@@ -866,7 +877,7 @@ export const resources = {
         impostorCountLine: 'Impostors: {{value}}',
         themeLine: 'Theme: {{value}}',
         themeUnavailable: 'The selected theme is no longer available.',
-        turnTimerLine: 'Turn timer: {{value}} seconds',
+        turnTimerLine: 'Turn timer: {{value}}',
         missBehaviorLine: {
           repeat: 'If the vote fails: play another round',
           end: 'If the vote fails: end the match'
@@ -908,6 +919,7 @@ export const resources = {
         voteSection: 'Voting',
         votePrompt: 'Once the host opens voting, you can choose who gets expelled from the round.',
         voteOpen: 'Voting is open. Choose who to expel.',
+        voteOpenNoTimer: 'Voting is open and will end once everyone has voted.',
         votePrimary: 'Vote',
         voteRegistered: 'Your vote has been registered.',
         voteRegisteredFor: 'Your current vote is for {{player}}.',

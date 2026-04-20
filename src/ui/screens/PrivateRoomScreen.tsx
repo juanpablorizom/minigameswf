@@ -72,6 +72,18 @@ export function PrivateRoomScreen({
     return t(`roomSettings.themeOptions.${value}`);
   }
 
+  function turnTimerValue(value: number) {
+    if (value === 0) {
+      return t('roomSettings.turnTimerOptions.none');
+    }
+
+    if (value === 300) {
+      return t('roomSettings.turnTimerOptions.fiveMinutes');
+    }
+
+    return `${value} ${t('common.secondsShort')}`;
+  }
+
   return (
     <AppScreen title={t('room.title')} subtitle={canManageRoom ? t('room.subtitleHost') : t('room.subtitleMember')}>
       <SurfaceCard>
@@ -172,7 +184,7 @@ export function PrivateRoomScreen({
         </View>
         <Text style={styles.itemSubtitle}>{t('room.impostorCountLine', { value: settings.impostorCount })}</Text>
         <Text style={styles.itemSubtitle}>{t('room.themeLine', { value: themeLabel(settings.themeCategory) })}</Text>
-        <Text style={styles.itemSubtitle}>{t('room.turnTimerLine', { value: settings.turnSeconds })}</Text>
+        <Text style={styles.itemSubtitle}>{t('room.turnTimerLine', { value: turnTimerValue(settings.turnSeconds) })}</Text>
         <Text style={styles.itemSubtitle}>{t(`room.missBehaviorLine.${settings.missBehavior}`)}</Text>
         <Text style={styles.itemSubtitle}>{t(settings.balanceEndsGame ? 'room.balanceRuleOn' : 'room.balanceRuleOff')}</Text>
       </SurfaceCard>

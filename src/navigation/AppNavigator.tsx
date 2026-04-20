@@ -374,6 +374,22 @@ export function AppNavigator() {
   }, [activeRoom, backToLobby, currentScreen, roomFlowScreens, roomsReady, t]);
 
   useEffect(() => {
+    if (!activeRoom || activeRoom.room.status !== 'finished') {
+      return;
+    }
+
+    setIsLeaveRoomConfirmOpen(false);
+    setIsGameSettingsOpen(false);
+    setIsGamesCatalogOpen(false);
+    setIsAppearancePanelOpen(false);
+    setIsAccountPanelOpen(false);
+    setIsSettingsPanelOpen(false);
+    setRoomNotice(t('room.roomClosedNotice', { defaultValue: 'La sala se cerró correctamente.' }));
+    void storeRoomResume(false);
+    backToLobby();
+  }, [activeRoom?.room.id, activeRoom?.room.status, backToLobby, t]);
+
+  useEffect(() => {
     if (activeRoom?.room.selected_game_id) {
       hydrateSelectedGame(activeRoom.room.selected_game_id);
     }
@@ -404,6 +420,22 @@ export function AppNavigator() {
 
     continueRoom();
   }, [activeRoom, continueRoom, currentScreen]);
+
+  useEffect(() => {
+    if (!activeRoom) {
+      return;
+    }
+
+    if (activeRoom.room.status !== 'waiting') {
+      return;
+    }
+
+    if (currentScreen !== 'gameplay' && currentScreen !== 'results') {
+      return;
+    }
+
+    continueRoom();
+  }, [activeRoom?.room.status, activeRoom?.round?.roundId, continueRoom, currentScreen]);
 
   useEffect(() => {
     if (!activeRoom || activeRoom.room.status !== 'active') {
@@ -726,7 +758,23 @@ export function AppNavigator() {
   }
 
   function renderGamesTab() {
-    if (!activeRoom && roomFlowScreens.includes(currentScreen as (typeof roomFlowScreens)[number])) {
+    if (activeRoom?.room.status === 'finished') {
+      return (
+        <LobbyScreen
+          displayName={displayName ?? email?.split('@')[0] ?? (isGuest ? t('common.guest') : t('common.player'))}
+          scenario={buildLobbyScenario(null, isGuest, t)}
+          onAction={handleLobbyAction}
+          notice={roomNotice ?? t('room.roomClosedNotice', { defaultValue: 'La sala se cerró correctamente.' })}
+        />
+      );
+    }
+
+    const resolvedScreen =
+      activeRoom && !activeRoom.round && (currentScreen === 'gameplay' || currentScreen === 'results')
+        ? 'room'
+        : currentScreen;
+
+    if (!activeRoom && roomFlowScreens.includes(resolvedScreen as (typeof roomFlowScreens)[number])) {
       return (
         <LobbyScreen
           displayName={displayName ?? email?.split('@')[0] ?? (isGuest ? t('common.guest') : t('common.player'))}
@@ -737,7 +785,7 @@ export function AppNavigator() {
       );
     }
 
-    if (currentScreen === 'lobby') {
+    if (resolvedScreen === 'lobby') {
       return (
         <LobbyScreen
           displayName={displayName ?? email?.split('@')[0] ?? (isGuest ? t('common.guest') : t('common.player'))}
@@ -748,7 +796,7 @@ export function AppNavigator() {
       );
     }
 
-    if (currentScreen === 'joinRoom') {
+    if (resolvedScreen === 'joinRoom') {
       return (
         <JoinRoomScreen
           isBusy={roomBusy}
@@ -784,7 +832,7 @@ export function AppNavigator() {
       );
     }
 
-    if (currentScreen === 'scanRoom') {
+    if (resolvedScreen === 'scanRoom') {
       return (
         <ScanRoomScreen
           isBusy={roomBusy}
@@ -822,7 +870,7 @@ export function AppNavigator() {
       );
     }
 
-    if (currentScreen === 'room' && activeRoom) {
+    if (resolvedScreen === 'room' && activeRoom) {
       const selectedGame =
         featuredGames.find((game) => game.id === activeRoom.room.selected_game_id) ?? featuredGames[0] ?? null;
 
@@ -873,7 +921,7 @@ export function AppNavigator() {
       );
     }
 
-    if (currentScreen === 'chooseGames') {
+    if (resolvedScreen === 'chooseGames') {
       return (
         <ChooseGamesScreen
           selectedGameIds={selectedGameIds}
@@ -893,11 +941,11 @@ export function AppNavigator() {
       );
     }
 
-    if (currentScreen === 'roomSettings') {
+    if (resolvedScreen === 'roomSettings') {
       return <RoomSettingsScreen settings={roomSettings} onChangeSettings={updateRoomSettings} onSave={saveRoomSettings} />;
     }
 
-    if (currentScreen === 'gameplay') {
+    if (resolvedScreen === 'gameplay') {
       const gameplayPlayers: Player[] = (activeRoom?.members ?? [])
         .filter((member) => member.isActive)
         .map((member, index) => ({
@@ -1189,41 +1237,43 @@ export function AppNavigator() {
         </View>
         <View style={styles.topBarActions}>
           {canGoBack ? (
-            <>
+            <View style={styles.topBarNavActions}>
               <Pressable onPress={handleBackPress} style={styles.topBarAction}>
                 <Text style={styles.back}>{t('common.back')}</Text>
               </Pressable>
               <Pressable onPress={handleExitPress} style={styles.topBarAction}>
                 <Text style={styles.exit}>{t('common.exit')}</Text>
               </Pressable>
-            </>
+            </View>
           ) : null}
-          <Pressable
-            onPress={() => {
-              setIsGamesCatalogOpen(true);
-            }}
-            style={({ pressed, hovered }) => [
-              styles.catalogTrigger,
-              hovered && styles.catalogTriggerHover,
-              pressed && styles.catalogTriggerPressed
-            ]}
-          >
-            <Text style={styles.catalogTriggerLabel}>{t('common.games')}</Text>
-          </Pressable>
-          <Pressable
-            onPress={() => {
-              setSettingsNotice(null);
-              setIsSettingsPanelOpen(true);
-            }}
-            style={({ pressed, hovered }) => [
-              styles.settingsTrigger,
-              hovered && styles.settingsTriggerHover,
-              pressed && styles.settingsTriggerPressed
-            ]}
-          >
-            <Text style={styles.settingsTriggerIcon}>⚙</Text>
-            <Text style={styles.settingsTriggerLabel}>{t('common.settings')}</Text>
-          </Pressable>
+          <View style={styles.topBarUtilityActions}>
+            <Pressable
+              onPress={() => {
+                setIsGamesCatalogOpen(true);
+              }}
+              style={({ pressed, hovered }) => [
+                styles.catalogTrigger,
+                hovered && styles.catalogTriggerHover,
+                pressed && styles.catalogTriggerPressed
+              ]}
+            >
+              <Text style={styles.catalogTriggerLabel}>{t('common.games')}</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => {
+                setSettingsNotice(null);
+                setIsSettingsPanelOpen(true);
+              }}
+              style={({ pressed, hovered }) => [
+                styles.settingsTrigger,
+                hovered && styles.settingsTriggerHover,
+                pressed && styles.settingsTriggerPressed
+              ]}
+            >
+              <Text style={styles.settingsTriggerIcon}>⚙</Text>
+              <Text style={styles.settingsTriggerLabel}>{t('common.settings')}</Text>
+            </Pressable>
+          </View>
         </View>
       </View>
 
@@ -1377,14 +1427,27 @@ function createStyles(theme: ReturnType<typeof useTheme>, isCompactScreen: boole
     backgroundColor: theme.colors.background
   },
   topBarActions: {
+    flexDirection: 'column',
+    alignItems: isCompactScreen ? 'stretch' : 'flex-end',
+    gap: spacing.sm,
+    width: isCompactScreen ? '100%' : undefined,
+    alignSelf: isCompactScreen ? 'stretch' : 'auto'
+  },
+  topBarNavActions: {
     flexDirection: 'row',
     alignItems: 'center',
     flexWrap: 'wrap',
+    gap: spacing.xs,
+    rowGap: spacing.xs,
+    width: '100%',
+    justifyContent: 'flex-start'
+  },
+  topBarUtilityActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: spacing.sm,
-    rowGap: spacing.sm,
-    justifyContent: 'flex-start',
-    width: isCompactScreen ? '100%' : undefined,
-    alignSelf: isCompactScreen ? 'stretch' : 'auto'
+    width: '100%',
+    justifyContent: isNarrowScreen ? 'space-between' : 'flex-end'
   },
   topBarAction: {
     paddingVertical: spacing.xs,
@@ -1443,16 +1506,19 @@ function createStyles(theme: ReturnType<typeof useTheme>, isCompactScreen: boole
     fontWeight: '700'
   },
   settingsTrigger: {
-    minHeight: 42,
+    minHeight: isNarrowScreen ? 40 : 42,
     borderRadius: radius.pill,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: isNarrowScreen ? spacing.sm : spacing.md,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
     backgroundColor: theme.colors.surface,
     borderWidth: 1,
     borderColor: theme.colors.border,
-    flexShrink: 1
+    flexShrink: 1,
+    minWidth: isNarrowScreen ? 132 : undefined,
+    justifyContent: 'center',
+    flex: isNarrowScreen ? 1 : undefined
   },
   settingsTriggerHover: {
     borderColor: theme.colors.borderStrong,
@@ -1468,20 +1534,22 @@ function createStyles(theme: ReturnType<typeof useTheme>, isCompactScreen: boole
   },
   settingsTriggerLabel: {
     color: theme.colors.textPrimary,
-    fontSize: typography.body,
+    fontSize: isNarrowScreen ? typography.caption : typography.body,
     fontWeight: '700',
     flexShrink: 1
   },
   catalogTrigger: {
-    minHeight: 42,
+    minHeight: isNarrowScreen ? 40 : 42,
     borderRadius: radius.pill,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: isNarrowScreen ? spacing.sm : spacing.md,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: theme.colors.backgroundElevated,
     borderWidth: 1,
     borderColor: theme.colors.border,
-    flexShrink: 1
+    flexShrink: 1,
+    minWidth: isNarrowScreen ? 112 : undefined,
+    flex: isNarrowScreen ? 1 : undefined
   },
   catalogTriggerHover: {
     borderColor: theme.colors.borderStrong,
@@ -1492,7 +1560,7 @@ function createStyles(theme: ReturnType<typeof useTheme>, isCompactScreen: boole
   },
   catalogTriggerLabel: {
     color: theme.colors.textPrimary,
-    fontSize: typography.body,
+    fontSize: isNarrowScreen ? typography.caption : typography.body,
     fontWeight: '700'
   },
   overlayBackdrop: {
