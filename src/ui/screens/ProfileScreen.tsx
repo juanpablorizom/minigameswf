@@ -65,15 +65,8 @@ export function ProfileScreen({
             {email ? <Text style={styles.profileSubvalue}>{email}</Text> : null}
           </View>
         </View>
-      </SurfaceCard>
 
-      <View style={styles.statsGrid}>
-        <StatCard label="Partidas" value="24" />
-        <StatCard label="Victorias" value="15" />
-        <StatCard label="Racha" value="4" />
-      </View>
-
-      <SurfaceCard>
+        <View style={styles.cardDivider} />
         <Text style={styles.sectionTitle}>Menu</Text>
         <MenuRow label="Datos de cuenta" value={isGuest ? 'Invitado' : 'Activa'} onPress={onOpenAccount} />
         <MenuRow label="Apariencia" value={t(`settings.themeChoices.${themePreference}.label`)} onPress={onOpenAppearance} />
@@ -90,23 +83,6 @@ export function ProfileScreen({
       {isBusy ? <Text style={styles.notice}>{t('account.savingLanguage')}</Text> : null}
       {notice ? <Text style={styles.notice}>{notice}</Text> : null}
     </AppScreen>
-  );
-}
-
-type StatCardProps = {
-  label: string;
-  value: string;
-};
-
-function StatCard({ label, value }: StatCardProps) {
-  const theme = useTheme();
-  const styles = createStyles(theme);
-
-  return (
-    <View style={styles.statCard}>
-      <Text style={styles.statValue}>{value}</Text>
-      <Text style={styles.statLabel}>{label}</Text>
-    </View>
   );
 }
 
@@ -191,31 +167,10 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
       fontSize: typography.caption,
       lineHeight: 18
     },
-    statsGrid: {
-      flexDirection: 'row',
-      gap: spacing.sm,
-      flexWrap: 'wrap'
-    },
-    statCard: {
-      flex: 1,
-      minWidth: 120,
-      borderRadius: radius.lg,
-      borderWidth: 2,
-      borderColor: theme.colors.border,
-      backgroundColor: theme.colors.surface,
-      padding: spacing.md,
-      gap: spacing.xs
-    },
-    statValue: {
-      color: theme.colors.highlight,
-      fontSize: typography.title,
-      lineHeight: 38,
-      fontWeight: '800'
-    },
-    statLabel: {
-      color: theme.colors.textSecondary,
-      fontSize: typography.caption,
-      fontWeight: '800'
+    cardDivider: {
+      height: 2,
+      backgroundColor: theme.colors.border,
+      opacity: 0.7
     },
     sectionTitle: {
       color: theme.colors.textPrimary,

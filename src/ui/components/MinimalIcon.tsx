@@ -80,13 +80,11 @@ export function MinimalIcon({ name, size = 24, color, strokeWidth = 2 }: Minimal
 
       {name === 'settings' ? (
         <>
-          <Circle cx="12" cy="12" r="2.5" {...common} />
-          <Path d="M12 3.8v2.1" {...common} />
-          <Path d="M12 18.1v2.1" {...common} />
-          <Path d="M4.9 7.2l1.8 1" {...common} />
-          <Path d="M17.3 15.8l1.8 1" {...common} />
-          <Path d="M19.1 7.2l-1.8 1" {...common} />
-          <Path d="M6.7 15.8l-1.8 1" {...common} />
+          <Path
+            d="M9.6 3.7h4.8l.6 2.3c.5.2 1 .5 1.4.8l2.3-.7 2.4 4.2-1.7 1.6v1.8l1.7 1.6-2.4 4.2-2.3-.7c-.4.3-.9.6-1.4.8l-.6 2.3H9.6L9 19.6c-.5-.2-1-.5-1.4-.8l-2.3.7-2.4-4.2 1.7-1.6v-1.8L2.9 10.3l2.4-4.2 2.3.7c.4-.3.9-.6 1.4-.8l.6-2.3z"
+            {...common}
+          />
+          <Circle cx="12" cy="12" r="3.1" {...common} />
         </>
       ) : null}
     </Svg>
