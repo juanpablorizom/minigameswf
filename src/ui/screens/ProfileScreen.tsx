@@ -6,6 +6,7 @@ import { AppButton } from '../components/AppButton';
 import { AppScreen } from '../components/AppScreen';
 import { AvatarSilhouette } from '../components/AvatarSilhouette';
 import { Badge } from '../components/Badge';
+import { MinimalIcon } from '../components/MinimalIcon';
 import { SurfaceCard } from '../components/SurfaceCard';
 import { controls, layout, radius, spacing } from '../system/layout';
 import { textStyles, typography } from '../system/typography';
@@ -46,7 +47,12 @@ export function ProfileScreen({
   const accountLabel = displayName ?? username ?? email?.split('@')[0] ?? t('common.guest');
 
   return (
-    <AppScreen title="Perfil" subtitle="Tus estadisticas, cuenta y preferencias.">
+    <AppScreen>
+      <View style={styles.hero}>
+        <Text style={styles.kicker}>CUENTA</Text>
+        <Text style={styles.heroName}>{accountLabel}</Text>
+      </View>
+
       <SurfaceCard>
         <View style={styles.profileHeader}>
           <AvatarSilhouette size={76} />
@@ -120,7 +126,9 @@ function MenuRow({ label, value, onPress }: MenuRowProps) {
         <Text style={styles.menuLabel}>{label}</Text>
         <Text style={styles.menuValue}>{value}</Text>
       </View>
-      <Text style={styles.menuArrow}>›</Text>
+      <View style={styles.menuArrow}>
+        <MinimalIcon name="chevronRight" size={22} color={theme.colors.highlight} strokeWidth={2.4} />
+      </View>
     </Pressable>
   );
 }
@@ -144,10 +152,25 @@ function OptionChip({ label, active, onPress }: OptionChipProps) {
 
 function createStyles(theme: ReturnType<typeof useTheme>) {
   return StyleSheet.create({
+    hero: {
+      gap: spacing.xs,
+      paddingTop: spacing.xs
+    },
+    kicker: {
+      color: theme.colors.textMuted,
+      fontSize: typography.body,
+      fontWeight: '800',
+      letterSpacing: 2
+    },
+    heroName: {
+      color: theme.colors.highlight,
+      ...textStyles.hero
+    },
     profileHeader: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: spacing.md
+      gap: spacing.md,
+      minHeight: 96
     },
     profileMeta: {
       flex: 1,
@@ -170,12 +193,14 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
     },
     statsGrid: {
       flexDirection: 'row',
-      gap: spacing.sm
+      gap: spacing.sm,
+      flexWrap: 'wrap'
     },
     statCard: {
       flex: 1,
-      borderRadius: radius.md,
-      borderWidth: 1,
+      minWidth: 120,
+      borderRadius: radius.lg,
+      borderWidth: 2,
       borderColor: theme.colors.border,
       backgroundColor: theme.colors.surface,
       padding: spacing.md,
@@ -198,8 +223,8 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
     },
     menuRow: {
       minHeight: controls.minHeight,
-      borderRadius: radius.md,
-      borderWidth: 1,
+      borderRadius: radius.lg,
+      borderWidth: 2,
       borderColor: theme.colors.border,
       backgroundColor: theme.colors.backgroundElevated,
       paddingHorizontal: spacing.md,
@@ -209,7 +234,8 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
       gap: spacing.md
     },
     menuRowHover: {
-      borderColor: theme.colors.borderStrong
+      borderColor: theme.colors.borderStrong,
+      backgroundColor: theme.colors.surface
     },
     menuRowPressed: {
       transform: [{ scale: 0.99 }]
@@ -228,9 +254,12 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
       fontSize: typography.caption
     },
     menuArrow: {
-      color: theme.colors.highlight,
-      fontSize: 28,
-      lineHeight: 30
+      width: 34,
+      height: 34,
+      borderRadius: 17,
+      backgroundColor: theme.colors.surface,
+      alignItems: 'center',
+      justifyContent: 'center'
     },
     languageRow: {
       gap: spacing.sm
@@ -243,7 +272,7 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
       flex: 1,
       minHeight: controls.compactMinHeight,
       borderRadius: radius.pill,
-      borderWidth: 1,
+      borderWidth: 2,
       borderColor: theme.colors.border,
       backgroundColor: theme.colors.backgroundElevated,
       alignItems: 'center',

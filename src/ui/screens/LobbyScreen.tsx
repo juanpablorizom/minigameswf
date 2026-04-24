@@ -1,14 +1,14 @@
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { useState } from 'react';
 
 import { featuredGames } from '../../data/mockData';
 import type { LobbyActionId, LobbyScenario } from '../../navigation/types';
 import { AppButton } from '../components/AppButton';
 import { AppScreen } from '../components/AppScreen';
 import { AvatarSilhouette } from '../components/AvatarSilhouette';
+import { MinimalIcon } from '../components/MinimalIcon';
 import { SurfaceCard } from '../components/SurfaceCard';
-import { controls, layout, radius, spacing } from '../system/layout';
+import { layout, radius, spacing } from '../system/layout';
 import { textStyles, typography } from '../system/typography';
 import { useTheme } from '../theme';
 
@@ -29,14 +29,12 @@ export function LobbyScreen({ displayName, scenario, onAction, notice = null }: 
   const { t } = useTranslation();
   const theme = useTheme();
   const styles = createStyles(theme);
-  const [selectedGameId, setSelectedGameId] = useState(featuredGames[0]?.id ?? 'impostor');
-  const [playerCount, setPlayerCount] = useState(4);
-  const selectedGame = featuredGames.find((game) => game.id === selectedGameId) ?? featuredGames[0];
   const actionLabels: Record<LobbyActionId, string> = {
     createRoom: t('lobby.createRoom'),
     joinByCode: t('lobby.joinByCode'),
     scanQr: t('lobby.scanQr'),
     continueRoom: t('lobby.continueRoom'),
+    openGamesCatalog: t('gamesCatalog.title'),
     inviteFriends: t('lobby.shareCode'),
     resumeActivity: t('lobby.resume'),
     quickPlay: t('lobby.quickPlay')
@@ -53,11 +51,7 @@ export function LobbyScreen({ displayName, scenario, onAction, notice = null }: 
         <View style={styles.createHeader}>
           <View style={styles.createCopy}>
             <Text style={styles.heroTitle}>{scenario.key === 'activeRoom' ? scenario.title : 'Crear sala'}</Text>
-            <Text style={styles.copy}>
-              {scenario.key === 'activeRoom'
-                ? scenario.subtitle
-                : 'Elige juego, ajusta el grupo y comparte el codigo con tus amigos.'}
-            </Text>
+            {scenario.key === 'activeRoom' ? <Text style={styles.copy}>{scenario.subtitle}</Text> : null}
           </View>
           <Pressable
             onPress={() => onAction(scenario.primaryAction.id)}
@@ -65,69 +59,11 @@ export function LobbyScreen({ displayName, scenario, onAction, notice = null }: 
             accessibilityRole="button"
             accessibilityLabel={actionLabels[scenario.primaryAction.id] ?? scenario.primaryAction.label}
           >
-            <Text style={styles.arrowButtonLabel}>→</Text>
+            <MinimalIcon name="arrowRight" size={32} color={theme.colors.primaryText} strokeWidth={2.6} />
           </Pressable>
         </View>
 
-        {scenario.key === 'guest' || scenario.key === 'noRoom' ? (
-          <>
-            <View style={styles.selectorBlock}>
-              <Text style={styles.sectionLabel}>Juego</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.gameRail}>
-                {featuredGames.map((game) => {
-                  const isSelected = game.id === selectedGameId;
-
-                  return (
-                    <Pressable
-                      key={game.id}
-                      onPress={() => setSelectedGameId(game.id)}
-                      style={({ pressed }) => [styles.gameCard, isSelected && styles.gameCardSelected, pressed && styles.pressed]}
-                    >
-                      <Text style={styles.gameIcon}>▣</Text>
-                      <Text style={styles.gameTitle}>{t(`gameMeta.names.${game.id}`)}</Text>
-                      <Text style={styles.gameMeta}>{game.category}</Text>
-                    </Pressable>
-                  );
-                })}
-              </ScrollView>
-            </View>
-
-            <View style={styles.stepperRow}>
-              <View>
-                <Text style={styles.sectionLabel}>Jugadores</Text>
-                <Text style={styles.copy}>De 2 a 10 jugadores</Text>
-              </View>
-              <View style={styles.stepper}>
-                <Pressable
-                  onPress={() => setPlayerCount((current) => Math.max(2, current - 1))}
-                  style={[styles.stepperButton, playerCount <= 2 && styles.stepperButtonDisabled]}
-                  disabled={playerCount <= 2}
-                  accessibilityRole="button"
-                  accessibilityLabel="Quitar jugador"
-                >
-                  <Text style={styles.stepperButtonText}>−</Text>
-                </Pressable>
-                <Text style={styles.stepperValue}>{playerCount}</Text>
-                <Pressable
-                  onPress={() => setPlayerCount((current) => Math.min(10, current + 1))}
-                  style={[styles.stepperButton, playerCount >= 10 && styles.stepperButtonDisabled]}
-                  disabled={playerCount >= 10}
-                  accessibilityRole="button"
-                  accessibilityLabel="Agregar jugador"
-                >
-                  <Text style={styles.stepperButtonText}>+</Text>
-                </Pressable>
-              </View>
-            </View>
-
-            <AppButton label="Crear sala" onPress={() => onAction('createRoom')} />
-            <View style={styles.secondaryActions}>
-              <AppButton label="Unirse con codigo" onPress={() => onAction('joinByCode')} variant="secondary" />
-              <AppButton label="Escanear QR" onPress={() => onAction('scanQr')} variant="ghost" />
-            </View>
-            {selectedGame ? <Text style={styles.selectedHint}>{selectedGame.description}</Text> : null}
-          </>
-        ) : (
+        {scenario.key === 'guest' || scenario.key === 'noRoom' ? null : (
           <View style={styles.actionRow}>
             <AppButton
               label={actionLabels[scenario.primaryAction.id] ?? scenario.primaryAction.label}
@@ -163,10 +99,30 @@ export function LobbyScreen({ displayName, scenario, onAction, notice = null }: 
           </View>
         ))}
         <Pressable style={styles.inviteFriend} onPress={() => onAction('inviteFriends')}>
-          <Text style={styles.invitePlus}>+</Text>
+          <View style={styles.invitePlus}>
+            <MinimalIcon name="plus" size={30} color={theme.colors.textMuted} strokeWidth={2.2} />
+          </View>
           <Text style={styles.friendStatus}>Invitar</Text>
         </Pressable>
       </View>
+
+      <Pressable
+        onPress={() => onAction('openGamesCatalog')}
+        style={({ pressed, hovered }) => [styles.gamesShortcut, hovered && styles.gamesShortcutHover, pressed && styles.pressed]}
+        accessibilityRole="button"
+        accessibilityLabel={t('gamesCatalog.title')}
+      >
+        <View style={styles.gamesShortcutIcon}>
+          <MinimalIcon name="games" size={34} color={theme.colors.textPrimary} strokeWidth={1.9} />
+        </View>
+        <View style={styles.gamesShortcutCopy}>
+          <Text style={styles.gamesShortcutTitle}>Todos los juegos</Text>
+          <Text style={styles.gamesShortcutMeta}>{featuredGames.length} disponibles</Text>
+        </View>
+        <View style={styles.gamesShortcutButton}>
+          <MinimalIcon name="chevronRight" size={24} color={theme.colors.textMuted} strokeWidth={2.4} />
+        </View>
+      </Pressable>
     </AppScreen>
   );
 }
@@ -174,7 +130,8 @@ export function LobbyScreen({ displayName, scenario, onAction, notice = null }: 
 function createStyles(theme: ReturnType<typeof useTheme>) {
   return StyleSheet.create({
     hero: {
-      gap: spacing.xs
+      gap: spacing.xs,
+      paddingTop: spacing.xs
     },
     kicker: {
       color: theme.colors.textMuted,
@@ -187,6 +144,7 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
       ...textStyles.hero
     },
     createHeader: {
+      minHeight: 92,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
@@ -218,100 +176,8 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
     arrowButtonPressed: {
       transform: [{ scale: 0.96 }]
     },
-    arrowButtonLabel: {
-      color: theme.colors.primaryText,
-      fontSize: 30,
-      fontWeight: '800',
-      lineHeight: 34
-    },
-    selectorBlock: {
-      gap: spacing.sm
-    },
-    sectionLabel: {
-      color: theme.colors.textMuted,
-      fontSize: typography.caption,
-      fontWeight: '800',
-      textTransform: 'uppercase',
-      letterSpacing: 1.2
-    },
-    gameRail: {
-      gap: spacing.sm,
-      paddingRight: spacing.md
-    },
-    gameCard: {
-      width: 148,
-      minHeight: 124,
-      borderRadius: radius.md,
-      borderWidth: 1,
-      borderColor: theme.colors.border,
-      backgroundColor: theme.colors.surfaceMuted,
-      padding: spacing.md,
-      justifyContent: 'space-between'
-    },
-    gameCardSelected: {
-      borderColor: theme.colors.primary,
-      backgroundColor: theme.colors.badgeAccentBackground
-    },
-    gameIcon: {
-      color: theme.colors.textPrimary,
-      fontSize: 26,
-      lineHeight: 28
-    },
-    gameTitle: {
-      color: theme.colors.textPrimary,
-      ...textStyles.bodyStrong
-    },
-    gameMeta: {
-      color: theme.colors.textSecondary,
-      fontSize: typography.caption
-    },
     pressed: {
       transform: [{ scale: 0.98 }]
-    },
-    stepperRow: {
-      minHeight: controls.minHeight,
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      gap: spacing.md
-    },
-    stepper: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      borderRadius: radius.pill,
-      borderWidth: 1,
-      borderColor: theme.colors.border,
-      backgroundColor: theme.colors.backgroundElevated,
-      overflow: 'hidden'
-    },
-    stepperButton: {
-      width: 48,
-      height: 48,
-      alignItems: 'center',
-      justifyContent: 'center'
-    },
-    stepperButtonDisabled: {
-      opacity: 0.35
-    },
-    stepperButtonText: {
-      color: theme.colors.textPrimary,
-      fontSize: 24,
-      fontWeight: '800'
-    },
-    stepperValue: {
-      minWidth: 44,
-      color: theme.colors.highlight,
-      fontSize: typography.section,
-      fontWeight: '800',
-      textAlign: 'center'
-    },
-    secondaryActions: {
-      gap: layout.controlGap
-    },
-    selectedHint: {
-      color: theme.colors.textMuted,
-      fontSize: typography.caption,
-      lineHeight: 18
     },
     actionRow: {
       gap: layout.controlGap
@@ -340,7 +206,8 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
       flexDirection: 'row',
       flexWrap: 'wrap',
       alignItems: 'flex-start',
-      gap: spacing.lg
+      gap: spacing.lg,
+      rowGap: spacing.lg
     },
     friend: {
       width: 82,
@@ -381,10 +248,56 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
       borderWidth: 2,
       borderStyle: 'dashed',
       borderColor: theme.colors.borderStrong,
+      alignItems: 'center',
+      justifyContent: 'center'
+    },
+    gamesShortcut: {
+      minHeight: 148,
+      borderRadius: radius.xl,
+      borderWidth: 2,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.surface,
+      padding: spacing.lg,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.lg,
+      overflow: 'hidden'
+    },
+    gamesShortcutHover: {
+      borderColor: theme.colors.borderStrong,
+      backgroundColor: theme.colors.surfaceMuted
+    },
+    gamesShortcutIcon: {
+      width: 72,
+      height: 72,
+      borderRadius: radius.md,
+      borderWidth: 1,
+      borderColor: theme.colors.badgeAccentBackground,
+      backgroundColor: theme.colors.backgroundElevated,
+      alignItems: 'center',
+      justifyContent: 'center'
+    },
+    gamesShortcutCopy: {
+      flex: 1,
+      minWidth: 0,
+      gap: spacing.xs
+    },
+    gamesShortcutTitle: {
+      color: theme.colors.textPrimary,
+      ...textStyles.section
+    },
+    gamesShortcutMeta: {
       color: theme.colors.textMuted,
-      fontSize: 30,
-      lineHeight: 58,
-      textAlign: 'center'
+      fontSize: typography.body,
+      fontWeight: '700'
+    },
+    gamesShortcutButton: {
+      width: 58,
+      height: 58,
+      borderRadius: 29,
+      backgroundColor: theme.colors.backgroundElevated,
+      alignItems: 'center',
+      justifyContent: 'center'
     }
   });
 }

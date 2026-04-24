@@ -124,14 +124,14 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
       minHeight: controls.compactMinHeight,
       borderRadius: radius.pill,
       backgroundColor: theme.colors.backgroundElevated,
-      borderWidth: 1,
+      borderWidth: 2,
       borderColor: theme.colors.border,
       alignItems: 'center',
       justifyContent: 'center',
       paddingHorizontal: spacing.md
     },
     optionChipActive: {
-      backgroundColor: theme.colors.surfaceMuted,
+      backgroundColor: theme.colors.badgeAccentBackground,
       borderColor: theme.colors.primary
     },
     optionChipHover: {

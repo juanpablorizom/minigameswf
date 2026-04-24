@@ -71,8 +71,8 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
     },
     input: {
       minHeight: controls.minHeight,
-      borderRadius: radius.md,
-      borderWidth: 1,
+      borderRadius: radius.lg,
+      borderWidth: 2,
       paddingHorizontal: controls.inputPaddingX,
       paddingVertical: controls.inputPaddingY,
       fontSize: typography.body

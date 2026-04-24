@@ -15,8 +15,8 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
   return StyleSheet.create({
     card: {
       backgroundColor: theme.mode === 'dark' ? theme.colors.surfaceMuted : theme.colors.surface,
-      borderRadius: radius.lg,
-      borderWidth: 1,
+      borderRadius: radius.xl,
+      borderWidth: 2,
       borderColor: theme.colors.border,
       padding: layout.cardPadding,
       gap: layout.groupGap

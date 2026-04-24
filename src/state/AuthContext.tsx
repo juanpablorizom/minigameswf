@@ -85,11 +85,11 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [isBusy, setIsBusy] = useState(false);
   const [session, setSession] = useState<Session | null>(null);
   const [language, setLanguage] = useState<AppLanguage>('es');
-  const [themePreference, setThemePreference] = useState<AppThemePreference>('neutral-dark');
+  const [themePreference, setThemePreference] = useState<AppThemePreference>('neutral-light');
   const [profile, setProfile] = useState<ProfileRow | null>(null);
   const [settings, setSettings] = useState<UserSettingsRow | null>(null);
   const languageRef = useRef<AppLanguage>('es');
-  const themePreferenceRef = useRef<AppThemePreference>('neutral-dark');
+  const themePreferenceRef = useRef<AppThemePreference>('neutral-light');
 
   async function applyLanguage(nextLanguage: AppLanguage) {
     await i18n.changeLanguage(nextLanguage);
@@ -441,11 +441,12 @@ export function AuthProvider({ children }: PropsWithChildren) {
         return {};
       },
       changeTheme: async (nextTheme) => {
-        await applyTheme(nextTheme);
+        const resolvedTheme = normalizeThemePreference(nextTheme);
+        await applyTheme(resolvedTheme);
 
         if (user) {
-          await updateThemePreference(user.id, nextTheme);
-          setSettings((current) => (current ? { ...current, theme_preference: nextTheme } : current));
+          await updateThemePreference(user.id, resolvedTheme);
+          setSettings((current) => (current ? { ...current, theme_preference: resolvedTheme } : current));
         }
 
         return {};

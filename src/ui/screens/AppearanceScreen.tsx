@@ -77,16 +77,16 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
       ...textStyles.body
     },
     themeCard: {
-      borderRadius: radius.md,
-      borderWidth: 1,
+      borderRadius: radius.lg,
+      borderWidth: 2,
       borderColor: theme.colors.border,
-      backgroundColor: theme.colors.backgroundElevated,
+      backgroundColor: theme.colors.surface,
       padding: layout.cardPadding,
       gap: layout.groupGap
     },
     themeCardActive: {
       borderColor: theme.colors.primary,
-      backgroundColor: theme.colors.surfaceMuted
+      backgroundColor: theme.colors.badgeAccentBackground
     },
     themeCardHover: {
       borderColor: theme.colors.borderStrong,
@@ -122,10 +122,10 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
       alignItems: 'center'
     },
     swatch: {
-      width: 22,
-      height: 22,
-      borderRadius: 11,
-      borderWidth: 1,
+      width: 26,
+      height: 26,
+      borderRadius: 13,
+      borderWidth: 2,
       borderColor: theme.colors.borderStrong
     }
   });

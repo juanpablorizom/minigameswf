@@ -50,6 +50,7 @@ export type LobbyActionId =
   | 'joinByCode'
   | 'scanQr'
   | 'continueRoom'
+  | 'openGamesCatalog'
   | 'inviteFriends'
   | 'resumeActivity'
   | 'quickPlay';

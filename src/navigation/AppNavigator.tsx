@@ -27,6 +27,7 @@ import { SettingsScreen } from '../ui/screens/SettingsScreen';
 import { WelcomeScreen } from '../ui/screens/WelcomeScreen';
 import { AppButton } from '../ui/components/AppButton';
 import { GameSettingsModal } from '../ui/components/GameSettingsModal';
+import { MinimalIcon, type MinimalIconName } from '../ui/components/MinimalIcon';
 import { radius, spacing, typography, useTheme } from '../ui/theme';
 
 function mapRoomNotice(translate: (key: string, options?: Record<string, unknown>) => string, error?: string | null) {
@@ -711,6 +712,10 @@ export function AppNavigator() {
 
         setRoomNotice(t('lobby.noRoomToContinue'));
         break;
+      case 'openGamesCatalog':
+        openGamesTab();
+        setIsGamesCatalogOpen(true);
+        break;
       case 'inviteFriends':
         void shareRoomCode();
         break;
@@ -1315,18 +1320,22 @@ export function AppNavigator() {
     );
   }
 
+  const isLobbyShell = activeTab === 'games' && currentScreen === 'lobby';
+
   return (
     <View style={styles.container}>
       <AmbientBackground />
-      <View style={styles.topBar}>
-        <View style={styles.headerIdentity}>
-          <Text style={styles.headerGreeting}>
-            {t('lobby.headerGreeting', {
-              name: displayName ?? username ?? email?.split('@')[0] ?? (isGuest ? t('common.guest') : t('common.player'))
-            })}
-          </Text>
-          {isGuest ? <Text style={styles.headerStatus}>{t('lobby.guestHeaderStatus')}</Text> : null}
-        </View>
+      <View style={[styles.topBar, isLobbyShell && styles.topBarLobby]}>
+        {!isLobbyShell ? (
+          <View style={styles.headerIdentity}>
+            <Text style={styles.headerGreeting}>
+              {t('lobby.headerGreeting', {
+                name: displayName ?? username ?? email?.split('@')[0] ?? (isGuest ? t('common.guest') : t('common.player'))
+              })}
+            </Text>
+            {isGuest ? <Text style={styles.headerStatus}>{t('lobby.guestHeaderStatus')}</Text> : null}
+          </View>
+        ) : null}
         <View style={styles.topBarActions}>
           {canGoBack ? (
             <View style={styles.topBarNavActions}>
@@ -1342,17 +1351,17 @@ export function AppNavigator() {
             <Pressable
               onPress={() => {
                 setSettingsNotice(null);
-                openAccount();
+                openSettings();
               }}
               accessibilityRole="button"
-              accessibilityLabel="Abrir perfil"
+              accessibilityLabel="Abrir ajustes"
               style={({ pressed, hovered }) => [
                 styles.settingsTrigger,
                 hovered && styles.settingsTriggerHover,
                 pressed && styles.settingsTriggerPressed
               ]}
             >
-              <Text style={styles.settingsTriggerIcon}>⚙</Text>
+              <MinimalIcon name="settings" size={22} color={theme.colors.textPrimary} strokeWidth={2.1} />
             </Pressable>
           </View>
         </View>
@@ -1360,9 +1369,17 @@ export function AppNavigator() {
 
       <Animated.View style={[styles.content, { opacity: screenFade }]}>{renderCurrentTab()}</Animated.View>
       <View style={styles.bottomNav}>
-        <TabButton label="Inicio" icon="⌂" active={activeTab === 'games'} onPress={openGamesTab} />
-        <TabButton label="Juegos" icon="▣" active={activeTab === 'settings'} onPress={openSettings} />
-        <TabButton label="Perfil" icon="♙" active={activeTab === 'account'} onPress={openAccount} />
+        <TabButton label="Inicio" icon="home" active={activeTab === 'games' && !isGamesCatalogOpen} onPress={openGamesTab} />
+        <TabButton
+          label="Juegos"
+          icon="games"
+          active={isGamesCatalogOpen}
+          onPress={() => {
+            openGamesTab();
+            setIsGamesCatalogOpen(true);
+          }}
+        />
+        <TabButton label="Perfil" icon="profile" active={activeTab === 'account'} onPress={openAccount} />
       </View>
 
       {isSettingsPanelOpen ? (
@@ -1497,73 +1514,19 @@ export function AppNavigator() {
 
 function AmbientBackground() {
   const theme = useTheme();
-  const drift = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(drift, {
-          toValue: 1,
-          duration: 7600,
-          useNativeDriver: true
-        }),
-        Animated.timing(drift, {
-          toValue: 0,
-          duration: 7600,
-          useNativeDriver: true
-        })
-      ])
-    );
-
-    loop.start();
-
-    return () => loop.stop();
-  }, [drift]);
-
-  const firstOrb = {
-    transform: [
-      {
-        translateX: drift.interpolate({
-          inputRange: [0, 1],
-          outputRange: [-14, 18]
-        })
-      },
-      {
-        translateY: drift.interpolate({
-          inputRange: [0, 1],
-          outputRange: [12, -10]
-        })
-      }
-    ]
-  };
-  const secondOrb = {
-    transform: [
-      {
-        translateX: drift.interpolate({
-          inputRange: [0, 1],
-          outputRange: [18, -12]
-        })
-      },
-      {
-        translateY: drift.interpolate({
-          inputRange: [0, 1],
-          outputRange: [-10, 16]
-        })
-      }
-    ]
-  };
 
   return (
-    <View pointerEvents="none" style={StyleSheet.absoluteFillObject}>
-      <Animated.View style={[ambientStyles.orb, ambientStyles.orbTop, { backgroundColor: theme.colors.badgeAccentBackground }, firstOrb]} />
-      <Animated.View style={[ambientStyles.orb, ambientStyles.orbBottom, { backgroundColor: theme.colors.successMuted }, secondOrb]} />
+    <View pointerEvents="none" style={[StyleSheet.absoluteFillObject, { backgroundColor: theme.colors.background }]}>
+      <View style={[ambientStyles.paperWashTop, { backgroundColor: theme.colors.surface }]} />
+      <View style={[ambientStyles.paperWashBottom, { backgroundColor: theme.colors.backgroundElevated }]} />
+      <View style={[ambientStyles.paperFiber, { borderColor: theme.colors.border }]} />
     </View>
   );
 }
 
 type TabButtonProps = {
   label: string;
-  icon: string;
+  icon: MinimalIconName;
   active: boolean;
   onPress: () => void;
 };
@@ -1578,27 +1541,42 @@ function TabButton({ label, icon, active, onPress }: TabButtonProps) {
       accessibilityRole="tab"
       accessibilityState={{ selected: active }}
     >
-      <Text style={[tabStyles.icon, { color: active ? theme.colors.textPrimary : theme.colors.textMuted }]}>{icon}</Text>
+      <View style={tabStyles.icon}>
+        <MinimalIcon name={icon} size={23} color={active ? theme.colors.textPrimary : theme.colors.textMuted} strokeWidth={2} />
+      </View>
       <Text style={[tabStyles.label, { color: active ? theme.colors.highlight : theme.colors.textMuted }]}>{label}</Text>
     </Pressable>
   );
 }
 
 const ambientStyles = StyleSheet.create({
-  orb: {
+  paperWashTop: {
     position: 'absolute',
-    width: 280,
-    height: 280,
-    borderRadius: 140,
-    opacity: 0.22
+    top: -120,
+    left: -80,
+    right: -80,
+    height: 420,
+    opacity: 0.42,
+    transform: [{ rotate: '-7deg' }]
   },
-  orbTop: {
-    top: 90,
-    left: -120
+  paperWashBottom: {
+    position: 'absolute',
+    left: -80,
+    right: -80,
+    bottom: -160,
+    height: 560,
+    opacity: 0.26,
+    transform: [{ rotate: '8deg' }]
   },
-  orbBottom: {
-    right: -130,
-    bottom: 110
+  paperFiber: {
+    position: 'absolute',
+    top: 120,
+    left: 24,
+    right: 24,
+    bottom: 120,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    opacity: 0.16
   }
 });
 
@@ -1617,9 +1595,10 @@ const tabStyles = StyleSheet.create({
     transform: [{ scale: 0.98 }]
   },
   icon: {
-    fontSize: 28,
-    lineHeight: 30,
-    fontWeight: '800'
+    width: 28,
+    height: 28,
+    alignItems: 'center',
+    justifyContent: 'center'
   },
   label: {
     fontSize: typography.caption,
@@ -1646,6 +1625,12 @@ function createStyles(theme: ReturnType<typeof useTheme>, isCompactScreen: boole
     alignItems: isCompactScreen ? 'stretch' : 'center',
     gap: spacing.md,
     backgroundColor: 'transparent'
+  },
+  topBarLobby: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    paddingBottom: 0
   },
   topBarActions: {
     flexDirection: 'column',
@@ -1727,14 +1712,14 @@ function createStyles(theme: ReturnType<typeof useTheme>, isCompactScreen: boole
     fontWeight: '700'
   },
   settingsTrigger: {
-    width: 54,
-    minHeight: 54,
-    borderRadius: 27,
+    width: 64,
+    minHeight: 64,
+    borderRadius: 32,
     paddingHorizontal: 0,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: theme.colors.surface,
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: theme.colors.border,
     justifyContent: 'center',
     flexShrink: 0
@@ -1745,11 +1730,6 @@ function createStyles(theme: ReturnType<typeof useTheme>, isCompactScreen: boole
   },
   settingsTriggerPressed: {
     transform: [{ scale: 0.985 }]
-  },
-  settingsTriggerIcon: {
-    color: theme.colors.textPrimary,
-    fontSize: typography.section,
-    fontWeight: '700'
   },
   settingsTriggerLabel: {
     color: theme.colors.textPrimary,
@@ -1788,7 +1768,10 @@ function createStyles(theme: ReturnType<typeof useTheme>, isCompactScreen: boole
     borderTopWidth: 1,
     borderTopColor: theme.colors.border,
     backgroundColor: theme.colors.background,
-    paddingHorizontal: isCompactScreen ? spacing.md : spacing.xl
+    paddingHorizontal: isCompactScreen ? spacing.md : spacing.xl,
+    maxWidth: 820,
+    width: '100%',
+    alignSelf: 'center'
   },
   overlayBackdrop: {
     flex: 1,

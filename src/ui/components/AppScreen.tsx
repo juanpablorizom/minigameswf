@@ -39,7 +39,7 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
     },
     content: {
       width: '100%',
-      maxWidth: layout.maxWidth,
+      maxWidth: layout.compactWidth,
       alignSelf: 'center',
       paddingHorizontal: layout.screenPaddingX,
       paddingTop: layout.screenPaddingTop,

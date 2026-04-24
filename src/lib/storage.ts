@@ -74,7 +74,6 @@ export async function storeTheme(theme: AppThemePreference) {
 export function normalizeThemePreference(value: string | null | undefined): AppThemePreference {
   if (
     value === 'neutral-light' ||
-    value === 'neutral-dark' ||
     value === 'legacy-dark' ||
     value === 'green' ||
     value === 'gold' ||
@@ -84,11 +83,15 @@ export function normalizeThemePreference(value: string | null | undefined): AppT
     return value;
   }
 
-  if (value === 'default' || value === 'geo-style') {
-    return 'neutral-dark';
+  if (value === 'neutral-dark') {
+    return 'neutral-light';
   }
 
-  return 'neutral-dark';
+  if (value === 'default' || value === 'geo-style') {
+    return 'neutral-light';
+  }
+
+  return 'neutral-light';
 }
 
 export async function loadStoredGuestProfile() {

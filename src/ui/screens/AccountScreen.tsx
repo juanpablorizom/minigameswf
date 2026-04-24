@@ -7,7 +7,7 @@ import { AppScreen } from '../components/AppScreen';
 import { AppTextField } from '../components/AppTextField';
 import { Badge } from '../components/Badge';
 import { SurfaceCard } from '../components/SurfaceCard';
-import { layout, spacing } from '../system/layout';
+import { layout, radius, spacing } from '../system/layout';
 import { textStyles, typography } from '../system/typography';
 import { useTheme } from '../theme';
 
@@ -67,8 +67,10 @@ export function AccountScreen({
       </SurfaceCard>
 
       <SurfaceCard>
-        <Text style={styles.sectionTitle}>{t('account.accountData')}</Text>
-        <Text style={styles.helper}>{t('account.accountDataHint')}</Text>
+        <View style={styles.sectionIntro}>
+          <Text style={styles.sectionTitle}>{t('account.accountData')}</Text>
+          <Text style={styles.helper}>{t('account.accountDataHint')}</Text>
+        </View>
 
         <AppTextField
           label={t('account.displayName')}
@@ -95,8 +97,10 @@ export function AccountScreen({
 
       {isGuest ? (
         <SurfaceCard>
-          <Text style={styles.sectionTitle}>{t('account.linkAccountSection')}</Text>
-          <Text style={styles.helper}>{t('account.linkAccountHint')}</Text>
+          <View style={styles.sectionIntro}>
+            <Text style={styles.sectionTitle}>{t('account.linkAccountSection')}</Text>
+            <Text style={styles.helper}>{t('account.linkAccountHint')}</Text>
+          </View>
 
           <AppTextField
             label={t('account.email')}
@@ -122,21 +126,23 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
     profileHeader: {
       flexDirection: 'row',
       gap: layout.groupGap,
-      alignItems: 'center'
+      alignItems: 'center',
+      minHeight: 104
     },
     avatar: {
       width: 84,
       height: 84,
       borderRadius: 42,
-      backgroundColor: theme.colors.background,
+      backgroundColor: theme.colors.backgroundElevated,
       alignItems: 'center',
       justifyContent: 'center',
-      borderWidth: 1,
-      borderColor: theme.colors.border
+      borderWidth: 2,
+      borderColor: theme.colors.borderStrong
     },
     avatarLabel: {
       color: theme.colors.highlight,
       fontSize: typography.title,
+      fontFamily: 'DM Serif Display, Georgia, serif',
       fontWeight: '800'
     },
     profileMeta: {
@@ -148,6 +154,9 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
       flexWrap: 'wrap',
       gap: spacing.sm,
       alignItems: 'center'
+    },
+    sectionIntro: {
+      gap: spacing.xs
     },
     sectionTitle: {
       color: theme.colors.textPrimary,
@@ -169,7 +178,12 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
       maxWidth: 760
     },
     detailRow: {
-      gap: spacing.xs
+      gap: spacing.xs,
+      borderRadius: radius.lg,
+      borderWidth: 2,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.backgroundElevated,
+      padding: spacing.md
     },
     detailLabel: {
       color: theme.colors.textMuted,
@@ -180,7 +194,8 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
     detailValue: {
       color: theme.colors.textPrimary,
       fontSize: typography.body,
-      lineHeight: 22
+      lineHeight: 22,
+      fontWeight: '700'
     },
     notice: {
       color: theme.colors.highlight,
