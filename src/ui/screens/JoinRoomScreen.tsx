@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { useTranslation } from 'react-i18next';
 
 import { AppButton } from '../components/AppButton';
 import { AppScreen } from '../components/AppScreen';
@@ -18,15 +17,20 @@ type JoinRoomScreenProps = {
 };
 
 export function JoinRoomScreen({ isBusy, notice, onJoin, onOpenScanner }: JoinRoomScreenProps) {
-  const { t } = useTranslation();
   const theme = useTheme();
   const styles = createStyles(theme);
   const [code, setCode] = useState('');
+  const canEnter = code.trim().length === 5;
 
   return (
-    <AppScreen title={t('joinRoom.title')} subtitle={t('joinRoom.subtitle')}>
+    <AppScreen>
+      <View style={styles.header}>
+        <Text style={styles.title}>Unirse a sala</Text>
+        <Text style={styles.subtitle}>Ingresa el codigo de 5 caracteres que te compartieron.</Text>
+      </View>
+
       <SurfaceCard>
-        <Text style={styles.sectionTitle}>{t('joinRoom.roomCode')}</Text>
+        <Text style={styles.sectionTitle}>Codigo de sala</Text>
         <AppTextField
           value={code}
           onChangeText={(next) => setCode(next.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 5))}
@@ -36,11 +40,11 @@ export function JoinRoomScreen({ isBusy, notice, onJoin, onOpenScanner }: JoinRo
           autoCapitalize="characters"
           autoCorrect={false}
           maxLength={5}
-          helperText={t('joinRoom.helper')}
+          helperText={code.length ? `${code.length}/5` : 'Pega o escribe el codigo en mayusculas.'}
         />
         <View style={styles.actionRow}>
-          <AppButton label={t('joinRoom.joinParty')} onPress={() => onJoin(code)} disabled={isBusy || code.trim().length < 5} />
-          <AppButton label={t('joinRoom.scanInstead')} onPress={onOpenScanner} variant="secondary" disabled={isBusy} />
+          <AppButton label="Entrar" onPress={() => onJoin(code)} disabled={isBusy || !canEnter} />
+          <AppButton label="Escanear QR" onPress={onOpenScanner} variant="secondary" disabled={isBusy} />
         </View>
         {notice ? <Text style={styles.notice}>{notice}</Text> : null}
       </SurfaceCard>
@@ -50,12 +54,29 @@ export function JoinRoomScreen({ isBusy, notice, onJoin, onOpenScanner }: JoinRo
 
 function createStyles(theme: ReturnType<typeof useTheme>) {
   return StyleSheet.create({
+  header: {
+    gap: layout.groupGap,
+    alignItems: 'center'
+  },
+  title: {
+    color: theme.colors.textPrimary,
+    ...textStyles.title,
+    textAlign: 'center'
+  },
+  subtitle: {
+    color: theme.colors.textSecondary,
+    ...textStyles.body,
+    textAlign: 'center',
+    maxWidth: 420
+  },
   sectionTitle: {
     color: theme.colors.textPrimary,
-    ...textStyles.section
+    ...textStyles.section,
+    textAlign: 'center'
   },
   input: {
-    fontSize: 28,
+    minHeight: 86,
+    fontSize: 34,
     fontWeight: '800',
     letterSpacing: 6,
     textAlign: 'center'

@@ -1,4 +1,5 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import { useTranslation } from 'react-i18next';
 
@@ -6,6 +7,7 @@ import type { RoomMemberView, RoomRealtimeState } from '../../data/rooms';
 import type { MiniGame, RoomSettings } from '../../navigation/types';
 import { AppButton } from '../components/AppButton';
 import { AppScreen } from '../components/AppScreen';
+import { AvatarSilhouette } from '../components/AvatarSilhouette';
 import { Badge } from '../components/Badge';
 import { SurfaceCard } from '../components/SurfaceCard';
 import { spacing, typography, useTheme } from '../theme';
@@ -50,6 +52,7 @@ export function PrivateRoomScreen({
   const { t } = useTranslation();
   const theme = useTheme();
   const styles = createStyles(theme);
+  const [copied, setCopied] = useState(false);
   const activeMembers = members.filter((member) => member.isActive);
   const host = members.find((member) => member.role === 'host') ?? null;
   const isImpostorMode = selectedGame?.id === 'impostor';
@@ -84,13 +87,38 @@ export function PrivateRoomScreen({
     return `${value} ${t('common.secondsShort')}`;
   }
 
+  async function copyRoomCode() {
+    const webNavigator = (globalThis as unknown as {
+      navigator?: { clipboard?: { writeText: (value: string) => Promise<void> } };
+    }).navigator;
+
+    if (Platform.OS === 'web' && webNavigator?.clipboard?.writeText) {
+      await webNavigator.clipboard.writeText(roomCode);
+    }
+
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1400);
+  }
+
   return (
     <AppScreen title={t('room.title')} subtitle={canManageRoom ? t('room.subtitleHost') : t('room.subtitleMember')}>
       <SurfaceCard>
         <View style={styles.roomTop}>
           <View style={styles.codeBlock}>
             <Text style={styles.codeLabel}>{t('room.roomCode')}</Text>
-            <Text style={styles.codeValue}>{roomCode}</Text>
+            <View style={styles.codeRow}>
+              <Text style={styles.codeValue}>{roomCode}</Text>
+              <Pressable
+                onPress={() => {
+                  void copyRoomCode();
+                }}
+                style={({ pressed }) => [styles.copyButton, copied && styles.copyButtonDone, pressed && styles.copyButtonPressed]}
+                accessibilityRole="button"
+                accessibilityLabel="Copiar codigo"
+              >
+                <Text style={[styles.copyButtonLabel, copied && styles.copyButtonLabelDone]}>{copied ? '✓' : '⧉'}</Text>
+              </Pressable>
+            </View>
           </View>
           <View style={styles.statusStack}>
             <Badge label={roomStatusLabel} tone={roomStatus === 'active' ? 'success' : 'accent'} />
@@ -133,9 +161,7 @@ export function PrivateRoomScreen({
         </View>
         {members.map((member) => (
           <View key={member.id} style={styles.playerRow}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarLabel}>{member.displayName.slice(0, 2).toUpperCase()}</Text>
-            </View>
+            <AvatarSilhouette size={44} />
             <View style={styles.playerMeta}>
               <View style={styles.playerTitleRow}>
                 <Text style={styles.playerName}>{member.displayName}</Text>
@@ -218,6 +244,38 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
     fontWeight: '800',
     letterSpacing: 3
   },
+  codeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    flexWrap: 'wrap'
+  },
+  copyButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: theme.colors.backgroundElevated,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  copyButtonDone: {
+    backgroundColor: theme.colors.successMuted,
+    borderColor: theme.colors.success
+  },
+  copyButtonPressed: {
+    transform: [{ scale: 0.94 }]
+  },
+  copyButtonLabel: {
+    color: theme.colors.textPrimary,
+    fontSize: 20,
+    lineHeight: 24,
+    fontWeight: '800'
+  },
+  copyButtonLabelDone: {
+    color: theme.colors.successText
+  },
   sectionCopy: {
     color: theme.colors.textSecondary,
     fontSize: typography.body,
@@ -266,18 +324,6 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md
-  },
-  avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: theme.colors.backgroundElevated,
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  avatarLabel: {
-    color: theme.colors.highlight,
-    fontWeight: '800'
   },
   playerMeta: {
     flex: 1,

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Linking, Modal, Pressable, Share, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Animated, Linking, Modal, Pressable, Share, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { featuredGames, lobbyScenarios } from '../data/mockData';
@@ -19,6 +19,7 @@ import { GameplayScreen } from '../ui/screens/GameplayScreen';
 import { JoinRoomScreen } from '../ui/screens/JoinRoomScreen';
 import { LobbyScreen } from '../ui/screens/LobbyScreen';
 import { PrivateRoomScreen } from '../ui/screens/PrivateRoomScreen';
+import { ProfileScreen } from '../ui/screens/ProfileScreen';
 import { ResultsScreen } from '../ui/screens/ResultsScreen';
 import { RoomSettingsScreen } from '../ui/screens/RoomSettingsScreen';
 import { ScanRoomScreen } from '../ui/screens/ScanRoomScreen';
@@ -186,6 +187,9 @@ export function AppNavigator() {
     roomSettings,
     canGoBack,
     goBack,
+    openAccount,
+    openSettings,
+    openGamesTab,
     openRoom,
     openJoinRoom,
     continueRoom,
@@ -223,6 +227,7 @@ export function AppNavigator() {
   const autoCloseSinglePlayerRoomRef = useRef<string | null>(null);
   const hadAccessRef = useRef(false);
   const attemptedRoomResumeRef = useRef(false);
+  const screenFade = useRef(new Animated.Value(1)).current;
   const roomFlowScreens = ['room', 'chooseGames', 'roomSettings', 'gameplay', 'results'] as const;
 
   function mapAuthNotice(error?: string | null) {
@@ -581,6 +586,15 @@ export function AppNavigator() {
     roomsReady,
     session
   ]);
+
+  useEffect(() => {
+    screenFade.setValue(0);
+    Animated.timing(screenFade, {
+      toValue: 1,
+      duration: 220,
+      useNativeDriver: true
+    }).start();
+  }, [activeTab, currentScreen, screenFade]);
 
   const loadingShell = !isReady || !roomsReady;
   const resolvedLobbyScenario = buildLobbyScenario(activeRoom, isGuest, t);
@@ -1020,6 +1034,8 @@ export function AppNavigator() {
 
     return (
       <ResultsScreen
+        members={activeRoom?.members}
+        round={activeRoom?.round ?? null}
         onPlayAgain={() => {
           if (!activeRoom?.isHost) {
             setRoomNotice(t('room.hostOnlyContinue'));
@@ -1033,6 +1049,80 @@ export function AppNavigator() {
         onBackToLobby={backToLobby}
       />
     );
+  }
+
+  function renderProfileTab() {
+    return (
+      <ProfileScreen
+        displayName={displayName}
+        username={username}
+        email={email}
+        isGuest={isGuest}
+        language={language}
+        themePreference={themePreference}
+        isBusy={isBusy}
+        notice={settingsNotice}
+        onOpenAccount={() => {
+          setAccountNotice(null);
+          setIsAccountPanelOpen(true);
+        }}
+        onOpenAppearance={() => {
+          setSettingsNotice(null);
+          setIsAppearancePanelOpen(true);
+        }}
+        onChangeLanguage={(nextLanguage) => {
+          void changeLanguage(nextLanguage).then((result) => {
+            setSettingsNotice(
+              resolveAccountNotice(result.message) ??
+                (result.error === 'SUPABASE_NOT_CONFIGURED' ? t('account.notConfigured') : result.error ?? null)
+            );
+          });
+        }}
+        onLogout={() => {
+          setIsAppearancePanelOpen(false);
+          setIsAccountPanelOpen(false);
+          setIsSettingsPanelOpen(false);
+          setAccountNotice(null);
+          setSettingsNotice(null);
+          setAuthNotice(null);
+          setJoinNotice(null);
+          setRoomNotice(null);
+          void storeRoomResume(false);
+          void signOut();
+        }}
+      />
+    );
+  }
+
+  function renderCurrentTab() {
+    if (activeTab === 'account') {
+      return renderProfileTab();
+    }
+
+    if (activeTab === 'settings') {
+      return (
+        <GamesCatalogScreen
+          onSelectImpostor={() => {
+            if (activeRoom) {
+              void saveSelectedGame('impostor').then((result) => {
+                if (result.error) {
+                  setRoomNotice(mapRoomNotice(t, result.error));
+                  return;
+                }
+
+                setRoomNotice(null);
+                openGamesTab();
+              });
+              return;
+            }
+
+            openGamesTab();
+          }}
+        />
+      );
+    }
+
+    return renderGamesTab();
   }
 
   function renderSettingsPanel() {
@@ -1132,6 +1222,7 @@ export function AppNavigator() {
   function renderGamesCatalogPanel() {
     return (
       <GamesCatalogScreen
+        embedded
         onSelectImpostor={() => {
           if (activeRoom) {
             void saveSelectedGame('impostor').then((result) => {
@@ -1226,6 +1317,7 @@ export function AppNavigator() {
 
   return (
     <View style={styles.container}>
+      <AmbientBackground />
       <View style={styles.topBar}>
         <View style={styles.headerIdentity}>
           <Text style={styles.headerGreeting}>
@@ -1249,21 +1341,11 @@ export function AppNavigator() {
           <View style={styles.topBarUtilityActions}>
             <Pressable
               onPress={() => {
-                setIsGamesCatalogOpen(true);
-              }}
-              style={({ pressed, hovered }) => [
-                styles.catalogTrigger,
-                hovered && styles.catalogTriggerHover,
-                pressed && styles.catalogTriggerPressed
-              ]}
-            >
-              <Text style={styles.catalogTriggerLabel}>{t('common.games')}</Text>
-            </Pressable>
-            <Pressable
-              onPress={() => {
                 setSettingsNotice(null);
-                setIsSettingsPanelOpen(true);
+                openAccount();
               }}
+              accessibilityRole="button"
+              accessibilityLabel="Abrir perfil"
               style={({ pressed, hovered }) => [
                 styles.settingsTrigger,
                 hovered && styles.settingsTriggerHover,
@@ -1271,13 +1353,17 @@ export function AppNavigator() {
               ]}
             >
               <Text style={styles.settingsTriggerIcon}>⚙</Text>
-              <Text style={styles.settingsTriggerLabel}>{t('common.settings')}</Text>
             </Pressable>
           </View>
         </View>
       </View>
 
-      <View style={styles.content}>{renderGamesTab()}</View>
+      <Animated.View style={[styles.content, { opacity: screenFade }]}>{renderCurrentTab()}</Animated.View>
+      <View style={styles.bottomNav}>
+        <TabButton label="Inicio" icon="⌂" active={activeTab === 'games'} onPress={openGamesTab} />
+        <TabButton label="Juegos" icon="▣" active={activeTab === 'settings'} onPress={openSettings} />
+        <TabButton label="Perfil" icon="♙" active={activeTab === 'account'} onPress={openAccount} />
+      </View>
 
       {isSettingsPanelOpen ? (
         <Modal
@@ -1409,6 +1495,141 @@ export function AppNavigator() {
   );
 }
 
+function AmbientBackground() {
+  const theme = useTheme();
+  const drift = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(drift, {
+          toValue: 1,
+          duration: 7600,
+          useNativeDriver: true
+        }),
+        Animated.timing(drift, {
+          toValue: 0,
+          duration: 7600,
+          useNativeDriver: true
+        })
+      ])
+    );
+
+    loop.start();
+
+    return () => loop.stop();
+  }, [drift]);
+
+  const firstOrb = {
+    transform: [
+      {
+        translateX: drift.interpolate({
+          inputRange: [0, 1],
+          outputRange: [-14, 18]
+        })
+      },
+      {
+        translateY: drift.interpolate({
+          inputRange: [0, 1],
+          outputRange: [12, -10]
+        })
+      }
+    ]
+  };
+  const secondOrb = {
+    transform: [
+      {
+        translateX: drift.interpolate({
+          inputRange: [0, 1],
+          outputRange: [18, -12]
+        })
+      },
+      {
+        translateY: drift.interpolate({
+          inputRange: [0, 1],
+          outputRange: [-10, 16]
+        })
+      }
+    ]
+  };
+
+  return (
+    <View pointerEvents="none" style={StyleSheet.absoluteFillObject}>
+      <Animated.View style={[ambientStyles.orb, ambientStyles.orbTop, { backgroundColor: theme.colors.badgeAccentBackground }, firstOrb]} />
+      <Animated.View style={[ambientStyles.orb, ambientStyles.orbBottom, { backgroundColor: theme.colors.successMuted }, secondOrb]} />
+    </View>
+  );
+}
+
+type TabButtonProps = {
+  label: string;
+  icon: string;
+  active: boolean;
+  onPress: () => void;
+};
+
+function TabButton({ label, icon, active, onPress }: TabButtonProps) {
+  const theme = useTheme();
+
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [tabStyles.item, active && { borderTopColor: theme.colors.primary }, pressed && tabStyles.itemPressed]}
+      accessibilityRole="tab"
+      accessibilityState={{ selected: active }}
+    >
+      <Text style={[tabStyles.icon, { color: active ? theme.colors.textPrimary : theme.colors.textMuted }]}>{icon}</Text>
+      <Text style={[tabStyles.label, { color: active ? theme.colors.highlight : theme.colors.textMuted }]}>{label}</Text>
+    </Pressable>
+  );
+}
+
+const ambientStyles = StyleSheet.create({
+  orb: {
+    position: 'absolute',
+    width: 280,
+    height: 280,
+    borderRadius: 140,
+    opacity: 0.22
+  },
+  orbTop: {
+    top: 90,
+    left: -120
+  },
+  orbBottom: {
+    right: -130,
+    bottom: 110
+  }
+});
+
+const tabStyles = StyleSheet.create({
+  item: {
+    flex: 1,
+    minHeight: 66,
+    paddingTop: spacing.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 2,
+    borderTopWidth: 3,
+    borderTopColor: 'transparent'
+  },
+  itemPressed: {
+    transform: [{ scale: 0.98 }]
+  },
+  icon: {
+    fontSize: 28,
+    lineHeight: 30,
+    fontWeight: '800'
+  },
+  label: {
+    fontSize: typography.caption,
+    lineHeight: 18,
+    letterSpacing: 1,
+    fontWeight: '800',
+    textTransform: 'uppercase'
+  }
+});
+
 function createStyles(theme: ReturnType<typeof useTheme>, isCompactScreen: boolean, isNarrowScreen: boolean) {
   return StyleSheet.create({
   container: {
@@ -1424,7 +1645,7 @@ function createStyles(theme: ReturnType<typeof useTheme>, isCompactScreen: boole
     justifyContent: 'space-between',
     alignItems: isCompactScreen ? 'stretch' : 'center',
     gap: spacing.md,
-    backgroundColor: theme.colors.background
+    backgroundColor: 'transparent'
   },
   topBarActions: {
     flexDirection: 'column',
@@ -1447,7 +1668,7 @@ function createStyles(theme: ReturnType<typeof useTheme>, isCompactScreen: boole
     alignItems: 'center',
     gap: spacing.sm,
     width: '100%',
-    justifyContent: isNarrowScreen ? 'space-between' : 'flex-end'
+    justifyContent: 'flex-end'
   },
   topBarAction: {
     paddingVertical: spacing.xs,
@@ -1506,19 +1727,17 @@ function createStyles(theme: ReturnType<typeof useTheme>, isCompactScreen: boole
     fontWeight: '700'
   },
   settingsTrigger: {
-    minHeight: isNarrowScreen ? 40 : 42,
-    borderRadius: radius.pill,
-    paddingHorizontal: isNarrowScreen ? spacing.sm : spacing.md,
+    width: 54,
+    minHeight: 54,
+    borderRadius: 27,
+    paddingHorizontal: 0,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs,
     backgroundColor: theme.colors.surface,
     borderWidth: 1,
     borderColor: theme.colors.border,
-    flexShrink: 1,
-    minWidth: isNarrowScreen ? 132 : undefined,
     justifyContent: 'center',
-    flex: isNarrowScreen ? 1 : undefined
+    flexShrink: 0
   },
   settingsTriggerHover: {
     borderColor: theme.colors.borderStrong,
@@ -1528,8 +1747,8 @@ function createStyles(theme: ReturnType<typeof useTheme>, isCompactScreen: boole
     transform: [{ scale: 0.985 }]
   },
   settingsTriggerIcon: {
-    color: theme.colors.textMuted,
-    fontSize: typography.body,
+    color: theme.colors.textPrimary,
+    fontSize: typography.section,
     fontWeight: '700'
   },
   settingsTriggerLabel: {
@@ -1562,6 +1781,14 @@ function createStyles(theme: ReturnType<typeof useTheme>, isCompactScreen: boole
     color: theme.colors.textPrimary,
     fontSize: isNarrowScreen ? typography.caption : typography.body,
     fontWeight: '700'
+  },
+  bottomNav: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
+    backgroundColor: theme.colors.background,
+    paddingHorizontal: isCompactScreen ? spacing.md : spacing.xl
   },
   overlayBackdrop: {
     flex: 1,

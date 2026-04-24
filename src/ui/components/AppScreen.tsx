@@ -35,7 +35,7 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
   return StyleSheet.create({
     safeArea: {
       flex: 1,
-      backgroundColor: theme.colors.background
+      backgroundColor: 'transparent'
     },
     content: {
       width: '100%',

@@ -12,31 +12,36 @@ export const textStyles = {
   hero: {
     fontSize: typography.hero,
     lineHeight: 54,
-    letterSpacing: -1.1,
-    fontWeight: '800' as const
+    letterSpacing: 0,
+    fontFamily: 'DM Serif Display, Georgia, serif',
+    fontWeight: '700' as const
   },
   title: {
     fontSize: typography.title,
     lineHeight: 40,
-    letterSpacing: -0.8,
-    fontWeight: '800' as const
+    letterSpacing: 0,
+    fontFamily: 'DM Serif Display, Georgia, serif',
+    fontWeight: '700' as const
   },
   section: {
     fontSize: typography.section,
     lineHeight: 28,
-    letterSpacing: -0.4,
+    letterSpacing: 0,
+    fontFamily: 'DM Serif Display, Georgia, serif',
     fontWeight: '700' as const
   },
   body: {
     fontSize: typography.body,
     lineHeight: 24,
-    letterSpacing: -0.1,
+    letterSpacing: 0,
+    fontFamily: 'DM Sans, Inter, system-ui, sans-serif',
     fontWeight: '500' as const
   },
   bodyStrong: {
     fontSize: typography.body,
     lineHeight: 22,
-    letterSpacing: -0.1,
+    letterSpacing: 0,
+    fontFamily: 'DM Sans, Inter, system-ui, sans-serif',
     fontWeight: '700' as const
   },
   caption: {
