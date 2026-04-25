@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
+import { guessWhoCategoryOptions } from '../../data/guessWho/categories';
 import { impostorThemeOptions } from '../../data/themes';
 import type { RoomSettings } from '../../navigation/types';
 import { AppButton } from '../components/AppButton';
@@ -13,13 +14,20 @@ type RoomSettingsScreenProps = {
   onChangeSettings: (next: RoomSettings) => void;
   onSave: () => void;
   embedded?: boolean;
+  selectedGameId?: 'impostor' | 'guess-who' | null;
 };
 
 const impostorCountOptions = [1, 2, 3, 4];
 const turnOptions = [0, 30, 45, 60, 300];
 const missBehaviorOptions: RoomSettings['missBehavior'][] = ['repeat', 'end'];
 
-export function RoomSettingsScreen({ settings, onChangeSettings, onSave, embedded = false }: RoomSettingsScreenProps) {
+export function RoomSettingsScreen({
+  settings,
+  onChangeSettings,
+  onSave,
+  embedded = false,
+  selectedGameId = 'impostor'
+}: RoomSettingsScreenProps) {
   const { t } = useTranslation();
   const theme = useTheme();
   const styles = createStyles(theme);
@@ -33,69 +41,87 @@ export function RoomSettingsScreen({ settings, onChangeSettings, onSave, embedde
 
   const content = (
     <>
-      <SurfaceCard>
-        <Text style={styles.sectionTitle}>{t('roomSettings.impostorCount')}</Text>
-        <View style={styles.optionRow}>
-          {impostorCountOptions.map((impostorCount) => (
-            <OptionChip
-              key={impostorCount}
-              label={t('roomSettings.impostorCountValue', { count: impostorCount })}
-              active={settings.impostorCount === impostorCount}
-              onPress={() => onChangeSettings({ ...settings, impostorCount })}
-            />
-          ))}
-        </View>
-      </SurfaceCard>
+      {selectedGameId === 'guess-who' ? (
+        <SurfaceCard>
+          <Text style={styles.sectionTitle}>{t('roomSettings.guessWhoCategory')}</Text>
+          <View style={styles.optionColumn}>
+            {guessWhoCategoryOptions.map((guessWhoCategory) => (
+              <OptionChip
+                key={guessWhoCategory}
+                label={t(`roomSettings.guessWhoCategoryOptions.${guessWhoCategory}`)}
+                active={settings.guessWhoCategory === guessWhoCategory}
+                onPress={() => onChangeSettings({ ...settings, guessWhoCategory })}
+              />
+            ))}
+          </View>
+        </SurfaceCard>
+      ) : (
+        <>
+          <SurfaceCard>
+            <Text style={styles.sectionTitle}>{t('roomSettings.impostorCount')}</Text>
+            <View style={styles.optionRow}>
+              {impostorCountOptions.map((impostorCount) => (
+                <OptionChip
+                  key={impostorCount}
+                  label={t('roomSettings.impostorCountValue', { count: impostorCount })}
+                  active={settings.impostorCount === impostorCount}
+                  onPress={() => onChangeSettings({ ...settings, impostorCount })}
+                />
+              ))}
+            </View>
+          </SurfaceCard>
 
-      <SurfaceCard>
-        <Text style={styles.sectionTitle}>{t('roomSettings.theme')}</Text>
-        <Text style={styles.summaryCopy}>{t('roomSettings.themeHint')}</Text>
-        <View style={styles.optionColumn}>
-          {impostorThemeOptions.map((themeCategory) => (
-            <OptionChip
-              key={themeCategory}
-              label={t(`roomSettings.themeOptions.${themeCategory}`)}
-              active={settings.themeCategory === themeCategory}
-              onPress={() => onChangeSettings({ ...settings, themeCategory })}
-            />
-          ))}
-        </View>
-      </SurfaceCard>
+          <SurfaceCard>
+            <Text style={styles.sectionTitle}>{t('roomSettings.theme')}</Text>
+            <Text style={styles.summaryCopy}>{t('roomSettings.themeHint')}</Text>
+            <View style={styles.optionColumn}>
+              {impostorThemeOptions.map((themeCategory) => (
+                <OptionChip
+                  key={themeCategory}
+                  label={t(`roomSettings.themeOptions.${themeCategory}`)}
+                  active={settings.themeCategory === themeCategory}
+                  onPress={() => onChangeSettings({ ...settings, themeCategory })}
+                />
+              ))}
+            </View>
+          </SurfaceCard>
 
-      <SurfaceCard>
-        <Text style={styles.sectionTitle}>{t('roomSettings.turnTimer')}</Text>
-        <View style={styles.optionRow}>
-          {turnOptions.map((turnSeconds) => (
-            <OptionChip
-              key={turnSeconds}
-              label={
-                turnSeconds === 0
-                  ? t('roomSettings.turnTimerOptions.none')
-                  : turnSeconds === 300
-                    ? t('roomSettings.turnTimerOptions.fiveMinutes')
-                    : `${turnSeconds}s`
-              }
-              active={settings.turnSeconds === turnSeconds}
-              onPress={() => onChangeSettings({ ...settings, turnSeconds })}
-            />
-          ))}
-        </View>
-      </SurfaceCard>
+          <SurfaceCard>
+            <Text style={styles.sectionTitle}>{t('roomSettings.turnTimer')}</Text>
+            <View style={styles.optionRow}>
+              {turnOptions.map((turnSeconds) => (
+                <OptionChip
+                  key={turnSeconds}
+                  label={
+                    turnSeconds === 0
+                      ? t('roomSettings.turnTimerOptions.none')
+                      : turnSeconds === 300
+                        ? t('roomSettings.turnTimerOptions.fiveMinutes')
+                        : `${turnSeconds}s`
+                  }
+                  active={settings.turnSeconds === turnSeconds}
+                  onPress={() => onChangeSettings({ ...settings, turnSeconds })}
+                />
+              ))}
+            </View>
+          </SurfaceCard>
 
-      <SurfaceCard>
-        <Text style={styles.sectionTitle}>{t('roomSettings.missBehavior')}</Text>
-        <Text style={styles.summaryCopy}>{t('roomSettings.missBehaviorHint')}</Text>
-        <View style={styles.optionColumn}>
-          {missBehaviorOptions.map((missBehavior) => (
-            <OptionChip
-              key={missBehavior}
-              label={t(`roomSettings.missBehaviorOptions.${missBehavior}`)}
-              active={settings.missBehavior === missBehavior}
-              onPress={() => handleMissBehaviorChange(missBehavior)}
-            />
-          ))}
-        </View>
-      </SurfaceCard>
+          <SurfaceCard>
+            <Text style={styles.sectionTitle}>{t('roomSettings.missBehavior')}</Text>
+            <Text style={styles.summaryCopy}>{t('roomSettings.missBehaviorHint')}</Text>
+            <View style={styles.optionColumn}>
+              {missBehaviorOptions.map((missBehavior) => (
+                <OptionChip
+                  key={missBehavior}
+                  label={t(`roomSettings.missBehaviorOptions.${missBehavior}`)}
+                  active={settings.missBehavior === missBehavior}
+                  onPress={() => handleMissBehaviorChange(missBehavior)}
+                />
+              ))}
+            </View>
+          </SurfaceCard>
+        </>
+      )}
 
       {!embedded ? <AppButton label={t('roomSettings.save')} onPress={onSave} /> : null}
     </>

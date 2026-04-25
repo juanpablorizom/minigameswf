@@ -8,6 +8,14 @@ export const featuredGames: MiniGame[] = [
     duration: '1 modo',
     energy: 'Social',
     description: 'One or more players do not know the secret word. The room talks, votes, and tries to expel every impostor.'
+  },
+  {
+    id: 'guess-who',
+    name: 'Adivina Quién Soy',
+    category: 'Social Deduction',
+    duration: '2 intentos',
+    energy: 'Social',
+    description: 'See everyone else, guess yourself.'
   }
 ];
 
@@ -66,12 +74,13 @@ export const lobbyScenarios: Record<LobbyScenarioKey, LobbyScenario> = {
   }
 };
 
-export const initialSelectedGameIds = ['impostor'];
+export const initialSelectedGameIds = ['impostor', 'guess-who'];
 
 export const initialRoomSettings: RoomSettings = {
   turnSeconds: 45,
   impostorCount: 1,
   themeCategory: 'animals',
+  guessWhoCategory: 'popular',
   missBehavior: 'repeat',
   balanceEndsGame: true
 };

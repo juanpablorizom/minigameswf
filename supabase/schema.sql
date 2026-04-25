@@ -63,8 +63,10 @@ create table if not exists public.room_rounds (
       'animals',
       'countries',
       'objects',
+      'faces-gestures',
       'famous-people',
       'football-players',
+      'popular',
       'movies-series',
       'youtubers',
       'basketball',
@@ -99,8 +101,10 @@ add constraint room_rounds_theme_category_check check (
     'animals',
     'countries',
     'objects',
+    'faces-gestures',
     'famous-people',
     'football-players',
+    'popular',
     'movies-series',
     'youtubers',
     'basketball',
@@ -126,6 +130,28 @@ create table if not exists public.room_round_votes (
   unique (round_id, voter_user_id)
 );
 
+create table if not exists public.room_guess_who_assignments (
+  id uuid primary key default gen_random_uuid(),
+  room_id uuid not null references public.rooms (id) on delete cascade,
+  round_id uuid not null references public.room_rounds (id) on delete cascade,
+  user_id uuid not null references auth.users (id) on delete cascade,
+  character_label text not null,
+  normalized_character text not null,
+  guess_count integer not null default 0,
+  last_guess text,
+  solved_at timestamptz,
+  failed_at timestamptz,
+  created_at timestamptz not null default timezone('utc', now()),
+  updated_at timestamptz not null default timezone('utc', now()),
+  unique (round_id, user_id)
+);
+
+create index if not exists room_guess_who_assignments_room_id_idx
+on public.room_guess_who_assignments (room_id);
+
+create index if not exists room_guess_who_assignments_round_id_idx
+on public.room_guess_who_assignments (round_id);
+
 alter table public.profiles enable row level security;
 alter table public.user_settings enable row level security;
 alter table public.rooms enable row level security;
@@ -133,6 +159,7 @@ alter table public.room_members enable row level security;
 alter table public.room_activity enable row level security;
 alter table public.room_rounds enable row level security;
 alter table public.room_round_votes enable row level security;
+alter table public.room_guess_who_assignments enable row level security;
 
 create or replace function public.set_updated_at()
 returns trigger
@@ -211,6 +238,12 @@ execute function public.set_updated_at();
 drop trigger if exists set_room_rounds_updated_at on public.room_rounds;
 create trigger set_room_rounds_updated_at
 before update on public.room_rounds
+for each row
+execute function public.set_updated_at();
+
+drop trigger if exists set_room_guess_who_assignments_updated_at on public.room_guess_who_assignments;
+create trigger set_room_guess_who_assignments_updated_at
+before update on public.room_guess_who_assignments
 for each row
 execute function public.set_updated_at();
 
@@ -588,6 +621,331 @@ begin
   );
 
   return next_round;
+end;
+$$;
+
+create or replace function public.normalize_guess_who_answer(p_value text)
+returns text
+language sql
+immutable
+as $$
+  select regexp_replace(
+    translate(
+      lower(trim(coalesce(p_value, ''))),
+      'áàäâãåéèëêíìïîóòöôõúùüûñç',
+      'aaaaaaeeeeiiiiooooouuuunc'
+    ),
+    '\s+',
+    ' ',
+    'g'
+  );
+$$;
+
+create or replace function public.start_guess_who_round(
+  p_room_id uuid,
+  p_category_id text default 'popular'
+)
+returns public.room_rounds
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  current_user_id uuid := auth.uid();
+  target_room public.rooms;
+  member_count integer := 0;
+  previous_round_number integer := 0;
+  character_pool text[];
+  next_round public.room_rounds;
+begin
+  if current_user_id is null then
+    raise exception 'AUTH_REQUIRED';
+  end if;
+
+  select *
+  into target_room
+  from public.rooms
+  where id = p_room_id
+  limit 1;
+
+  if target_room.id is null then
+    raise exception 'ROOM_NOT_FOUND';
+  end if;
+
+  if target_room.host_user_id <> current_user_id then
+    raise exception 'ROUND_HOST_ONLY';
+  end if;
+
+  member_count := (
+    select count(*)
+    from public.room_members
+    where room_id = p_room_id
+      and is_active = true
+  );
+
+  if member_count < 2 then
+    raise exception 'ROUND_MIN_PLAYERS';
+  end if;
+
+  character_pool := case coalesce(p_category_id, 'popular')
+    when 'popular' then array['Juan Gabriel', 'Shakira', 'Bad Bunny', 'Taylor Swift', 'Michael Jackson', 'Lionel Messi', 'Cristiano Ronaldo', 'Kylian Mbappe', 'Serena Williams', 'Michael Jordan', 'LeBron James', 'Usain Bolt', 'Checo Perez', 'Max Verstappen', 'Darth Vader', 'Yoda', 'Harry Potter', 'Hermione Granger', 'Batman', 'Spider-Man', 'Iron Man', 'Elsa', 'Shrek', 'Woody', 'Buzz Lightyear', 'Mickey Mouse', 'SpongeBob', 'Goku', 'Naruto', 'Pikachu', 'Scooby-Doo', 'Hello Kitty']
+    when 'movies-series' then array['Walter White', 'Jesse Pinkman', 'Saul Goodman', 'Eleven', 'Dustin Henderson', 'Wednesday Addams', 'Homer Simpson', 'Bart Simpson', 'Rick Sanchez', 'Morty Smith', 'Jon Snow', 'Daenerys Targaryen', 'Tyrion Lannister', 'Geralt of Rivia', 'Darth Vader', 'Luke Skywalker', 'Yoda', 'Frodo Baggins', 'Gandalf', 'Jack Sparrow', 'Indiana Jones', 'Forrest Gump', 'Tony Stark', 'Peter Parker', 'Bruce Wayne', 'Joker', 'Harley Quinn', 'Elsa', 'Simba', 'Moana', 'Shrek', 'Po']
+    else null
+  end;
+
+  if character_pool is null or array_length(character_pool, 1) < member_count then
+    raise exception 'ROUND_THEME_NOT_FOUND';
+  end if;
+
+  select coalesce(max(room_rounds.round_number), 0)
+  into previous_round_number
+  from public.room_rounds
+  where room_id = p_room_id;
+
+  delete from public.room_rounds
+  where room_id = p_room_id;
+
+  insert into public.room_rounds (
+    room_id,
+    round_number,
+    game_id,
+    theme_category,
+    secret_word,
+    impostor_ids,
+    eliminated_user_ids,
+    phase,
+    vote_duration_seconds,
+    miss_behavior,
+    balance_rule_enabled,
+    outcome,
+    started_by_user_id,
+    status
+  )
+  values (
+    p_room_id,
+    previous_round_number + 1,
+    'guess-who',
+    coalesce(p_category_id, 'popular'),
+    'Adivina Quien Soy',
+    '{}'::uuid[],
+    '{}'::uuid[],
+    'reveal',
+    0,
+    'repeat',
+    false,
+    'continue',
+    current_user_id,
+    'active'
+  )
+  returning * into next_round;
+
+  with active_members as (
+    select user_id, row_number() over (order by random()) as rn
+    from public.room_members
+    where room_id = p_room_id
+      and is_active = true
+  ),
+  selected_characters as (
+    select character_label, row_number() over () as rn
+    from (
+      select character_label
+      from unnest(character_pool) as pool(character_label)
+      order by random()
+      limit member_count
+    ) picked
+  )
+  insert into public.room_guess_who_assignments (
+    room_id,
+    round_id,
+    user_id,
+    character_label,
+    normalized_character
+  )
+  select
+    p_room_id,
+    next_round.id,
+    active_members.user_id,
+    selected_characters.character_label,
+    public.normalize_guess_who_answer(selected_characters.character_label)
+  from active_members
+  join selected_characters on selected_characters.rn = active_members.rn;
+
+  update public.rooms
+  set status = 'active',
+      selected_game_id = 'guess-who'
+  where id = p_room_id;
+
+  insert into public.room_activity (room_id, actor_user_id, type, payload)
+  values (
+    p_room_id,
+    current_user_id,
+    'guess_who_round_started',
+    jsonb_build_object('round_id', next_round.id, 'category_id', coalesce(p_category_id, 'popular'))
+  );
+
+  return next_round;
+end;
+$$;
+
+create or replace function public.get_guess_who_round_state(p_room_id uuid)
+returns table (
+  round_id uuid,
+  round_number integer,
+  category_id text,
+  round_status text,
+  round_phase text,
+  started_at timestamptz,
+  user_id uuid,
+  character_label text,
+  guess_count integer,
+  remaining_guesses integer,
+  last_guess text,
+  solved_at timestamptz,
+  failed_at timestamptz,
+  is_current_user boolean
+)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  current_user_id uuid := auth.uid();
+  target_round public.room_rounds;
+begin
+  if current_user_id is null then
+    raise exception 'AUTH_REQUIRED';
+  end if;
+
+  if not private.is_room_member(p_room_id) then
+    raise exception 'ROOM_MEMBER_NOT_FOUND';
+  end if;
+
+  select *
+  into target_round
+  from public.room_rounds
+  where room_id = p_room_id
+    and game_id = 'guess-who'
+  limit 1;
+
+  if target_round.id is null then
+    raise exception 'ROUND_NOT_FOUND';
+  end if;
+
+  return query
+  select
+    target_round.id,
+    target_round.round_number,
+    target_round.theme_category,
+    target_round.status,
+    target_round.phase,
+    target_round.created_at,
+    assignments.user_id,
+    case
+      when assignments.user_id = current_user_id and target_round.status = 'active' then null
+      else assignments.character_label
+    end as character_label,
+    assignments.guess_count,
+    greatest(2 - assignments.guess_count, 0) as remaining_guesses,
+    assignments.last_guess,
+    assignments.solved_at,
+    assignments.failed_at,
+    assignments.user_id = current_user_id as is_current_user
+  from public.room_guess_who_assignments assignments
+  where assignments.round_id = target_round.id
+  order by assignments.created_at asc;
+end;
+$$;
+
+create or replace function public.submit_guess_who_answer(
+  p_room_id uuid,
+  p_guess text
+)
+returns public.room_guess_who_assignments
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  current_user_id uuid := auth.uid();
+  target_round public.room_rounds;
+  target_assignment public.room_guess_who_assignments;
+  updated_assignment public.room_guess_who_assignments;
+  normalized_guess text;
+  next_guess_count integer := 0;
+  is_correct boolean := false;
+  pending_count integer := 0;
+begin
+  if current_user_id is null then
+    raise exception 'AUTH_REQUIRED';
+  end if;
+
+  select *
+  into target_round
+  from public.room_rounds
+  where room_id = p_room_id
+    and game_id = 'guess-who'
+  limit 1;
+
+  if target_round.id is null then
+    raise exception 'ROUND_NOT_FOUND';
+  end if;
+
+  if target_round.status <> 'active' then
+    raise exception 'ROUND_NOT_ACTIVE';
+  end if;
+
+  select *
+  into target_assignment
+  from public.room_guess_who_assignments
+  where round_id = target_round.id
+    and user_id = current_user_id
+  limit 1;
+
+  if target_assignment.id is null then
+    raise exception 'ROOM_MEMBER_NOT_FOUND';
+  end if;
+
+  if target_assignment.solved_at is not null then
+    raise exception 'GUESS_WHO_ALREADY_SOLVED';
+  end if;
+
+  if target_assignment.failed_at is not null or target_assignment.guess_count >= 2 then
+    raise exception 'GUESS_WHO_NO_ATTEMPTS';
+  end if;
+
+  normalized_guess := public.normalize_guess_who_answer(p_guess);
+  next_guess_count := target_assignment.guess_count + 1;
+  is_correct := normalized_guess = target_assignment.normalized_character;
+
+  update public.room_guess_who_assignments
+  set guess_count = next_guess_count,
+      last_guess = p_guess,
+      solved_at = case when is_correct then timezone('utc', now()) else solved_at end,
+      failed_at = case when not is_correct and next_guess_count >= 2 then timezone('utc', now()) else failed_at end
+  where id = target_assignment.id
+  returning * into updated_assignment;
+
+  pending_count := (
+    select count(*)
+    from public.room_guess_who_assignments
+    where round_id = target_round.id
+      and solved_at is null
+      and failed_at is null
+  );
+
+  if pending_count = 0 then
+    update public.room_rounds
+    set status = 'finished',
+        phase = 'result',
+        outcome = 'continue'
+    where id = target_round.id;
+  else
+    update public.room_rounds
+    set updated_at = timezone('utc', now())
+    where id = target_round.id;
+  end if;
+
+  return updated_assignment;
 end;
 $$;
 

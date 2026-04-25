@@ -16,6 +16,7 @@ import { AppearanceScreen } from '../ui/screens/AppearanceScreen';
 import { ChooseGamesScreen } from '../ui/screens/ChooseGamesScreen';
 import { GamesCatalogScreen } from '../ui/screens/GamesCatalogScreen';
 import { GameplayScreen } from '../ui/screens/GameplayScreen';
+import { GuessWhoGameplayScreen } from '../ui/screens/GuessWhoGameplayScreen';
 import { JoinRoomScreen } from '../ui/screens/JoinRoomScreen';
 import { LobbyScreen } from '../ui/screens/LobbyScreen';
 import { PrivateRoomScreen } from '../ui/screens/PrivateRoomScreen';
@@ -77,6 +78,14 @@ function mapRoomNotice(translate: (key: string, options?: Record<string, unknown
 
   if (error === 'ROUND_MIN_PLAYERS') {
     return translate('room.minimumPlayersRequired');
+  }
+
+  if (error === 'GUESS_WHO_NO_ATTEMPTS') {
+    return translate('guessWho.noAttempts');
+  }
+
+  if (error === 'GUESS_WHO_ALREADY_SOLVED') {
+    return translate('guessWho.correct');
   }
 
   if (error === 'ROUND_THEME_NOT_FOUND') {
@@ -178,6 +187,8 @@ export function AppNavigator() {
     removeMember,
     leaveRoom,
     startImpostorRound,
+    startGuessWhoRound,
+    submitGuessWhoAnswer,
     castImpostorVote,
     resolveImpostorVote,
     returnRoomToLobby,
@@ -279,6 +290,14 @@ export function AppNavigator() {
     return getActiveMemberCount(room) >= 3;
   }
 
+  function canStartGuessWhoRound(room: RoomDetails | null) {
+    return getActiveMemberCount(room) >= 2;
+  }
+
+  function getSelectedGameId(room: RoomDetails | null) {
+    return room?.room.selected_game_id === 'guess-who' ? 'guess-who' : 'impostor';
+  }
+
   function runStartImpostorRound(onSuccess?: () => void) {
     if (!activeRoom || activeRoom.room.status === 'finished') {
       setRoomNotice(t('lobby.errors.noActiveRoomFallback'));
@@ -319,6 +338,48 @@ export function AppNavigator() {
 
       startGameplay();
     });
+  }
+
+  function runStartGuessWhoRound(onSuccess?: () => void) {
+    if (!activeRoom || activeRoom.room.status === 'finished') {
+      setRoomNotice(t('lobby.errors.noActiveRoomFallback'));
+      backToLobby();
+      return;
+    }
+
+    if (!canStartGuessWhoRound(activeRoom)) {
+      setRoomNotice(t('room.minimumPlayersRequiredGuessWho'));
+      continueRoom();
+      return;
+    }
+
+    setRoomNotice(t('room.roundStarting'));
+
+    void startGuessWhoRound(roomSettings.guessWhoCategory).then((result) => {
+      if (result.error) {
+        setRoomNotice(
+          result.error === 'ROUND_MIN_PLAYERS' ? t('room.minimumPlayersRequiredGuessWho') : mapRoomNotice(t, result.error)
+        );
+        return;
+      }
+
+      setRoomNotice(null);
+      if (onSuccess) {
+        onSuccess();
+        return;
+      }
+
+      startGameplay();
+    });
+  }
+
+  function runStartSelectedRound(onSuccess?: () => void) {
+    if (getSelectedGameId(activeRoom) === 'guess-who') {
+      runStartGuessWhoRound(onSuccess);
+      return;
+    }
+
+    runStartImpostorRound(onSuccess);
   }
 
   useEffect(() => {
@@ -780,6 +841,34 @@ export function AppNavigator() {
     setIsGamesCatalogOpen(true);
   }
 
+  function selectCatalogGame(gameId: 'impostor' | 'guess-who', closePanel = false) {
+    if (activeRoom) {
+      void saveSelectedGame(gameId).then((result) => {
+        if (result.error) {
+          setRoomNotice(mapRoomNotice(t, result.error));
+          return;
+        }
+
+        setRoomNotice(null);
+        if (closePanel) {
+          setIsGamesCatalogOpen(false);
+          return;
+        }
+
+        continueRoom();
+      });
+      return;
+    }
+
+    setRoomNotice(null);
+    if (closePanel) {
+      setIsGamesCatalogOpen(false);
+      return;
+    }
+
+    backToLobby();
+  }
+
   function requestLeaveRoom() {
     if (!activeRoom || !roomFlowScreens.includes(currentScreen as (typeof roomFlowScreens)[number])) {
       backToLobby();
@@ -936,7 +1025,8 @@ export function AppNavigator() {
     if (resolvedScreen === 'room' && activeRoom) {
       const selectedGame =
         featuredGames.find((game) => game.id === activeRoom.room.selected_game_id) ?? featuredGames[0] ?? null;
-      const canStartGame = canStartImpostorRound(activeRoom);
+      const selectedGameId = selectedGame?.id ?? 'impostor';
+      const canStartGame = selectedGameId === 'guess-who' ? canStartGuessWhoRound(activeRoom) : canStartImpostorRound(activeRoom);
 
       return (
         <PrivateRoomScreen
@@ -948,7 +1038,13 @@ export function AppNavigator() {
           settings={roomSettings}
           canManageRoom={activeRoom.isHost}
           canStartGame={canStartGame}
-          startDisabledReason={canStartGame ? null : t('room.minimumPlayersRequired')}
+          startDisabledReason={
+            canStartGame
+              ? null
+              : selectedGameId === 'guess-who'
+                ? t('room.minimumPlayersRequiredGuessWho')
+                : t('room.minimumPlayersRequired')
+          }
           isBusy={roomBusy}
           notice={roomNotice ?? syncNotice}
           syncState={syncState}
@@ -968,7 +1064,7 @@ export function AppNavigator() {
               return;
             }
 
-            runStartImpostorRound();
+            runStartSelectedRound();
           }}
           onRemoveMember={(memberUserId) => {
             void removeMember(memberUserId).then((result) => {
@@ -1008,7 +1104,14 @@ export function AppNavigator() {
     }
 
     if (resolvedScreen === 'roomSettings') {
-      return <RoomSettingsScreen settings={roomSettings} onChangeSettings={updateRoomSettings} onSave={saveRoomSettings} />;
+      return (
+        <RoomSettingsScreen
+          settings={roomSettings}
+          selectedGameId={getSelectedGameId(activeRoom)}
+          onChangeSettings={updateRoomSettings}
+          onSave={saveRoomSettings}
+        />
+      );
     }
 
     if (resolvedScreen === 'gameplay') {
@@ -1023,12 +1126,33 @@ export function AppNavigator() {
         isCurrentUser: member.isCurrentUser
       }));
 
+      if (activeRoom?.round?.gameId === 'guess-who') {
+        return (
+          <GuessWhoGameplayScreen
+            players={gameplayPlayers}
+            roundSetup={activeRoom.round}
+            isBusy={roomBusy}
+            notice={roomNotice}
+            onSubmitGuess={(guess) => {
+              void submitGuessWhoAnswer(guess).then((result) => {
+                if (result.error) {
+                  setRoomNotice(mapRoomNotice(t, result.error));
+                  return;
+                }
+
+                setRoomNotice(result.correct ? t('guessWho.correct') : t('guessWho.tryAgain'));
+              });
+            }}
+          />
+        );
+      }
+
       return (
         <GameplayScreen
           players={gameplayPlayers}
-          activeGame={featuredGames[0]}
+          activeGame={featuredGames.find((game) => game.id === 'impostor') ?? featuredGames[0]}
           roomSettings={roomSettings}
-          roundSetup={activeRoom?.round ?? null}
+          roundSetup={activeRoom?.round?.gameId === 'impostor' ? activeRoom.round : null}
           canManageRoom={activeRoom?.isHost ?? false}
           isBusy={roomBusy}
           notice={roomNotice}
@@ -1075,7 +1199,7 @@ export function AppNavigator() {
               return;
             }
 
-            runStartImpostorRound(() => {
+            runStartSelectedRound(() => {
               playAgain();
             });
           }}
@@ -1087,14 +1211,14 @@ export function AppNavigator() {
     return (
       <ResultsScreen
         members={activeRoom?.members}
-        round={activeRoom?.round ?? null}
+        round={activeRoom?.round?.gameId === 'impostor' ? activeRoom.round : null}
         onPlayAgain={() => {
           if (!activeRoom?.isHost) {
             setRoomNotice(t('room.hostOnlyContinue'));
             return;
           }
 
-          runStartImpostorRound(() => {
+          runStartSelectedRound(() => {
             playAgain();
           });
         }}
@@ -1154,23 +1278,8 @@ export function AppNavigator() {
     if (activeTab === 'settings') {
       return (
         <GamesCatalogScreen
-          onSelectImpostor={() => {
-            if (activeRoom) {
-              void saveSelectedGame('impostor').then((result) => {
-                if (result.error) {
-                  setRoomNotice(mapRoomNotice(t, result.error));
-                  return;
-                }
-
-                setRoomNotice(null);
-                continueRoom();
-              });
-              return;
-            }
-
-            setRoomNotice(null);
-            backToLobby();
-          }}
+          onSelectImpostor={() => selectCatalogGame('impostor')}
+          onSelectGuessWho={() => selectCatalogGame('guess-who')}
         />
       );
     }
@@ -1276,28 +1385,14 @@ export function AppNavigator() {
     return (
       <GamesCatalogScreen
         embedded
-        onSelectImpostor={() => {
-          if (activeRoom) {
-            void saveSelectedGame('impostor').then((result) => {
-              if (result.error) {
-                setRoomNotice(mapRoomNotice(t, result.error));
-                return;
-              }
-
-              setRoomNotice(null);
-              setIsGamesCatalogOpen(false);
-            });
-            return;
-          }
-
-          setIsGamesCatalogOpen(false);
-        }}
+        onSelectImpostor={() => selectCatalogGame('impostor', true)}
+        onSelectGuessWho={() => selectCatalogGame('guess-who', true)}
       />
     );
   }
 
   function renderRoundResultOverlay() {
-    if (!activeRoom?.round || activeRoom.round.phase !== 'result') {
+    if (!activeRoom?.round || activeRoom.round.gameId !== 'impostor' || activeRoom.round.phase !== 'result') {
       return null;
     }
 
@@ -1517,6 +1612,7 @@ export function AppNavigator() {
       <GameSettingsModal
         visible={isGameSettingsOpen}
         gameLabel={t(`gameMeta.names.${activeRoom?.room.selected_game_id ?? 'impostor'}`)}
+        selectedGameId={getSelectedGameId(activeRoom)}
         settings={draftRoomSettings}
         onChangeSettings={setDraftRoomSettings}
         onCancel={() => {

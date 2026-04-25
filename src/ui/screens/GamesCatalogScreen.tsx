@@ -11,19 +11,21 @@ import { textStyles } from '../system/typography';
 import { useTheme } from '../theme';
 
 const impostorArtwork = require('../assets/impostor-catalog-cover.png');
+const guessWhoArtwork = require('../assets/game-covers/guess-who.png');
 
 type GamesCatalogScreenProps = {
   embedded?: boolean;
   onSelectImpostor: () => void;
+  onSelectGuessWho: () => void;
 };
 
-export function GamesCatalogScreen({ embedded = false, onSelectImpostor }: GamesCatalogScreenProps) {
+export function GamesCatalogScreen({ embedded = false, onSelectImpostor, onSelectGuessWho }: GamesCatalogScreenProps) {
   const { t } = useTranslation();
   const theme = useTheme();
   const styles = createStyles(theme);
   const { width } = useWindowDimensions();
   const isWide = width >= 860;
-  const [isHelpOpen, setIsHelpOpen] = useState(false);
+  const [helpGameId, setHelpGameId] = useState<'impostor' | 'guess-who' | null>(null);
 
   const content = (
     <View style={styles.catalogShell}>
@@ -32,14 +34,14 @@ export function GamesCatalogScreen({ embedded = false, onSelectImpostor }: Games
           <View key={game.id} style={[styles.cell, isWide && styles.cellWide]}>
             <GameCard
               title={t(`gameMeta.names.${game.id}`)}
-              imageSource={impostorArtwork}
-              onPress={onSelectImpostor}
-              onHelpPress={() => setIsHelpOpen(true)}
+              imageSource={game.id === 'guess-who' ? guessWhoArtwork : impostorArtwork}
+              onPress={game.id === 'guess-who' ? onSelectGuessWho : onSelectImpostor}
+              onHelpPress={() => setHelpGameId(game.id)}
             />
           </View>
         ))}
 
-        {Array.from({ length: 3 }).map((_, index) => (
+        {Array.from({ length: 2 }).map((_, index) => (
           <View key={`future-slot-${index}`} style={[styles.cell, isWide && styles.cellWide]}>
             <GameCard
               inactive
@@ -58,40 +60,41 @@ export function GamesCatalogScreen({ embedded = false, onSelectImpostor }: Games
     return (
       <View style={styles.embedded}>
         {content}
-        <HowToPlayModal visible={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
+        <HowToPlayModal gameId={helpGameId} onClose={() => setHelpGameId(null)} />
       </View>
     );
   }
 
   return (
-    <AppScreen title="Juegos" subtitle="Explora los minijuegos disponibles y elige el modo para tu grupo.">
+    <AppScreen title={t('gamesCatalog.title')} subtitle={t('gamesCatalog.subtitle')}>
       {content}
-      <HowToPlayModal visible={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
+      <HowToPlayModal gameId={helpGameId} onClose={() => setHelpGameId(null)} />
     </AppScreen>
   );
 }
 
-function HowToPlayModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+function HowToPlayModal({ gameId, onClose }: { gameId: 'impostor' | 'guess-who' | null; onClose: () => void }) {
   const { t } = useTranslation();
   const theme = useTheme();
   const styles = createStyles(theme);
+  const prefix = gameId === 'guess-who' ? 'gamesCatalog.guessWhoHowToPlay' : 'gamesCatalog.howToPlay';
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal visible={Boolean(gameId)} transparent animationType="fade" onRequestClose={onClose}>
       <View style={styles.overlayBackdrop}>
         <Pressable style={StyleSheet.absoluteFillObject} onPress={onClose} />
         <View style={styles.helpPanel}>
           <View style={styles.helpHeader}>
-            <Text style={styles.helpTitle}>{t('gamesCatalog.howToPlayTitle')}</Text>
+            <Text style={styles.helpTitle}>{t(`${prefix}Title`)}</Text>
             <Pressable onPress={onClose} style={styles.closeButton} accessibilityRole="button" accessibilityLabel={t('auth.modalClose')}>
               <Text style={styles.closeLabel}>{t('auth.modalClose')}</Text>
             </Pressable>
           </View>
           <View style={styles.helpBody}>
-            <Text style={styles.helpCopy}>{t('gamesCatalog.howToPlayIntro')}</Text>
-            <Text style={styles.helpStep}>{t('gamesCatalog.howToPlayStepOne')}</Text>
-            <Text style={styles.helpStep}>{t('gamesCatalog.howToPlayStepTwo')}</Text>
-            <Text style={styles.helpStep}>{t('gamesCatalog.howToPlayStepThree')}</Text>
+            <Text style={styles.helpCopy}>{t(`${prefix}Intro`)}</Text>
+            <Text style={styles.helpStep}>{t(`${prefix}StepOne`)}</Text>
+            <Text style={styles.helpStep}>{t(`${prefix}StepTwo`)}</Text>
+            <Text style={styles.helpStep}>{t(`${prefix}StepThree`)}</Text>
           </View>
           <AppButton label={t('auth.modalClose')} onPress={onClose} variant="secondary" />
         </View>

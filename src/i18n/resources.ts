@@ -206,6 +206,7 @@ export const resources = {
       gameMeta: {
         names: {
           impostor: 'Impostor',
+          'guess-who': 'Adivina Quién Soy',
           'signal-drop': 'Signal Drop',
           'hot-seat': 'Hot Seat',
           'mentiroso-profesional': 'Mentiroso Profesional',
@@ -214,6 +215,7 @@ export const resources = {
         },
         descriptions: {
           impostor: 'Una o varias personas no conocen la palabra. La sala conversa, vota y trata de sacar a todos los impostores.',
+          'guess-who': 'Ve a los demás. Adivina quién eres.',
           'signal-drop': 'Todos adivinan la palabra oculta a partir de pistas incompletas y confianza fingida.',
           'hot-seat': 'Una persona responde prompts rápidos mientras la sala le sube la presión.',
           'mentiroso-profesional': 'Elige la mentira más creíble bajo presión y luego defiéndela como si siempre hubiera sido verdad.',
@@ -251,7 +253,12 @@ export const resources = {
         howToPlayIntro: 'Todos reciben una palabra secreta, excepto los impostores.',
         howToPlayStepOne: '1. La sala conversa y hace preguntas sin revelar demasiado.',
         howToPlayStepTwo: '2. Cuando el grupo sospecha de alguien, vota para expulsarlo.',
-        howToPlayStepThree: '3. Los inocentes ganan si descubren a los impostores; los impostores ganan si sobreviven.'
+        howToPlayStepThree: '3. Los inocentes ganan si descubren a los impostores; los impostores ganan si sobreviven.',
+        guessWhoHowToPlayTitle: 'Cómo funciona',
+        guessWhoHowToPlayIntro: 'Ves a los demás. El tuyo queda oculto.',
+        guessWhoHowToPlayStepOne: '1. Pregunta al grupo.',
+        guessWhoHowToPlayStepTwo: '2. Escribe tu respuesta.',
+        guessWhoHowToPlayStepThree: '3. Tienes 2 intentos.'
       },
       roomSettings: {
         title: 'Configuración del juego',
@@ -284,6 +291,11 @@ export const resources = {
         balanceRule: 'Victoria por balance',
         balanceRuleHint: 'Los impostores ganan cuando quedan tantos impostores como inocentes.',
         balanceRuleDisabledHint: 'Esta regla solo aplica si la partida continúa después de expulsar a un inocente.',
+        guessWhoCategory: 'Categoría',
+        guessWhoCategoryOptions: {
+          popular: 'Populares',
+          'movies-series': 'Películas y series'
+        },
         privacy: 'Privacidad',
         roomVibe: 'Ritmo de la sala',
         format: 'Formato',
@@ -374,6 +386,7 @@ export const resources = {
         removeHostBlocked: 'No puedes expulsarte como host de la sala.',
         roundStarting: 'Preparando la ronda compartida...',
         minimumPlayersRequired: 'Necesitas al menos 3 jugadores activos para iniciar Impostor.',
+        minimumPlayersRequiredGuessWho: 'Necesitas al menos 2 jugadores activos para iniciar.',
         impostorHint: 'La sala entra directo a la ronda compartida de Impostor en cuanto el host la inicie.',
         noModeHost: 'Elige el primer modo antes de empezar la sala.',
         noModeMember: 'El host todavía no ha seleccionado el siguiente modo.',
@@ -396,6 +409,8 @@ export const resources = {
         roundsLine: 'Rondas: {{value}}',
         impostorCountLine: 'Impostores: {{value}}',
         themeLine: 'Temática: {{value}}',
+        guessWhoCategoryLine: 'Categoría: {{value}}',
+        guessWhoAttemptsLine: 'Intentos: 2',
         themeUnavailable: 'La temática elegida ya no está disponible.',
         turnTimerLine: 'Temporizador: {{value}}',
         missBehaviorLine: {
@@ -491,6 +506,19 @@ export const resources = {
         finishRound: 'Terminar ronda',
         genericTitle: 'Partida',
         genericSubtitle: 'Este modo todavía usa la superficie genérica mientras cerramos el flujo completo.'
+      },
+      guessWho: {
+        title: 'Adivina Quién Soy',
+        subtitle: 'Mira a los demás. Adivina el tuyo.',
+        yourCharacter: 'Tu personaje',
+        hidden: 'Oculto',
+        attempts: 'Intentos: {{count}}',
+        placeholder: 'Escribe tu respuesta',
+        guess: 'Adivinar',
+        correct: 'Correcto',
+        noAttempts: 'Sin intentos',
+        players: 'Jugadores',
+        tryAgain: 'Intenta otra vez'
       }
     }
   },
@@ -700,6 +728,7 @@ export const resources = {
       gameMeta: {
         names: {
           impostor: 'Impostor',
+          'guess-who': 'Guess Who I Am',
           'signal-drop': 'Signal Drop',
           'hot-seat': 'Hot Seat',
           'mentiroso-profesional': 'Mentiroso Profesional',
@@ -708,6 +737,7 @@ export const resources = {
         },
         descriptions: {
           impostor: 'One or more players do not know the secret word. The room talks, votes, and tries to remove every impostor.',
+          'guess-who': 'See everyone else. Guess yourself.',
           'signal-drop': 'Everyone guesses the hidden word from half-finished clues and fake confidence.',
           'hot-seat': 'One player answers fast prompts while the room piles on the pressure.',
           'mentiroso-profesional': 'Pick the most believable lie under pressure, then defend it like you meant it all along.',
@@ -745,7 +775,12 @@ export const resources = {
         howToPlayIntro: 'Everyone gets a secret word, except the impostors.',
         howToPlayStepOne: '1. The room talks and asks questions without revealing too much.',
         howToPlayStepTwo: '2. When the group suspects someone, everyone votes to remove them.',
-        howToPlayStepThree: '3. Innocents win by finding the impostors; impostors win by surviving.'
+        howToPlayStepThree: '3. Innocents win by finding the impostors; impostors win by surviving.',
+        guessWhoHowToPlayTitle: 'How it works',
+        guessWhoHowToPlayIntro: 'You see everyone else. Yours stays hidden.',
+        guessWhoHowToPlayStepOne: '1. Ask the group.',
+        guessWhoHowToPlayStepTwo: '2. Type your answer.',
+        guessWhoHowToPlayStepThree: '3. You have 2 tries.'
       },
       roomSettings: {
         title: 'Game settings',
@@ -778,6 +813,11 @@ export const resources = {
         balanceRule: 'Balance win rule',
         balanceRuleHint: 'Impostors win when the number of impostors matches the number of innocents left.',
         balanceRuleDisabledHint: 'This rule only applies if the match continues after a wrong expulsion.',
+        guessWhoCategory: 'Category',
+        guessWhoCategoryOptions: {
+          popular: 'Popular',
+          'movies-series': 'Movies and series'
+        },
         privacy: 'Privacy',
         roomVibe: 'Room vibe',
         format: 'Format',
@@ -868,6 +908,7 @@ export const resources = {
         removeHostBlocked: 'The host cannot remove themselves from the room.',
         roundStarting: 'Preparing the shared round...',
         minimumPlayersRequired: 'You need at least 3 active players to start Impostor.',
+        minimumPlayersRequiredGuessWho: 'You need at least 2 active players to start.',
         impostorHint: 'The room jumps straight into the shared Impostor round as soon as the host starts it.',
         noModeHost: 'Choose the first mode before starting the party.',
         noModeMember: 'The host has not selected the next mode yet.',
@@ -890,6 +931,8 @@ export const resources = {
         roundsLine: 'Rounds: {{value}}',
         impostorCountLine: 'Impostors: {{value}}',
         themeLine: 'Theme: {{value}}',
+        guessWhoCategoryLine: 'Category: {{value}}',
+        guessWhoAttemptsLine: 'Attempts: 2',
         themeUnavailable: 'The selected theme is no longer available.',
         turnTimerLine: 'Turn timer: {{value}}',
         missBehaviorLine: {
@@ -984,6 +1027,19 @@ export const resources = {
         finishRound: 'Finish round',
         genericTitle: 'Gameplay',
         genericSubtitle: 'This mode still uses the generic play surface while the full flow is being finished.'
+      },
+      guessWho: {
+        title: 'Guess Who I Am',
+        subtitle: 'See the others. Guess yours.',
+        yourCharacter: 'Your character',
+        hidden: 'Hidden',
+        attempts: 'Attempts: {{count}}',
+        placeholder: 'Type your answer',
+        guess: 'Guess',
+        correct: 'Correct',
+        noAttempts: 'No tries',
+        players: 'Players',
+        tryAgain: 'Try again'
       }
     }
   }

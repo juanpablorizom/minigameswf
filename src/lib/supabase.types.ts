@@ -248,6 +248,51 @@ export type Database = {
         };
         Relationships: [];
       };
+      room_guess_who_assignments: {
+        Row: {
+          id: string;
+          room_id: string;
+          round_id: string;
+          user_id: string;
+          character_label: string;
+          normalized_character: string;
+          guess_count: number;
+          last_guess: string | null;
+          solved_at: string | null;
+          failed_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          room_id: string;
+          round_id: string;
+          user_id: string;
+          character_label: string;
+          normalized_character: string;
+          guess_count?: number;
+          last_guess?: string | null;
+          solved_at?: string | null;
+          failed_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          room_id?: string;
+          round_id?: string;
+          user_id?: string;
+          character_label?: string;
+          normalized_character?: string;
+          guess_count?: number;
+          last_guess?: string | null;
+          solved_at?: string | null;
+          failed_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {
@@ -269,6 +314,41 @@ export type Database = {
           p_member_user_id: string;
         };
         Returns: Database['public']['Tables']['room_members']['Row'][];
+      };
+      start_guess_who_round: {
+        Args: {
+          p_room_id: string;
+          p_category_id?: string;
+        };
+        Returns: Database['public']['Tables']['room_rounds']['Row'][];
+      };
+      submit_guess_who_answer: {
+        Args: {
+          p_room_id: string;
+          p_guess: string;
+        };
+        Returns: Database['public']['Tables']['room_guess_who_assignments']['Row'][];
+      };
+      get_guess_who_round_state: {
+        Args: {
+          p_room_id: string;
+        };
+        Returns: Array<{
+          round_id: string;
+          round_number: number;
+          category_id: string;
+          round_status: RoomRoundStatus;
+          round_phase: 'reveal' | 'result';
+          started_at: string;
+          user_id: string;
+          character_label: string | null;
+          guess_count: number;
+          remaining_guesses: number;
+          last_guess: string | null;
+          solved_at: string | null;
+          failed_at: string | null;
+          is_current_user: boolean;
+        }>;
       };
       start_impostor_round: {
         Args: {

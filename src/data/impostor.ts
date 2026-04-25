@@ -28,6 +28,7 @@ export function buildImpostorRound(
   
   if (!safePlayers.length) {
     return {
+      gameId: 'impostor',
       roundId: 'local-round',
       roundNumber: 1,
       categoryId: settings.themeCategory,
@@ -56,6 +57,7 @@ export function buildImpostorRound(
     .map((player) => player.id);
 
   return {
+    gameId: 'impostor',
     roundId: 'local-round',
     roundNumber: 1,
     categoryId: settings.themeCategory,

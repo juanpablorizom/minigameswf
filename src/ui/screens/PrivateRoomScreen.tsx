@@ -78,6 +78,10 @@ export function PrivateRoomScreen({
     return t(`roomSettings.themeOptions.${value}`);
   }
 
+  function guessWhoCategoryLabel(value: RoomSettings['guessWhoCategory']) {
+    return t(`roomSettings.guessWhoCategoryOptions.${value}`);
+  }
+
   function turnTimerValue(value: number) {
     if (value === 0) {
       return t('roomSettings.turnTimerOptions.none');
@@ -208,11 +212,20 @@ export function PrivateRoomScreen({
           <Text style={styles.sectionTitle}>{t('room.gameSetup')}</Text>
           {canManageRoom ? <AppButton label={t('room.configureGame')} onPress={onOpenSettings} variant="ghost" /> : null}
         </View>
-        <Text style={styles.itemSubtitle}>{t('room.impostorCountLine', { value: settings.impostorCount })}</Text>
-        <Text style={styles.itemSubtitle}>{t('room.themeLine', { value: themeLabel(settings.themeCategory) })}</Text>
-        <Text style={styles.itemSubtitle}>{t('room.turnTimerLine', { value: turnTimerValue(settings.turnSeconds) })}</Text>
-        <Text style={styles.itemSubtitle}>{t(`room.missBehaviorLine.${settings.missBehavior}`)}</Text>
-        <Text style={styles.itemSubtitle}>{t(settings.balanceEndsGame ? 'room.balanceRuleOn' : 'room.balanceRuleOff')}</Text>
+        {selectedGame?.id === 'guess-who' ? (
+          <>
+            <Text style={styles.itemSubtitle}>{t('room.guessWhoCategoryLine', { value: guessWhoCategoryLabel(settings.guessWhoCategory) })}</Text>
+            <Text style={styles.itemSubtitle}>{t('room.guessWhoAttemptsLine')}</Text>
+          </>
+        ) : (
+          <>
+            <Text style={styles.itemSubtitle}>{t('room.impostorCountLine', { value: settings.impostorCount })}</Text>
+            <Text style={styles.itemSubtitle}>{t('room.themeLine', { value: themeLabel(settings.themeCategory) })}</Text>
+            <Text style={styles.itemSubtitle}>{t('room.turnTimerLine', { value: turnTimerValue(settings.turnSeconds) })}</Text>
+            <Text style={styles.itemSubtitle}>{t(`room.missBehaviorLine.${settings.missBehavior}`)}</Text>
+            <Text style={styles.itemSubtitle}>{t(settings.balanceEndsGame ? 'room.balanceRuleOn' : 'room.balanceRuleOff')}</Text>
+          </>
+        )}
       </SurfaceCard>
 
     </AppScreen>

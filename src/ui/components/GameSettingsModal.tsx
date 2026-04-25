@@ -11,6 +11,7 @@ import { RoomSettingsScreen } from '../screens/RoomSettingsScreen';
 type GameSettingsModalProps = {
   visible: boolean;
   gameLabel: string;
+  selectedGameId?: 'impostor' | 'guess-who' | null;
   settings: RoomSettings;
   onChangeSettings: (next: RoomSettings) => void;
   onCancel: () => void;
@@ -20,6 +21,7 @@ type GameSettingsModalProps = {
 export function GameSettingsModal({
   visible,
   gameLabel,
+  selectedGameId = 'impostor',
   settings,
   onChangeSettings,
   onCancel,
@@ -47,6 +49,7 @@ export function GameSettingsModal({
             <RoomSettingsScreen
               embedded
               settings={settings}
+              selectedGameId={selectedGameId}
               onChangeSettings={onChangeSettings}
               onSave={onSave}
             />

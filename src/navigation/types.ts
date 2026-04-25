@@ -20,7 +20,7 @@ export type Player = {
 };
 
 export type MiniGame = {
-  id: string;
+  id: 'impostor' | 'guess-who';
   name: string;
   category: 'Warm Up' | 'Social Reads' | 'Bluffing' | 'Social Deduction';
   duration: string;
@@ -43,6 +43,8 @@ export type ImpostorCategoryId =
   | 'singers'
   | 'cartoons-fictional'
   | 'world-foods';
+
+export type GuessWhoCategoryId = 'popular' | 'movies-series';
 
 export type LobbyScenarioKey = 'guest' | 'noRoom' | 'activeRoom' | 'invited' | 'returning';
 
@@ -84,11 +86,13 @@ export type RoomSettings = {
   turnSeconds: number;
   impostorCount: number;
   themeCategory: ImpostorCategoryId;
+  guessWhoCategory: GuessWhoCategoryId;
   missBehavior: 'repeat' | 'end';
   balanceEndsGame: boolean;
 };
 
 export type ImpostorRoundSetup = {
+  gameId: 'impostor';
   roundId: string;
   roundNumber: number;
   categoryId: ImpostorCategoryId;
@@ -109,3 +113,27 @@ export type ImpostorRoundSetup = {
   status: 'active' | 'finished';
   outcome: 'impostors_caught' | 'impostors_balanced' | 'missed_impostor' | 'continue';
 };
+
+export type GuessWhoAssignment = {
+  userId: string;
+  characterLabel: string | null;
+  guessCount: number;
+  remainingGuesses: number;
+  lastGuess: string | null;
+  solvedAt: string | null;
+  failedAt: string | null;
+  isCurrentUser: boolean;
+};
+
+export type GuessWhoRoundSetup = {
+  gameId: 'guess-who';
+  roundId: string;
+  roundNumber: number;
+  categoryId: GuessWhoCategoryId;
+  assignments: GuessWhoAssignment[];
+  startedAt: string;
+  status: 'active' | 'finished';
+  phase: 'reveal' | 'result';
+};
+
+export type ActiveRoundSetup = ImpostorRoundSetup | GuessWhoRoundSetup;

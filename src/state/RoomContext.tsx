@@ -10,6 +10,8 @@ import {
   leaveCurrentRoom,
   closeRoomForHost,
   startImpostorRound as startImpostorRoundRequest,
+  startGuessWhoRound as startGuessWhoRoundRequest,
+  submitGuessWhoAnswer as submitGuessWhoAnswerRequest,
   advanceImpostorRound as advanceImpostorRoundRequest,
   castImpostorVote as castImpostorVoteRequest,
   resolveImpostorVote as resolveImpostorVoteRequest,
@@ -22,6 +24,7 @@ import {
   type RoomRealtimeState
 } from '../data/rooms';
 import type { ImpostorCategoryId } from '../navigation/types';
+import type { GuessWhoCategoryId } from '../navigation/types';
 import { useAuth } from './AuthContext';
 
 type RoomActionResult = {
@@ -47,6 +50,8 @@ type RoomContextValue = {
     missBehavior: 'repeat' | 'end',
     balanceRuleEnabled: boolean
   ) => Promise<RoomActionResult>;
+  startGuessWhoRound: (categoryId: GuessWhoCategoryId) => Promise<RoomActionResult>;
+  submitGuessWhoAnswer: (guess: string) => Promise<RoomActionResult & { correct?: boolean }>;
   advanceImpostorRound: () => Promise<RoomActionResult>;
   castImpostorVote: (targetUserId: string) => Promise<RoomActionResult>;
   resolveImpostorVote: () => Promise<RoomActionResult>;
@@ -366,6 +371,42 @@ export function RoomProvider({ children }: PropsWithChildren) {
           const roomDetails = await getRoomDetails(activeRoom.room.id, user.id);
           setActiveRoom(roomDetails);
           return { roomId: activeRoom.room.id };
+        } catch (error) {
+          return { error: mapRoomError(error) };
+        } finally {
+          setIsBusy(false);
+        }
+      },
+      startGuessWhoRound: async (categoryId) => {
+        if (!user || !activeRoom) {
+          return { error: 'AUTH_REQUIRED' };
+        }
+
+        setIsBusy(true);
+
+        try {
+          await startGuessWhoRoundRequest(activeRoom.room.id, categoryId);
+          const roomDetails = await getRoomDetails(activeRoom.room.id, user.id);
+          setActiveRoom(roomDetails);
+          return { roomId: activeRoom.room.id };
+        } catch (error) {
+          return { error: mapRoomError(error) };
+        } finally {
+          setIsBusy(false);
+        }
+      },
+      submitGuessWhoAnswer: async (guess) => {
+        if (!user || !activeRoom) {
+          return { error: 'AUTH_REQUIRED' };
+        }
+
+        setIsBusy(true);
+
+        try {
+          const result = await submitGuessWhoAnswerRequest(activeRoom.room.id, guess);
+          const roomDetails = await getRoomDetails(activeRoom.room.id, user.id);
+          setActiveRoom(roomDetails);
+          return { roomId: activeRoom.room.id, correct: Boolean(result?.solved_at) };
         } catch (error) {
           return { error: mapRoomError(error) };
         } finally {

@@ -1,11 +1,19 @@
 import { supabase } from '../lib/supabase';
 import type { Database, RoomMemberRole, RoomStatus } from '../lib/supabase.types';
-import type { ImpostorRoundSetup, ImpostorCategoryId } from '../navigation/types';
+import type {
+  ActiveRoundSetup,
+  GuessWhoAssignment,
+  GuessWhoCategoryId,
+  GuessWhoRoundSetup,
+  ImpostorCategoryId,
+  ImpostorRoundSetup
+} from '../navigation/types';
 
 export type RoomRow = Database['public']['Tables']['rooms']['Row'];
 export type RoomMemberRow = Database['public']['Tables']['room_members']['Row'];
 export type RoomRoundRow = Database['public']['Tables']['room_rounds']['Row'];
 export type RoomRoundVoteRow = Database['public']['Tables']['room_round_votes']['Row'];
+export type RoomGuessWhoAssignmentRow = Database['public']['Tables']['room_guess_who_assignments']['Row'];
 export type ProfileRow = Database['public']['Tables']['profiles']['Row'];
 
 export type RoomMemberView = {
@@ -23,7 +31,7 @@ export type RoomMemberView = {
 export type RoomDetails = {
   room: RoomRow;
   members: RoomMemberView[];
-  round: ImpostorRoundSetup | null;
+  round: ActiveRoundSetup | null;
   currentUserRole: RoomMemberRole | null;
   isHost: boolean;
 };
@@ -37,6 +45,23 @@ type SubscribeToRoomRealtimeOptions = {
   onRoundChange: () => void;
   onVotesChange: () => void;
   onConnectionStateChange?: (state: RoomRealtimeState, message?: string | null) => void;
+};
+
+type GuessWhoRoundStateRow = {
+  round_id: string;
+  round_number: number;
+  category_id: string;
+  round_status: 'active' | 'finished';
+  round_phase: 'reveal' | 'result';
+  started_at: string;
+  user_id: string;
+  character_label: string | null;
+  guess_count: number;
+  remaining_guesses: number;
+  last_guess: string | null;
+  solved_at: string | null;
+  failed_at: string | null;
+  is_current_user: boolean;
 };
 
 function normalizeResult<T>(data: T | T[] | null) {
@@ -92,6 +117,14 @@ function buildRoomErrorMessage(message: string) {
 
   if (message.includes('ROUND_MIN_PLAYERS')) {
     return 'ROUND_MIN_PLAYERS';
+  }
+
+  if (message.includes('GUESS_WHO_NO_ATTEMPTS')) {
+    return 'GUESS_WHO_NO_ATTEMPTS';
+  }
+
+  if (message.includes('GUESS_WHO_ALREADY_SOLVED')) {
+    return 'GUESS_WHO_ALREADY_SOLVED';
   }
 
   if (message.includes('ROUND_NOT_FOUND')) {
@@ -305,12 +338,55 @@ async function getRoomRoundVotes(roundId: string | null) {
   return data ?? [];
 }
 
+async function getGuessWhoRoundState(roomId: string) {
+  const { data, error } = await supabase.rpc('get_guess_who_round_state', {
+    p_room_id: roomId
+  });
+
+  if (error) {
+    throw new Error(buildRoomErrorMessage(error.message));
+  }
+
+  return (data ?? []) as GuessWhoRoundStateRow[];
+}
+
+function mapGuessWhoRound(rows: GuessWhoRoundStateRow[]): GuessWhoRoundSetup | null {
+  const firstRow = rows[0];
+
+  if (!firstRow) {
+    return null;
+  }
+
+  const assignments: GuessWhoAssignment[] = rows.map((row) => ({
+    userId: row.user_id,
+    characterLabel: row.character_label,
+    guessCount: row.guess_count,
+    remainingGuesses: row.remaining_guesses,
+    lastGuess: row.last_guess,
+    solvedAt: row.solved_at,
+    failedAt: row.failed_at,
+    isCurrentUser: row.is_current_user
+  }));
+
+  return {
+    gameId: 'guess-who',
+    roundId: firstRow.round_id,
+    roundNumber: firstRow.round_number,
+    categoryId: firstRow.category_id as GuessWhoCategoryId,
+    assignments,
+    startedAt: firstRow.started_at,
+    status: firstRow.round_status,
+    phase: firstRow.round_phase
+  };
+}
+
 function mapRoomRound(round: RoomRoundRow | null, votes: RoomRoundVoteRow[] = []): ImpostorRoundSetup | null {
   if (!round) {
     return null;
   }
 
   return {
+    gameId: 'impostor',
     roundId: round.id,
     roundNumber: round.round_number,
     categoryId: round.theme_category as ImpostorCategoryId,
@@ -344,9 +420,10 @@ export async function getRoomDetails(roomId: string, currentUserId: string): Pro
     return null;
   }
 
-  const [profiles, roundVotes] = await Promise.all([
+  const [profiles, roundVotes, guessWhoState] = await Promise.all([
     getProfilesForUsers(members.map((member) => member.user_id)),
-    getRoomRoundVotes(round?.id ?? null)
+    round?.game_id === 'impostor' ? getRoomRoundVotes(round?.id ?? null) : Promise.resolve([]),
+    round?.game_id === 'guess-who' ? getGuessWhoRoundState(roomId) : Promise.resolve([])
   ]);
   const profilesById = new Map(profiles.map((profile) => [profile.id, profile]));
 
@@ -371,7 +448,7 @@ export async function getRoomDetails(roomId: string, currentUserId: string): Pro
   return {
     room,
     members: memberViews,
-    round: mapRoomRound(round, roundVotes),
+    round: round?.game_id === 'guess-who' ? mapGuessWhoRound(guessWhoState) : mapRoomRound(round, roundVotes),
     currentUserRole: currentMember?.role ?? null,
     isHost: currentMember?.role === 'host'
   };
@@ -525,6 +602,32 @@ export async function returnRoomToLobby(roomId: string) {
   }
 
   return normalizeResult(data as RoomRow | RoomRow[] | null);
+}
+
+export async function startGuessWhoRound(roomId: string, categoryId: GuessWhoCategoryId) {
+  const { data, error } = await supabase.rpc('start_guess_who_round', {
+    p_category_id: categoryId,
+    p_room_id: roomId
+  });
+
+  if (error) {
+    throw new Error(buildRoomErrorMessage(error.message));
+  }
+
+  return normalizeResult(data as RoomRoundRow | RoomRoundRow[] | null);
+}
+
+export async function submitGuessWhoAnswer(roomId: string, guess: string) {
+  const { data, error } = await supabase.rpc('submit_guess_who_answer', {
+    p_guess: guess,
+    p_room_id: roomId
+  });
+
+  if (error) {
+    throw new Error(buildRoomErrorMessage(error.message));
+  }
+
+  return normalizeResult(data as RoomGuessWhoAssignmentRow | RoomGuessWhoAssignmentRow[] | null);
 }
 
 export function subscribeToRoomRealtime({
