@@ -20,6 +20,8 @@ type PrivateRoomScreenProps = {
   selectedGame: MiniGame | null;
   settings: RoomSettings;
   canManageRoom: boolean;
+  canStartGame: boolean;
+  startDisabledReason: string | null;
   isBusy: boolean;
   notice: string | null;
   syncState: RoomRealtimeState;
@@ -39,6 +41,8 @@ export function PrivateRoomScreen({
   selectedGame,
   settings,
   canManageRoom,
+  canStartGame,
+  startDisabledReason,
   isBusy,
   notice,
   syncState,
@@ -137,10 +141,11 @@ export function PrivateRoomScreen({
           <AppButton label={t('room.shareCode')} onPress={onShareCode} variant="secondary" />
           {canManageRoom ? <AppButton label={t('room.configureRoom')} onPress={onOpenSettings} variant="ghost" /> : null}
           {canManageRoom ? (
-            <AppButton label={t('room.startGame')} onPress={onStart} disabled={isBusy} />
+            <AppButton label={t('room.startGame')} onPress={onStart} disabled={isBusy || !canStartGame} />
           ) : null}
           <AppButton label={canManageRoom ? t('room.closeRoom') : t('room.leaveRoom')} onPress={onLeaveRoom} variant="ghost" disabled={isBusy} />
         </View>
+        {canManageRoom && startDisabledReason ? <Text style={styles.notice}>{startDisabledReason}</Text> : null}
         <View style={styles.qrSection}>
           <View style={styles.qrCard}>
             <QRCode value={roomUrl} size={164} color={theme.colors.background} backgroundColor="#FFFFFF" />

@@ -446,6 +446,10 @@ begin
     raise exception 'ROUND_NO_MEMBERS';
   end if;
 
+  if member_count < 3 then
+    raise exception 'ROUND_MIN_PLAYERS';
+  end if;
+
   total_impostors := least(greatest(coalesce(p_impostor_count, 1), 1), greatest(member_count - 1, 1));
 
   select coalesce(max(room_rounds.round_number), 0)

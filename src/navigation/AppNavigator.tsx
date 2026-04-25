@@ -75,6 +75,10 @@ function mapRoomNotice(translate: (key: string, options?: Record<string, unknown
     return translate('lobby.errors.noActiveRoomFallback');
   }
 
+  if (error === 'ROUND_MIN_PLAYERS') {
+    return translate('room.minimumPlayersRequired');
+  }
+
   if (error === 'ROUND_THEME_NOT_FOUND') {
     return translate('room.themeUnavailable');
   }
@@ -267,7 +271,27 @@ export function AppNavigator() {
     return Boolean(impostorThemeWords[roomSettings.themeCategory]?.length);
   }
 
+  function getActiveMemberCount(room: RoomDetails | null) {
+    return room?.members.filter((member) => member.isActive).length ?? 0;
+  }
+
+  function canStartImpostorRound(room: RoomDetails | null) {
+    return getActiveMemberCount(room) >= 3;
+  }
+
   function runStartImpostorRound(onSuccess?: () => void) {
+    if (!activeRoom || activeRoom.room.status === 'finished') {
+      setRoomNotice(t('lobby.errors.noActiveRoomFallback'));
+      backToLobby();
+      return;
+    }
+
+    if (!canStartImpostorRound(activeRoom)) {
+      setRoomNotice(t('room.minimumPlayersRequired'));
+      continueRoom();
+      return;
+    }
+
     if (!canStartSelectedTheme()) {
       setRoomNotice(t('room.themeUnavailable'));
       return;
@@ -288,7 +312,12 @@ export function AppNavigator() {
       }
 
       setRoomNotice(null);
-      onSuccess?.();
+      if (onSuccess) {
+        onSuccess();
+        return;
+      }
+
+      startGameplay();
     });
   }
 
@@ -736,6 +765,21 @@ export function AppNavigator() {
     goBack();
   }
 
+  function handleOpenHomeTab() {
+    setIsGamesCatalogOpen(false);
+    backToLobby();
+  }
+
+  function handleOpenCatalogTab() {
+    if (!activeRoom && roomFlowScreens.includes(currentScreen as (typeof roomFlowScreens)[number])) {
+      backToLobby();
+    } else {
+      openGamesTab();
+    }
+
+    setIsGamesCatalogOpen(true);
+  }
+
   function requestLeaveRoom() {
     if (!activeRoom || !roomFlowScreens.includes(currentScreen as (typeof roomFlowScreens)[number])) {
       backToLobby();
@@ -892,6 +936,7 @@ export function AppNavigator() {
     if (resolvedScreen === 'room' && activeRoom) {
       const selectedGame =
         featuredGames.find((game) => game.id === activeRoom.room.selected_game_id) ?? featuredGames[0] ?? null;
+      const canStartGame = canStartImpostorRound(activeRoom);
 
       return (
         <PrivateRoomScreen
@@ -902,6 +947,8 @@ export function AppNavigator() {
           selectedGame={selectedGame}
           settings={roomSettings}
           canManageRoom={activeRoom.isHost}
+          canStartGame={canStartGame}
+          startDisabledReason={canStartGame ? null : t('room.minimumPlayersRequired')}
           isBusy={roomBusy}
           notice={roomNotice ?? syncNotice}
           syncState={syncState}
@@ -1116,12 +1163,13 @@ export function AppNavigator() {
                 }
 
                 setRoomNotice(null);
-                openGamesTab();
+                continueRoom();
               });
               return;
             }
 
-            openGamesTab();
+            setRoomNotice(null);
+            backToLobby();
           }}
         />
       );
@@ -1350,11 +1398,11 @@ export function AppNavigator() {
           <View style={styles.topBarUtilityActions}>
             <Pressable
               onPress={() => {
-                setSettingsNotice(null);
-                openSettings();
+                setAccountNotice(null);
+                openAccount();
               }}
               accessibilityRole="button"
-              accessibilityLabel="Abrir ajustes"
+              accessibilityLabel="Abrir perfil"
               style={({ pressed, hovered }) => [
                 styles.settingsTrigger,
                 hovered && styles.settingsTriggerHover,
@@ -1369,15 +1417,12 @@ export function AppNavigator() {
 
       <Animated.View style={[styles.content, { opacity: screenFade }]}>{renderCurrentTab()}</Animated.View>
       <View style={styles.bottomNav}>
-        <TabButton label="Inicio" icon="home" active={activeTab === 'games' && !isGamesCatalogOpen} onPress={openGamesTab} />
+        <TabButton label="Inicio" icon="home" active={activeTab === 'games' && !isGamesCatalogOpen} onPress={handleOpenHomeTab} />
         <TabButton
           label="Juegos"
           icon="games"
           active={isGamesCatalogOpen}
-          onPress={() => {
-            openGamesTab();
-            setIsGamesCatalogOpen(true);
-          }}
+          onPress={handleOpenCatalogTab}
         />
         <TabButton label="Perfil" icon="profile" active={activeTab === 'account'} onPress={openAccount} />
       </View>

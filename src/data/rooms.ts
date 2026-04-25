@@ -90,6 +90,10 @@ function buildRoomErrorMessage(message: string) {
     return 'ROUND_NO_MEMBERS';
   }
 
+  if (message.includes('ROUND_MIN_PLAYERS')) {
+    return 'ROUND_MIN_PLAYERS';
+  }
+
   if (message.includes('ROUND_NOT_FOUND')) {
     return 'ROUND_NOT_FOUND';
   }
