@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
+import { impostorThemeOptions } from '../../data/themes';
 import type { RoomSettings } from '../../navigation/types';
 import { AppButton } from '../components/AppButton';
 import { AppScreen } from '../components/AppScreen';
@@ -16,20 +17,6 @@ type RoomSettingsScreenProps = {
 
 const impostorCountOptions = [1, 2, 3, 4];
 const turnOptions = [0, 30, 45, 60, 300];
-const themeOptions: RoomSettings['themeCategory'][] = [
-  'animals',
-  'countries',
-  'objects',
-  'famous-people',
-  'football-players',
-  'movies-series',
-  'youtubers',
-  'basketball',
-  'f1',
-  'singers',
-  'cartoons-fictional',
-  'world-foods'
-];
 const missBehaviorOptions: RoomSettings['missBehavior'][] = ['repeat', 'end'];
 
 export function RoomSettingsScreen({ settings, onChangeSettings, onSave, embedded = false }: RoomSettingsScreenProps) {
@@ -64,7 +51,7 @@ export function RoomSettingsScreen({ settings, onChangeSettings, onSave, embedde
         <Text style={styles.sectionTitle}>{t('roomSettings.theme')}</Text>
         <Text style={styles.summaryCopy}>{t('roomSettings.themeHint')}</Text>
         <View style={styles.optionColumn}>
-          {themeOptions.map((themeCategory) => (
+          {impostorThemeOptions.map((themeCategory) => (
             <OptionChip
               key={themeCategory}
               label={t(`roomSettings.themeOptions.${themeCategory}`)}

@@ -5,6 +5,7 @@ import basketball from './basketball';
 import cartoonsFictional from './cartoonsFictional';
 import countries from './countries';
 import f1 from './f1';
+import facesGestures from './facesGestures';
 import famousPeople from './famousPeople';
 import footballPlayers from './footballPlayers';
 import moviesSeries from './moviesSeries';
@@ -19,6 +20,7 @@ export const impostorThemeWords: Record<ImpostorCategoryId, string[]> = {
   'cartoons-fictional': cartoonsFictional,
   countries,
   f1,
+  'faces-gestures': facesGestures,
   'famous-people': famousPeople,
   'football-players': footballPlayers,
   'movies-series': moviesSeries,
@@ -27,3 +29,19 @@ export const impostorThemeWords: Record<ImpostorCategoryId, string[]> = {
   'world-foods': worldFoods,
   youtubers
 };
+
+export const impostorThemeOptions: ImpostorCategoryId[] = [
+  'faces-gestures',
+  'movies-series',
+  'cartoons-fictional',
+  'animals',
+  'countries',
+  'objects',
+  'famous-people',
+  'football-players',
+  'youtubers',
+  'basketball',
+  'f1',
+  'singers',
+  'world-foods'
+];

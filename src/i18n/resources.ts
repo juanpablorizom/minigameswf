@@ -306,6 +306,7 @@ export const resources = {
           animals: 'Animales',
           countries: 'Países y capitales',
           objects: 'Objetos',
+          'faces-gestures': 'Caras y gestos',
           'famous-people': 'Actores famosos',
           'football-players': 'Jugadores de fútbol',
           'movies-series': 'Películas y series',
@@ -313,7 +314,7 @@ export const resources = {
           basketball: 'Basquetbol',
           f1: 'F1',
           singers: 'Cantantes',
-          'cartoons-fictional': 'Caricaturas y personajes ficticios',
+          'cartoons-fictional': 'Personajes de caricaturas o ciencia ficción',
           'world-foods': 'Comidas del mundo'
         }
       },
@@ -799,6 +800,7 @@ export const resources = {
           animals: 'Animals',
           countries: 'Countries and capitals',
           objects: 'Objects',
+          'faces-gestures': 'Faces and gestures',
           'famous-people': 'Famous actors',
           'football-players': 'Football players',
           'movies-series': 'Movies and series',
@@ -806,7 +808,7 @@ export const resources = {
           basketball: 'Basketball',
           f1: 'F1',
           singers: 'Singers',
-          'cartoons-fictional': 'Cartoons and fictional characters',
+          'cartoons-fictional': 'Cartoon or sci-fi characters',
           'world-foods': 'World foods'
         }
       },

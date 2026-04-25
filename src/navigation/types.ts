@@ -33,6 +33,7 @@ export type ImpostorCategoryId =
   | 'animals'
   | 'countries'
   | 'objects'
+  | 'faces-gestures'
   | 'famous-people'
   | 'football-players'
   | 'movies-series'
