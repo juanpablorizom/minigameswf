@@ -42,7 +42,15 @@ export function GameCard({
       ]}
     >
       {showHelpButton && !inactive ? (
-        <Pressable onPress={onHelpPress ?? (() => {})} style={({ pressed }) => [styles.helpButton, pressed && styles.helpButtonPressed]}>
+        <Pressable
+          onPress={(event) => {
+            event.stopPropagation();
+            onHelpPress?.();
+          }}
+          style={({ pressed }) => [styles.helpButton, pressed && styles.helpButtonPressed]}
+          accessibilityRole="button"
+          accessibilityLabel="Como funciona el juego"
+        >
           <Text style={styles.helpLabel}>?</Text>
         </Pressable>
       ) : (

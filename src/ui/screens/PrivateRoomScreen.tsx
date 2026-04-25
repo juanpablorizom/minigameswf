@@ -59,7 +59,6 @@ export function PrivateRoomScreen({
   const [copied, setCopied] = useState(false);
   const activeMembers = members.filter((member) => member.isActive);
   const host = members.find((member) => member.role === 'host') ?? null;
-  const isImpostorMode = selectedGame?.id === 'impostor';
   const roomStatusLabel =
     roomStatus === 'active' ? t('room.statusActive') : roomStatus === 'finished' ? t('room.statusFinished') : t('room.statusWaiting');
   const syncStatusLabel =
@@ -196,10 +195,6 @@ export function PrivateRoomScreen({
           <View style={styles.listRow}>
             <View style={styles.listMeta}>
               <Text style={styles.itemTitle}>{gameName(selectedGame.id)}</Text>
-              <Text style={styles.itemSubtitle}>{t(`gameMeta.descriptions.${selectedGame.id}`)}</Text>
-              {isImpostorMode ? (
-                <Text style={styles.supportingCopy}>{t('room.impostorHint')}</Text>
-              ) : null}
             </View>
             <Badge label={t('room.selected')} tone="accent" />
           </View>

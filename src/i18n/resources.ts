@@ -246,7 +246,12 @@ export const resources = {
       gamesCatalog: {
         title: 'Juegos',
         subtitle: 'Por ahora solo Impostor está disponible. Los demás espacios quedan reservados para próximos juegos.',
-        futureSlot: 'Próximamente'
+        futureSlot: 'Próximamente',
+        howToPlayTitle: 'Cómo funciona Impostor',
+        howToPlayIntro: 'Todos reciben una palabra secreta, excepto los impostores.',
+        howToPlayStepOne: '1. La sala conversa y hace preguntas sin revelar demasiado.',
+        howToPlayStepTwo: '2. Cuando el grupo sospecha de alguien, vota para expulsarlo.',
+        howToPlayStepThree: '3. Los inocentes ganan si descubren a los impostores; los impostores ganan si sobreviven.'
       },
       roomSettings: {
         title: 'Configuración del juego',
@@ -734,7 +739,12 @@ export const resources = {
       gamesCatalog: {
         title: 'Games',
         subtitle: 'For now only Impostor is available. The remaining slots stay reserved for upcoming games.',
-        futureSlot: 'Coming soon'
+        futureSlot: 'Coming soon',
+        howToPlayTitle: 'How Impostor Works',
+        howToPlayIntro: 'Everyone gets a secret word, except the impostors.',
+        howToPlayStepOne: '1. The room talks and asks questions without revealing too much.',
+        howToPlayStepTwo: '2. When the group suspects someone, everyone votes to remove them.',
+        howToPlayStepThree: '3. Innocents win by finding the impostors; impostors win by surviving.'
       },
       roomSettings: {
         title: 'Game settings',
