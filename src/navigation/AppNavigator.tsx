@@ -1678,9 +1678,10 @@ function createStyles(theme: ReturnType<typeof useTheme>, isCompactScreen: boole
     paddingBottom: 0
   },
   topBarActions: {
-    flexDirection: 'column',
-    alignItems: isCompactScreen ? 'stretch' : 'flex-end',
-    gap: spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: isNarrowScreen ? spacing.xs : spacing.md,
     width: isCompactScreen ? '100%' : undefined,
     alignSelf: isCompactScreen ? 'stretch' : 'auto'
   },
@@ -1690,14 +1691,12 @@ function createStyles(theme: ReturnType<typeof useTheme>, isCompactScreen: boole
     flexWrap: 'wrap',
     gap: spacing.xs,
     rowGap: spacing.xs,
-    width: '100%',
-    justifyContent: 'flex-start'
+    justifyContent: 'flex-end'
   },
   topBarUtilityActions: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    width: '100%',
     justifyContent: 'flex-end'
   },
   topBarAction: {
