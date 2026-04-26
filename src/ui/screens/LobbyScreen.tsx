@@ -63,7 +63,15 @@ export function LobbyScreen({ displayName, scenario, onAction, notice = null }: 
           </Pressable>
         </View>
 
-        {scenario.key === 'guest' || scenario.key === 'noRoom' ? null : (
+        {scenario.key === 'guest' || scenario.key === 'noRoom' ? (
+          scenario.secondaryAction ? (
+            <AppButton
+              label={actionLabels[scenario.secondaryAction.id] ?? scenario.secondaryAction.label}
+              onPress={() => onAction(scenario.secondaryAction!.id)}
+              variant={scenario.secondaryAction.variant}
+            />
+          ) : null
+        ) : (
           <View style={styles.actionRow}>
             <AppButton
               label={actionLabels[scenario.primaryAction.id] ?? scenario.primaryAction.label}
