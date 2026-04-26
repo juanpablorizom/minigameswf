@@ -19,12 +19,12 @@ import {
   subscribeToRoomRealtime,
   updateRoomMemberPresence,
   updateRoomSelectedGame,
+  updateRoomSelectedGames,
   updateRoomStatus,
   type RoomDetails,
   type RoomRealtimeState
 } from '../data/rooms';
-import type { ImpostorCategoryId } from '../navigation/types';
-import type { GuessWhoCategoryId } from '../navigation/types';
+import type { GameId, GuessWhoCategoryId, ImpostorCategoryId } from '../navigation/types';
 import { useAuth } from './AuthContext';
 
 type RoomActionResult = {
@@ -39,7 +39,7 @@ type RoomContextValue = {
   syncState: RoomRealtimeState;
   syncNotice: string | null;
   refreshActiveRoom: () => Promise<void>;
-  createRoom: (selectedGameId: string | null) => Promise<RoomActionResult>;
+  createRoom: (selectedGameIds: GameId[]) => Promise<RoomActionResult>;
   joinRoomByCode: (code: string) => Promise<RoomActionResult>;
   removeMember: (memberUserId: string) => Promise<RoomActionResult>;
   leaveRoom: () => Promise<RoomActionResult>;
@@ -57,6 +57,7 @@ type RoomContextValue = {
   resolveImpostorVote: () => Promise<RoomActionResult>;
   returnRoomToLobby: () => Promise<RoomActionResult>;
   saveSelectedGame: (selectedGameId: string | null) => Promise<RoomActionResult>;
+  saveSelectedGames: (selectedGameIds: GameId[]) => Promise<RoomActionResult>;
   markRoomActive: () => Promise<RoomActionResult>;
   setRoomScreenActive: (isActive: boolean) => void;
 };
@@ -270,7 +271,7 @@ export function RoomProvider({ children }: PropsWithChildren) {
       refreshActiveRoom: async () => {
         await refreshResolvedActiveRoom();
       },
-      createRoom: async (selectedGameId) => {
+      createRoom: async (selectedGameIds) => {
         if (!user) {
           return { error: 'AUTH_REQUIRED' };
         }
@@ -278,7 +279,7 @@ export function RoomProvider({ children }: PropsWithChildren) {
         setIsBusy(true);
 
         try {
-          const room = await createPrivateRoom(selectedGameId);
+          const room = await createPrivateRoom(selectedGameIds);
           const roomDetails = await getRoomDetails(room.id, user.id);
           setActiveRoom(roomDetails);
           return { roomId: room.id };
@@ -494,6 +495,24 @@ export function RoomProvider({ children }: PropsWithChildren) {
 
         try {
           await updateRoomSelectedGame(activeRoom.room.id, user.id, selectedGameId);
+          const roomDetails = await getRoomDetails(activeRoom.room.id, user.id);
+          setActiveRoom(roomDetails);
+          return { roomId: activeRoom.room.id };
+        } catch (error) {
+          return { error: mapRoomError(error) };
+        } finally {
+          setIsBusy(false);
+        }
+      },
+      saveSelectedGames: async (selectedGameIds) => {
+        if (!user || !activeRoom) {
+          return { error: 'AUTH_REQUIRED' };
+        }
+
+        setIsBusy(true);
+
+        try {
+          await updateRoomSelectedGames(activeRoom.room.id, user.id, selectedGameIds);
           const roomDetails = await getRoomDetails(activeRoom.room.id, user.id);
           setActiveRoom(roomDetails);
           return { roomId: activeRoom.room.id };

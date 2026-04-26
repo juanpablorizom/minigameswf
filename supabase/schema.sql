@@ -29,10 +29,20 @@ create table if not exists public.rooms (
   host_user_id uuid not null references auth.users (id) on delete cascade,
   status text not null default 'waiting' check (status in ('waiting', 'active', 'finished')),
   selected_game_id text,
+  selected_game_ids text[] not null default array['impostor']::text[],
   visibility text not null default 'private' check (visibility in ('private')),
   created_at timestamptz not null default timezone('utc', now()),
   updated_at timestamptz not null default timezone('utc', now())
 );
+
+alter table public.rooms add column if not exists selected_game_ids text[] not null default array['impostor']::text[];
+
+update public.rooms
+set selected_game_ids = case
+  when selected_game_id is not null then array[selected_game_id]
+  else array['impostor']::text[]
+end
+where selected_game_ids is null or array_length(selected_game_ids, 1) is null;
 
 create table if not exists public.room_members (
   id uuid primary key default gen_random_uuid(),
@@ -264,7 +274,9 @@ begin
 end;
 $$;
 
-create or replace function public.create_private_room(p_selected_game_id text default null)
+drop function if exists public.create_private_room(text);
+
+create or replace function public.create_private_room(p_selected_game_ids text[] default array['impostor']::text[])
 returns public.rooms
 language plpgsql
 security definer
@@ -274,10 +286,28 @@ declare
   current_user_id uuid := auth.uid();
   next_room public.rooms;
   next_code text;
+  safe_game_ids text[] := coalesce(p_selected_game_ids, array['impostor']::text[]);
+  first_game_id text;
 begin
   if current_user_id is null then
     raise exception 'AUTH_REQUIRED';
   end if;
+
+  safe_game_ids := (
+    select coalesce(array_agg(game_id order by first_order), array['impostor']::text[])
+    from (
+      select selected_game_id as game_id, min(selected_order) as first_order
+      from unnest(safe_game_ids) with ordinality as selected(selected_game_id, selected_order)
+      where selected_game_id in ('impostor', 'guess-who')
+      group by selected_game_id
+    ) selected
+  );
+
+  if array_length(safe_game_ids, 1) is null then
+    safe_game_ids := array['impostor']::text[];
+  end if;
+
+  first_game_id := safe_game_ids[1];
 
   update public.room_members
   set is_active = false
@@ -287,8 +317,8 @@ begin
     next_code := public.generate_room_code();
 
     begin
-      insert into public.rooms (code, host_user_id, status, selected_game_id, visibility)
-      values (next_code, current_user_id, 'waiting', p_selected_game_id, 'private')
+      insert into public.rooms (code, host_user_id, status, selected_game_id, selected_game_ids, visibility)
+      values (next_code, current_user_id, 'waiting', first_game_id, safe_game_ids, 'private')
       returning * into next_room;
       exit;
     exception

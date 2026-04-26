@@ -3,6 +3,8 @@ import { Modal, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'r
 import { useTranslation } from 'react-i18next';
 
 import { featuredGames } from '../../data/mockData';
+import { gameRegistry } from '../../data/gameRegistry';
+import type { GameId } from '../../navigation/types';
 import { AppButton } from '../components/AppButton';
 import { GameCard } from '../components/GameCard';
 import { AppScreen } from '../components/AppScreen';
@@ -10,16 +12,13 @@ import { layout, spacing } from '../system/layout';
 import { textStyles } from '../system/typography';
 import { useTheme } from '../theme';
 
-const impostorArtwork = require('../assets/impostor-catalog-cover.png');
-const guessWhoArtwork = require('../assets/game-covers/guess-who.png');
-
 type GamesCatalogScreenProps = {
   embedded?: boolean;
-  onSelectImpostor: () => void;
-  onSelectGuessWho: () => void;
+  selectedGameIds: GameId[];
+  onToggleGame: (gameId: GameId) => void;
 };
 
-export function GamesCatalogScreen({ embedded = false, onSelectImpostor, onSelectGuessWho }: GamesCatalogScreenProps) {
+export function GamesCatalogScreen({ embedded = false, selectedGameIds, onToggleGame }: GamesCatalogScreenProps) {
   const { t } = useTranslation();
   const theme = useTheme();
   const styles = createStyles(theme);
@@ -34,8 +33,9 @@ export function GamesCatalogScreen({ embedded = false, onSelectImpostor, onSelec
           <View key={game.id} style={[styles.cell, isWide && styles.cellWide]}>
             <GameCard
               title={t(`gameMeta.names.${game.id}`)}
-              imageSource={game.id === 'guess-who' ? guessWhoArtwork : impostorArtwork}
-              onPress={game.id === 'guess-who' ? onSelectGuessWho : onSelectImpostor}
+              imageSource={gameRegistry[game.id].thumbnail}
+              selected={selectedGameIds.includes(game.id)}
+              onPress={() => onToggleGame(game.id)}
               onHelpPress={() => setHelpGameId(game.id)}
             />
           </View>

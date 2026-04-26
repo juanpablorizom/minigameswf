@@ -1,7 +1,9 @@
 import { supabase } from '../lib/supabase';
 import type { Database, RoomMemberRole, RoomStatus } from '../lib/supabase.types';
+import { normalizeGameIds } from './gameRegistry';
 import type {
   ActiveRoundSetup,
+  GameId,
   GuessWhoAssignment,
   GuessWhoCategoryId,
   GuessWhoRoundSetup,
@@ -32,6 +34,7 @@ export type RoomDetails = {
   room: RoomRow;
   members: RoomMemberView[];
   round: ActiveRoundSetup | null;
+  selectedGameIds: GameId[];
   currentUserRole: RoomMemberRole | null;
   isHost: boolean;
 };
@@ -178,9 +181,9 @@ function getErrorMessage(error: unknown) {
   return 'UNKNOWN_ERROR';
 }
 
-export async function createPrivateRoom(selectedGameId: string | null) {
+export async function createPrivateRoom(selectedGameIds: GameId[]) {
   const { data, error } = await supabase.rpc('create_private_room', {
-    p_selected_game_id: selectedGameId
+    p_selected_game_ids: normalizeGameIds(selectedGameIds)
   });
 
   if (error) {
@@ -449,6 +452,7 @@ export async function getRoomDetails(roomId: string, currentUserId: string): Pro
     room,
     members: memberViews,
     round: round?.game_id === 'guess-who' ? mapGuessWhoRound(guessWhoState) : mapRoomRound(round, roundVotes),
+    selectedGameIds: normalizeGameIds(room.selected_game_ids?.length ? room.selected_game_ids : [room.selected_game_id]),
     currentUserRole: currentMember?.role ?? null,
     isHost: currentMember?.role === 'host'
   };
@@ -457,7 +461,21 @@ export async function getRoomDetails(roomId: string, currentUserId: string): Pro
 export async function updateRoomSelectedGame(roomId: string, hostUserId: string, selectedGameId: string | null) {
   const { error } = await supabase
     .from('rooms')
-    .update({ selected_game_id: selectedGameId })
+    .update({ selected_game_id: selectedGameId, selected_game_ids: selectedGameId ? [selectedGameId] : ['impostor'] })
+    .eq('id', roomId)
+    .eq('host_user_id', hostUserId);
+
+  if (error) {
+    throw new Error(buildRoomErrorMessage(error.message));
+  }
+}
+
+export async function updateRoomSelectedGames(roomId: string, hostUserId: string, selectedGameIds: GameId[]) {
+  const safeGameIds = normalizeGameIds(selectedGameIds);
+
+  const { error } = await supabase
+    .from('rooms')
+    .update({ selected_game_id: safeGameIds[0], selected_game_ids: safeGameIds })
     .eq('id', roomId)
     .eq('host_user_id', hostUserId);
 

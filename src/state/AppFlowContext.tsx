@@ -1,14 +1,15 @@
 import { createContext, useContext, useMemo, useState, type PropsWithChildren } from 'react';
 
-import { featuredGames, initialRoomSettings, initialSelectedGameIds, lobbyScenarios } from '../data/mockData';
-import type { AppTab, LobbyScenario, LobbyScenarioKey, MiniGame, RoomSettings, ScreenName } from '../navigation/types';
+import { getGamesByIds, normalizeGameIds } from '../data/gameRegistry';
+import { initialRoomSettings, initialSelectedGameIds, lobbyScenarios } from '../data/mockData';
+import type { AppTab, GameId, LobbyScenario, LobbyScenarioKey, MiniGame, RoomSettings, ScreenName } from '../navigation/types';
 
 type AppFlowValue = {
   activeTab: AppTab;
   currentScreen: ScreenName;
   lobbyScenarioKey: LobbyScenarioKey;
   lobbyScenario: LobbyScenario;
-  selectedGameIds: string[];
+  selectedGameIds: GameId[];
   selectedGames: MiniGame[];
   roomSettings: RoomSettings;
   canGoBack: boolean;
@@ -26,8 +27,8 @@ type AppFlowValue = {
   openQuickPlay: () => void;
   openChooseGames: () => void;
   openRoomSettings: () => void;
-  toggleGameSelection: (gameId: string) => void;
-  hydrateSelectedGame: (gameId: string | null) => void;
+  toggleGameSelection: (gameId: GameId) => void;
+  hydrateSelectedGames: (gameIds: Array<string | null | undefined>) => void;
   saveGames: () => void;
   updateRoomSettings: (next: RoomSettings) => void;
   saveRoomSettings: () => void;
@@ -45,13 +46,13 @@ export function AppFlowProvider({ children }: PropsWithChildren) {
   const [screenHistory, setScreenHistory] = useState<ScreenName[]>(['lobby']);
   const [returnScreen, setReturnScreen] = useState<ScreenName>('lobby');
   const [lobbyScenarioKey, setLobbyScenarioKey] = useState<LobbyScenarioKey>('noRoom');
-  const [selectedGameIds, setSelectedGameIds] = useState<string[]>(initialSelectedGameIds);
+  const [selectedGameIds, setSelectedGameIds] = useState<GameId[]>(initialSelectedGameIds);
   const [roomSettings, setRoomSettings] = useState<RoomSettings>(initialRoomSettings);
   const currentScreen = screenHistory[screenHistory.length - 1] ?? 'lobby';
 
   const lobbyScenario = lobbyScenarios[lobbyScenarioKey];
   const selectedGames = useMemo(
-    () => featuredGames.filter((game) => selectedGameIds.includes(game.id)),
+    () => getGamesByIds(selectedGameIds),
     [selectedGameIds]
   );
 
@@ -155,16 +156,17 @@ export function AppFlowProvider({ children }: PropsWithChildren) {
         setScreen('roomSettings');
       },
       toggleGameSelection: (gameId) => {
-        setSelectedGameIds((current) =>
-          current.includes(gameId) ? current.filter((id) => id !== gameId) : [...current, gameId]
-        );
-      },
-      hydrateSelectedGame: (gameId) => {
-        if (!gameId) {
-          return;
-        }
+        setSelectedGameIds((current) => {
+          if (current.includes(gameId)) {
+            const nextGameIds = current.filter((id) => id !== gameId);
+            return nextGameIds.length ? nextGameIds : current;
+          }
 
-        setSelectedGameIds((current) => [gameId, ...current.filter((id) => id !== gameId)]);
+          return normalizeGameIds([...current, gameId]);
+        });
+      },
+      hydrateSelectedGames: (gameIds) => {
+        setSelectedGameIds(normalizeGameIds(gameIds));
       },
       saveGames: () => setScreen('room', 'replace'),
       updateRoomSettings: setRoomSettings,

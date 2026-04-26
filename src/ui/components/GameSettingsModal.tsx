@@ -1,7 +1,7 @@
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
-import type { RoomSettings } from '../../navigation/types';
+import type { GameId, RoomSettings } from '../../navigation/types';
 import { controls, layout, radius, spacing } from '../system/layout';
 import { textStyles, typography } from '../system/typography';
 import { useTheme } from '../theme';
@@ -11,7 +11,7 @@ import { RoomSettingsScreen } from '../screens/RoomSettingsScreen';
 type GameSettingsModalProps = {
   visible: boolean;
   gameLabel: string;
-  selectedGameId?: 'impostor' | 'guess-who' | null;
+  selectedGameIds?: GameId[];
   settings: RoomSettings;
   onChangeSettings: (next: RoomSettings) => void;
   onCancel: () => void;
@@ -21,7 +21,7 @@ type GameSettingsModalProps = {
 export function GameSettingsModal({
   visible,
   gameLabel,
-  selectedGameId = 'impostor',
+  selectedGameIds = ['impostor'],
   settings,
   onChangeSettings,
   onCancel,
@@ -49,7 +49,7 @@ export function GameSettingsModal({
             <RoomSettingsScreen
               embedded
               settings={settings}
-              selectedGameId={selectedGameId}
+              selectedGameIds={selectedGameIds}
               onChangeSettings={onChangeSettings}
               onSave={onSave}
             />

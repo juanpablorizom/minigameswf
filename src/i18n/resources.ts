@@ -236,18 +236,18 @@ export const resources = {
       },
       chooseGames: {
         title: 'Elegir mini juegos',
-        subtitle: 'Por ahora la sala entra directo a Impostor. Desde aquí solo confirmas el modo activo antes de volver.',
+        subtitle: 'Elige los juegos para esta sala.',
         onlyModeTitle: 'Modo activo',
         onlyModeCopy: 'La sala usa únicamente Impostor mientras cerramos el resto del sistema multijugador.',
         selected: 'Seleccionado',
         tapToAdd: 'Listo para activar',
         keepSelected: 'Mantener Impostor',
         selectImpostor: 'Usar Impostor',
-        save: 'Guardar juego'
+        save: 'Guardar juegos'
       },
       gamesCatalog: {
         title: 'Juegos',
-        subtitle: 'Por ahora solo Impostor está disponible. Los demás espacios quedan reservados para próximos juegos.',
+        subtitle: 'Elige los minijuegos para tu grupo.',
         futureSlot: 'Próximamente',
         howToPlayTitle: 'Cómo funciona Impostor',
         howToPlayIntro: 'Todos reciben una palabra secreta, excepto los impostores.',
@@ -291,6 +291,8 @@ export const resources = {
         balanceRule: 'Victoria por balance',
         balanceRuleHint: 'Los impostores ganan cuando quedan tantos impostores como inocentes.',
         balanceRuleDisabledHint: 'Esta regla solo aplica si la partida continúa después de expulsar a un inocente.',
+        settings: 'Ajustes',
+        noSettings: 'Sin ajustes',
         guessWhoCategory: 'Categoría',
         guessWhoCategoryOptions: {
           popular: 'Populares',
@@ -380,6 +382,7 @@ export const resources = {
         gameModes: 'Modos de juego',
         chooseGame: 'Elegir',
         selected: 'Seleccionado',
+        startsFirst: 'Primero',
         removeMember: 'Expulsar',
         memberRemoved: 'El miembro salió de la sala.',
         memberMissing: 'Ese miembro ya no está dentro de la sala.',
@@ -387,6 +390,7 @@ export const resources = {
         roundStarting: 'Preparando la ronda compartida...',
         minimumPlayersRequired: 'Necesitas al menos 3 jugadores activos para iniciar Impostor.',
         minimumPlayersRequiredGuessWho: 'Necesitas al menos 2 jugadores activos para iniciar.',
+        gameUnavailable: 'Este juego todavía no tiene partida disponible.',
         impostorHint: 'La sala entra directo a la ronda compartida de Impostor en cuanto el host la inicie.',
         noModeHost: 'Elige el primer modo antes de empezar la sala.',
         noModeMember: 'El host todavía no ha seleccionado el siguiente modo.',
@@ -758,18 +762,18 @@ export const resources = {
       },
       chooseGames: {
         title: 'Choose mini games',
-        subtitle: 'For now the room goes straight into Impostor. This screen only confirms the active mode before you go back.',
+        subtitle: 'Choose the games for this room.',
         onlyModeTitle: 'Active mode',
         onlyModeCopy: 'The room only uses Impostor while the rest of the multiplayer system is being finished.',
         selected: 'Selected',
         tapToAdd: 'Ready to activate',
         keepSelected: 'Keep Impostor',
         selectImpostor: 'Use Impostor',
-        save: 'Save game'
+        save: 'Save games'
       },
       gamesCatalog: {
         title: 'Games',
-        subtitle: 'For now only Impostor is available. The remaining slots stay reserved for upcoming games.',
+        subtitle: 'Choose minigames for your group.',
         futureSlot: 'Coming soon',
         howToPlayTitle: 'How Impostor Works',
         howToPlayIntro: 'Everyone gets a secret word, except the impostors.',
@@ -813,6 +817,8 @@ export const resources = {
         balanceRule: 'Balance win rule',
         balanceRuleHint: 'Impostors win when the number of impostors matches the number of innocents left.',
         balanceRuleDisabledHint: 'This rule only applies if the match continues after a wrong expulsion.',
+        settings: 'Settings',
+        noSettings: 'No settings',
         guessWhoCategory: 'Category',
         guessWhoCategoryOptions: {
           popular: 'Popular',
@@ -902,6 +908,7 @@ export const resources = {
         gameModes: 'Game modes',
         chooseGame: 'Choose',
         selected: 'Selected',
+        startsFirst: 'First',
         removeMember: 'Remove',
         memberRemoved: 'That member was removed from the room.',
         memberMissing: 'That member is no longer in the room.',
@@ -909,6 +916,7 @@ export const resources = {
         roundStarting: 'Preparing the shared round...',
         minimumPlayersRequired: 'You need at least 3 active players to start Impostor.',
         minimumPlayersRequiredGuessWho: 'You need at least 2 active players to start.',
+        gameUnavailable: 'This game is not playable yet.',
         impostorHint: 'The room jumps straight into the shared Impostor round as soon as the host starts it.',
         noModeHost: 'Choose the first mode before starting the party.',
         noModeMember: 'The host has not selected the next mode yet.',

@@ -1,23 +1,7 @@
-import type { ImpostorCategoryId, LobbyScenario, LobbyScenarioKey, MiniGame, Player, ResultEntry, RoomSettings } from '../navigation/types';
+import { gameRegistryList } from './gameRegistry';
+import type { GameId, LobbyScenario, LobbyScenarioKey, MiniGame, Player, ResultEntry, RoomSettings } from '../navigation/types';
 
-export const featuredGames: MiniGame[] = [
-  {
-    id: 'impostor',
-    name: 'Impostor',
-    category: 'Social Deduction',
-    duration: '1 modo',
-    energy: 'Social',
-    description: 'One or more players do not know the secret word. The room talks, votes, and tries to expel every impostor.'
-  },
-  {
-    id: 'guess-who',
-    name: 'Adivina Quién Soy',
-    category: 'Social Deduction',
-    duration: '2 intentos',
-    energy: 'Social',
-    description: 'See everyone else, guess yourself.'
-  }
-];
+export const featuredGames: MiniGame[] = gameRegistryList;
 
 export const roomPlayers: Player[] = [
   { id: 'p1', name: 'Sofia', status: 'host', mood: 'Setting the tone', score: 1260 },
@@ -74,15 +58,21 @@ export const lobbyScenarios: Record<LobbyScenarioKey, LobbyScenario> = {
   }
 };
 
-export const initialSelectedGameIds = ['impostor', 'guess-who'];
+export const initialSelectedGameIds: GameId[] = ['impostor', 'guess-who'];
 
 export const initialRoomSettings: RoomSettings = {
-  turnSeconds: 45,
-  impostorCount: 1,
-  themeCategory: 'animals',
-  guessWhoCategory: 'popular',
-  missBehavior: 'repeat',
-  balanceEndsGame: true
+  games: {
+    impostor: {
+      turnSeconds: 45,
+      impostorCount: 1,
+      themeCategory: 'animals',
+      missBehavior: 'repeat',
+      balanceEndsGame: true
+    },
+    'guess-who': {
+      category: 'popular'
+    }
+  }
 };
 
 export const podium: ResultEntry[] = [

@@ -24,23 +24,24 @@ export function buildImpostorRound(
 ): ImpostorRoundSetup {
   const eligiblePlayers = players.filter((player) => player.status !== 'invited');
   const safePlayers = eligiblePlayers.length ? eligiblePlayers : players;
-  const words = impostorThemeWords[settings.themeCategory];
+  const impostorSettings = settings.games.impostor;
+  const words = impostorThemeWords[impostorSettings.themeCategory];
   
   if (!safePlayers.length) {
     return {
       gameId: 'impostor',
       roundId: 'local-round',
       roundNumber: 1,
-      categoryId: settings.themeCategory,
+      categoryId: impostorSettings.themeCategory,
       secretWord: randomItem(words),
       impostorIds: [],
       eliminatedUserIds: [],
       expelledUserId: null,
       phase: 'voting',
       voteDeadlineAt: null,
-      voteDurationSeconds: settings.turnSeconds,
-      missBehavior: settings.missBehavior,
-      balanceEndsGame: settings.balanceEndsGame,
+      voteDurationSeconds: impostorSettings.turnSeconds,
+      missBehavior: impostorSettings.missBehavior,
+      balanceEndsGame: impostorSettings.balanceEndsGame,
       votes: [],
       startedAt: new Date().toISOString(),
       status: 'active',
@@ -48,7 +49,7 @@ export function buildImpostorRound(
     };
   }
 
-  const totalImpostors = Math.min(Math.max(settings.impostorCount, 1), Math.max(1, safePlayers.length - 1 || 1));
+  const totalImpostors = Math.min(Math.max(impostorSettings.impostorCount, 1), Math.max(1, safePlayers.length - 1 || 1));
   const previousImpostorIds = new Set(previousRound?.impostorIds ?? []);
   const preferredPlayers = shuffle(safePlayers.filter((player) => !previousImpostorIds.has(player.id)));
   const fallbackPlayers = shuffle(safePlayers.filter((player) => !preferredPlayers.some((preferred) => preferred.id === player.id)));
@@ -60,16 +61,16 @@ export function buildImpostorRound(
     gameId: 'impostor',
     roundId: 'local-round',
     roundNumber: 1,
-    categoryId: settings.themeCategory,
+    categoryId: impostorSettings.themeCategory,
     secretWord: randomItem(words),
     impostorIds,
     eliminatedUserIds: [],
     expelledUserId: null,
     phase: 'voting',
     voteDeadlineAt: null,
-    voteDurationSeconds: settings.turnSeconds,
-    missBehavior: settings.missBehavior,
-    balanceEndsGame: settings.balanceEndsGame,
+    voteDurationSeconds: impostorSettings.turnSeconds,
+    missBehavior: impostorSettings.missBehavior,
+    balanceEndsGame: impostorSettings.balanceEndsGame,
     votes: [],
     startedAt: new Date().toISOString(),
     status: 'active',

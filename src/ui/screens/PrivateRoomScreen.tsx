@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import { useTranslation } from 'react-i18next';
 
 import type { RoomMemberView, RoomRealtimeState } from '../../data/rooms';
+import { gameRegistry } from '../../data/gameRegistry';
 import type { MiniGame, RoomSettings } from '../../navigation/types';
 import { AppButton } from '../components/AppButton';
 import { AppScreen } from '../components/AppScreen';
@@ -17,7 +18,7 @@ type PrivateRoomScreenProps = {
   roomUrl: string;
   roomStatus: 'waiting' | 'active' | 'finished';
   members: RoomMemberView[];
-  selectedGame: MiniGame | null;
+  selectedGames: MiniGame[];
   settings: RoomSettings;
   canManageRoom: boolean;
   canStartGame: boolean;
@@ -38,7 +39,7 @@ export function PrivateRoomScreen({
   roomUrl,
   roomStatus,
   members,
-  selectedGame,
+  selectedGames,
   settings,
   canManageRoom,
   canStartGame,
@@ -74,11 +75,11 @@ export function PrivateRoomScreen({
     return t(`gameMeta.names.${id}`);
   }
 
-  function themeLabel(value: RoomSettings['themeCategory']) {
+  function themeLabel(value: RoomSettings['games']['impostor']['themeCategory']) {
     return t(`roomSettings.themeOptions.${value}`);
   }
 
-  function guessWhoCategoryLabel(value: RoomSettings['guessWhoCategory']) {
+  function guessWhoCategoryLabel(value: RoomSettings['games']['guess-who']['category']) {
     return t(`roomSettings.guessWhoCategoryOptions.${value}`);
   }
 
@@ -92,6 +93,35 @@ export function PrivateRoomScreen({
     }
 
     return `${value} ${t('common.secondsShort')}`;
+  }
+
+  function renderGameSettingsSummary(game: MiniGame) {
+    if (game.id === 'guess-who') {
+      return (
+        <>
+          <Text style={styles.itemSubtitle}>
+            {t('room.guessWhoCategoryLine', { value: guessWhoCategoryLabel(settings.games['guess-who'].category) })}
+          </Text>
+          <Text style={styles.itemSubtitle}>{t('room.guessWhoAttemptsLine')}</Text>
+        </>
+      );
+    }
+
+    if (game.id === 'impostor') {
+      const impostorSettings = settings.games.impostor;
+
+      return (
+        <>
+          <Text style={styles.itemSubtitle}>{t('room.impostorCountLine', { value: impostorSettings.impostorCount })}</Text>
+          <Text style={styles.itemSubtitle}>{t('room.themeLine', { value: themeLabel(impostorSettings.themeCategory) })}</Text>
+          <Text style={styles.itemSubtitle}>{t('room.turnTimerLine', { value: turnTimerValue(impostorSettings.turnSeconds) })}</Text>
+          <Text style={styles.itemSubtitle}>{t(`room.missBehaviorLine.${impostorSettings.missBehavior}`)}</Text>
+          <Text style={styles.itemSubtitle}>{t(impostorSettings.balanceEndsGame ? 'room.balanceRuleOn' : 'room.balanceRuleOff')}</Text>
+        </>
+      );
+    }
+
+    return <Text style={styles.itemSubtitle}>{t('roomSettings.noSettings')}</Text>;
   }
 
   async function copyRoomCode() {
@@ -195,13 +225,16 @@ export function PrivateRoomScreen({
           <Text style={styles.sectionTitle}>{t('room.gameModes')}</Text>
           {canManageRoom ? <AppButton label={t('room.chooseGame')} onPress={onChooseGames} variant="ghost" /> : null}
         </View>
-        {selectedGame ? (
-          <View style={styles.listRow}>
-            <View style={styles.listMeta}>
-              <Text style={styles.itemTitle}>{gameName(selectedGame.id)}</Text>
+        {selectedGames.length ? (
+          selectedGames.map((game, index) => (
+            <View key={game.id} style={styles.listRow}>
+              <Image source={gameRegistry[game.id].thumbnail} resizeMode="contain" style={styles.gameThumb} />
+              <View style={styles.listMeta}>
+                <Text style={styles.itemTitle}>{gameName(game.id)}</Text>
+              </View>
+              <Badge label={index === 0 ? t('room.startsFirst') : t('room.selected')} tone="accent" />
             </View>
-            <Badge label={t('room.selected')} tone="accent" />
-          </View>
+          ))
         ) : (
           <Text style={styles.itemSubtitle}>{canManageRoom ? t('room.noModeHost') : t('room.noModeMember')}</Text>
         )}
@@ -212,19 +245,18 @@ export function PrivateRoomScreen({
           <Text style={styles.sectionTitle}>{t('room.gameSetup')}</Text>
           {canManageRoom ? <AppButton label={t('room.configureGame')} onPress={onOpenSettings} variant="ghost" /> : null}
         </View>
-        {selectedGame?.id === 'guess-who' ? (
-          <>
-            <Text style={styles.itemSubtitle}>{t('room.guessWhoCategoryLine', { value: guessWhoCategoryLabel(settings.guessWhoCategory) })}</Text>
-            <Text style={styles.itemSubtitle}>{t('room.guessWhoAttemptsLine')}</Text>
-          </>
+        {selectedGames.length ? (
+          selectedGames.map((game) => (
+            <View key={game.id} style={styles.settingsPreview}>
+              <View style={styles.settingsPreviewHeader}>
+                <Image source={gameRegistry[game.id].thumbnail} resizeMode="contain" style={styles.gameThumb} />
+                <Text style={styles.itemTitle}>{gameName(game.id)}</Text>
+              </View>
+              {renderGameSettingsSummary(game)}
+            </View>
+          ))
         ) : (
-          <>
-            <Text style={styles.itemSubtitle}>{t('room.impostorCountLine', { value: settings.impostorCount })}</Text>
-            <Text style={styles.itemSubtitle}>{t('room.themeLine', { value: themeLabel(settings.themeCategory) })}</Text>
-            <Text style={styles.itemSubtitle}>{t('room.turnTimerLine', { value: turnTimerValue(settings.turnSeconds) })}</Text>
-            <Text style={styles.itemSubtitle}>{t(`room.missBehaviorLine.${settings.missBehavior}`)}</Text>
-            <Text style={styles.itemSubtitle}>{t(settings.balanceEndsGame ? 'room.balanceRuleOn' : 'room.balanceRuleOff')}</Text>
-          </>
+          <Text style={styles.itemSubtitle}>{t('room.noModeHost')}</Text>
         )}
       </SurfaceCard>
 
@@ -367,9 +399,28 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
     justifyContent: 'space-between',
     gap: spacing.md
   },
+  gameThumb: {
+    width: 44,
+    height: 44,
+    borderRadius: 12
+  },
   listMeta: {
     flex: 1,
     gap: 2
+  },
+  settingsPreview: {
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: 18,
+    padding: spacing.md,
+    gap: spacing.xs,
+    backgroundColor: theme.colors.surfaceMuted
+  },
+  settingsPreviewHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.xs
   },
   itemTitle: {
     color: theme.colors.textPrimary,

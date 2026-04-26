@@ -20,13 +20,17 @@ export type Player = {
 };
 
 export type MiniGame = {
-  id: 'impostor' | 'guess-who';
+  id: GameId;
   name: string;
   category: 'Warm Up' | 'Social Reads' | 'Bluffing' | 'Social Deduction';
   duration: string;
   energy: 'Warm-up' | 'Social' | 'Chaotic';
   description: string;
 };
+
+export type GameId = 'impostor' | 'guess-who';
+
+export type GameStartHandler = GameId | 'none';
 
 export type ImpostorMode = 'friends' | 'multiplayer';
 export type ImpostorCategoryId =
@@ -82,13 +86,23 @@ export type ResultEntry = {
   badge: string;
 };
 
-export type RoomSettings = {
+export type ImpostorSettings = {
   turnSeconds: number;
   impostorCount: number;
   themeCategory: ImpostorCategoryId;
-  guessWhoCategory: GuessWhoCategoryId;
   missBehavior: 'repeat' | 'end';
   balanceEndsGame: boolean;
+};
+
+export type GuessWhoSettings = {
+  category: GuessWhoCategoryId;
+};
+
+export type RoomSettings = {
+  games: {
+    impostor: ImpostorSettings;
+    'guess-who': GuessWhoSettings;
+  };
 };
 
 export type ImpostorRoundSetup = {

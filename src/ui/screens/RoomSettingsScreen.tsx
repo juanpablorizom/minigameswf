@@ -1,127 +1,72 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
-import { guessWhoCategoryOptions } from '../../data/guessWho/categories';
-import { impostorThemeOptions } from '../../data/themes';
-import type { RoomSettings } from '../../navigation/types';
+import { gameRegistry, normalizeGameIds } from '../../data/gameRegistry';
+import type { GameId, RoomSettings } from '../../navigation/types';
+import { GameSettingsFields } from '../gameSettings/GameSettingsRegistry';
 import { AppButton } from '../components/AppButton';
 import { AppScreen } from '../components/AppScreen';
 import { SurfaceCard } from '../components/SurfaceCard';
-import { radius, spacing, typography, useTheme } from '../theme';
+import { spacing, typography, useTheme } from '../theme';
 
 type RoomSettingsScreenProps = {
   settings: RoomSettings;
+  selectedGameIds?: GameId[];
   onChangeSettings: (next: RoomSettings) => void;
   onSave: () => void;
   embedded?: boolean;
-  selectedGameId?: 'impostor' | 'guess-who' | null;
 };
-
-const impostorCountOptions = [1, 2, 3, 4];
-const turnOptions = [0, 30, 45, 60, 300];
-const missBehaviorOptions: RoomSettings['missBehavior'][] = ['repeat', 'end'];
 
 export function RoomSettingsScreen({
   settings,
+  selectedGameIds = ['impostor'],
   onChangeSettings,
   onSave,
-  embedded = false,
-  selectedGameId = 'impostor'
+  embedded = false
 }: RoomSettingsScreenProps) {
   const { t } = useTranslation();
   const theme = useTheme();
   const styles = createStyles(theme);
+  const safeSelectedGameIds = normalizeGameIds(selectedGameIds);
+  const [expandedGameId, setExpandedGameId] = useState<GameId | null>(safeSelectedGameIds[0] ?? 'impostor');
 
-  function handleMissBehaviorChange(nextMissBehavior: RoomSettings['missBehavior']) {
-    onChangeSettings({
-      ...settings,
-      missBehavior: nextMissBehavior
-    });
-  }
+  useEffect(() => {
+    if (expandedGameId && !safeSelectedGameIds.includes(expandedGameId)) {
+      setExpandedGameId(safeSelectedGameIds[0] ?? 'impostor');
+    }
+  }, [expandedGameId, safeSelectedGameIds]);
 
   const content = (
     <>
-      {selectedGameId === 'guess-who' ? (
-        <SurfaceCard>
-          <Text style={styles.sectionTitle}>{t('roomSettings.guessWhoCategory')}</Text>
-          <View style={styles.optionColumn}>
-            {guessWhoCategoryOptions.map((guessWhoCategory) => (
-              <OptionChip
-                key={guessWhoCategory}
-                label={t(`roomSettings.guessWhoCategoryOptions.${guessWhoCategory}`)}
-                active={settings.guessWhoCategory === guessWhoCategory}
-                onPress={() => onChangeSettings({ ...settings, guessWhoCategory })}
-              />
-            ))}
-          </View>
-        </SurfaceCard>
-      ) : (
-        <>
-          <SurfaceCard>
-            <Text style={styles.sectionTitle}>{t('roomSettings.impostorCount')}</Text>
-            <View style={styles.optionRow}>
-              {impostorCountOptions.map((impostorCount) => (
-                <OptionChip
-                  key={impostorCount}
-                  label={t('roomSettings.impostorCountValue', { count: impostorCount })}
-                  active={settings.impostorCount === impostorCount}
-                  onPress={() => onChangeSettings({ ...settings, impostorCount })}
-                />
-              ))}
-            </View>
-          </SurfaceCard>
+      {safeSelectedGameIds.map((gameId) => {
+        const game = gameRegistry[gameId];
+        const isExpanded = expandedGameId === gameId;
 
-          <SurfaceCard>
-            <Text style={styles.sectionTitle}>{t('roomSettings.theme')}</Text>
-            <Text style={styles.summaryCopy}>{t('roomSettings.themeHint')}</Text>
-            <View style={styles.optionColumn}>
-              {impostorThemeOptions.map((themeCategory) => (
-                <OptionChip
-                  key={themeCategory}
-                  label={t(`roomSettings.themeOptions.${themeCategory}`)}
-                  active={settings.themeCategory === themeCategory}
-                  onPress={() => onChangeSettings({ ...settings, themeCategory })}
-                />
-              ))}
-            </View>
-          </SurfaceCard>
+        return (
+          <SurfaceCard key={gameId}>
+            <Pressable
+              onPress={() => setExpandedGameId(isExpanded ? null : gameId)}
+              style={({ pressed }) => [styles.blockHeader, pressed && styles.blockHeaderPressed]}
+              accessibilityRole="button"
+              accessibilityLabel={t(`gameMeta.names.${gameId}`)}
+            >
+              <Image source={game.thumbnail} resizeMode="contain" style={styles.gameThumb} />
+              <View style={styles.headerCopy}>
+                <Text style={styles.sectionTitle}>{t(`gameMeta.names.${gameId}`)}</Text>
+                <Text style={styles.summaryCopy}>{game.hasSettings ? t('roomSettings.settings') : t('roomSettings.noSettings')}</Text>
+              </View>
+              <Text style={styles.chevron}>{isExpanded ? '−' : '+'}</Text>
+            </Pressable>
 
-          <SurfaceCard>
-            <Text style={styles.sectionTitle}>{t('roomSettings.turnTimer')}</Text>
-            <View style={styles.optionRow}>
-              {turnOptions.map((turnSeconds) => (
-                <OptionChip
-                  key={turnSeconds}
-                  label={
-                    turnSeconds === 0
-                      ? t('roomSettings.turnTimerOptions.none')
-                      : turnSeconds === 300
-                        ? t('roomSettings.turnTimerOptions.fiveMinutes')
-                        : `${turnSeconds}s`
-                  }
-                  active={settings.turnSeconds === turnSeconds}
-                  onPress={() => onChangeSettings({ ...settings, turnSeconds })}
-                />
-              ))}
-            </View>
+            {isExpanded ? (
+              <View style={styles.settingsBody}>
+                <GameSettingsFields gameId={gameId} settings={settings} onChangeSettings={onChangeSettings} />
+              </View>
+            ) : null}
           </SurfaceCard>
-
-          <SurfaceCard>
-            <Text style={styles.sectionTitle}>{t('roomSettings.missBehavior')}</Text>
-            <Text style={styles.summaryCopy}>{t('roomSettings.missBehaviorHint')}</Text>
-            <View style={styles.optionColumn}>
-              {missBehaviorOptions.map((missBehavior) => (
-                <OptionChip
-                  key={missBehavior}
-                  label={t(`roomSettings.missBehaviorOptions.${missBehavior}`)}
-                  active={settings.missBehavior === missBehavior}
-                  onPress={() => handleMissBehaviorChange(missBehavior)}
-                />
-              ))}
-            </View>
-          </SurfaceCard>
-        </>
-      )}
+        );
+      })}
 
       {!embedded ? <AppButton label={t('roomSettings.save')} onPress={onSave} /> : null}
     </>
@@ -138,73 +83,47 @@ export function RoomSettingsScreen({
   );
 }
 
-type OptionChipProps = {
-  label: string;
-  active: boolean;
-  disabled?: boolean;
-  onPress: () => void;
-};
-
-function OptionChip({ label, active, disabled = false, onPress }: OptionChipProps) {
-  const theme = useTheme();
-  const styles = createStyles(theme);
-
-  return (
-    <Pressable disabled={disabled} onPress={onPress} style={[styles.optionChip, active && styles.optionChipActive, disabled && styles.optionChipDisabled]}>
-      <Text style={[styles.optionLabel, active && styles.optionLabelActive, disabled && styles.optionLabelDisabled]}>{label}</Text>
-    </Pressable>
-  );
-}
-
 function createStyles(theme: ReturnType<typeof useTheme>) {
   return StyleSheet.create({
-  sectionTitle: {
-    color: theme.colors.textPrimary,
-    fontSize: typography.section,
-    fontWeight: '700'
-  },
-  summaryCopy: {
-    color: theme.colors.textSecondary,
-    fontSize: typography.body,
-    lineHeight: 22
-  },
-  optionRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm
-  },
-  optionColumn: {
-    gap: spacing.sm
-  },
-  embeddedContent: {
-    gap: spacing.lg
-  },
-  optionChip: {
-    minHeight: 46,
-    paddingHorizontal: spacing.md,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    backgroundColor: theme.colors.backgroundElevated,
-    justifyContent: 'center'
-  },
-  optionChipActive: {
-    backgroundColor: theme.colors.successMuted,
-    borderColor: theme.colors.success
-  },
-  optionChipDisabled: {
-    opacity: 0.5
-  },
-  optionLabel: {
-    color: theme.colors.textSecondary,
-    fontSize: typography.body,
-    fontWeight: '600'
-  },
-  optionLabelActive: {
-    color: theme.colors.successText
-  },
-  optionLabelDisabled: {
-    color: theme.colors.textMuted
-  }
+    embeddedContent: {
+      gap: spacing.md
+    },
+    blockHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.md
+    },
+    blockHeaderPressed: {
+      opacity: 0.86
+    },
+    gameThumb: {
+      width: 48,
+      height: 48,
+      borderRadius: 14
+    },
+    headerCopy: {
+      flex: 1,
+      gap: 2
+    },
+    sectionTitle: {
+      color: theme.colors.textPrimary,
+      fontSize: typography.section,
+      fontWeight: '800'
+    },
+    summaryCopy: {
+      color: theme.colors.textSecondary,
+      fontSize: typography.caption,
+      lineHeight: 18
+    },
+    chevron: {
+      color: theme.colors.textPrimary,
+      fontSize: typography.title,
+      fontWeight: '800'
+    },
+    settingsBody: {
+      borderTopWidth: 1,
+      borderTopColor: theme.colors.border,
+      paddingTop: spacing.md
+    }
   });
 }

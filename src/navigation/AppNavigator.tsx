@@ -3,11 +3,12 @@ import { Animated, Linking, Modal, Pressable, Share, StyleSheet, Text, View, use
 import { useTranslation } from 'react-i18next';
 
 import { featuredGames, lobbyScenarios } from '../data/mockData';
+import { gameRegistry, getGamesByIds, normalizeGameIds } from '../data/gameRegistry';
 import { impostorThemeWords } from '../data/themes';
 import type { RoomDetails } from '../data/rooms';
 import { buildRoomJoinUrl, extractRoomCodeFromValue, normalizeRoomCode } from '../lib/roomLinks';
 import { loadStoredRoomResume, storeRoomResume } from '../lib/storage';
-import type { LobbyActionId, LobbyScenario, Player } from './types';
+import type { GameId, LobbyActionId, LobbyScenario, Player } from './types';
 import { useAppFlow } from '../state/AppFlowContext';
 import { useAuth } from '../state/AuthContext';
 import { useRoom } from '../state/RoomContext';
@@ -135,7 +136,7 @@ function buildLobbyScenario(
     };
   }
 
-  const selectedGame = activeRoom.room.selected_game_id;
+  const selectedGameIds = activeRoom.selectedGameIds;
 
   return {
     key: 'activeRoom',
@@ -144,7 +145,7 @@ function buildLobbyScenario(
     subtitle: activeRoom.isHost ? translate('lobby.activeSubtitleHost') : translate('lobby.activeSubtitleMember'),
     primaryAction: { id: 'continueRoom', label: translate('lobby.continueRoom') },
     secondaryAction: activeRoom.isHost ? { id: 'inviteFriends', label: translate('lobby.shareCode'), variant: 'secondary' } : undefined,
-    modeIds: selectedGame ? [selectedGame] : ['impostor']
+    modeIds: selectedGameIds.length ? selectedGameIds : ['impostor']
   };
 }
 
@@ -192,7 +193,7 @@ export function AppNavigator() {
     castImpostorVote,
     resolveImpostorVote,
     returnRoomToLobby,
-    saveSelectedGame,
+    saveSelectedGames,
     setRoomScreenActive
   } = useRoom();
   const {
@@ -214,7 +215,7 @@ export function AppNavigator() {
     openChooseGames,
     openScanRoom,
     toggleGameSelection,
-    hydrateSelectedGame,
+    hydrateSelectedGames,
     saveGames,
     updateRoomSettings,
     saveRoomSettings,
@@ -279,7 +280,7 @@ export function AppNavigator() {
   }
 
   function canStartSelectedTheme() {
-    return Boolean(impostorThemeWords[roomSettings.themeCategory]?.length);
+    return Boolean(impostorThemeWords[roomSettings.games.impostor.themeCategory]?.length);
   }
 
   function getActiveMemberCount(room: RoomDetails | null) {
@@ -294,8 +295,12 @@ export function AppNavigator() {
     return getActiveMemberCount(room) >= 2;
   }
 
-  function getSelectedGameId(room: RoomDetails | null) {
-    return room?.room.selected_game_id === 'guess-who' ? 'guess-who' : 'impostor';
+  function getRoomSelectedGameIds(room: RoomDetails | null) {
+    return room ? room.selectedGameIds : selectedGameIds;
+  }
+
+  function getSelectedGameId(room: RoomDetails | null): GameId {
+    return getRoomSelectedGameIds(room)[0] ?? 'impostor';
   }
 
   function runStartImpostorRound(onSuccess?: () => void) {
@@ -316,14 +321,16 @@ export function AppNavigator() {
       return;
     }
 
+    const impostorSettings = roomSettings.games.impostor;
+
     setRoomNotice(t('room.roundStarting'));
 
     void startImpostorRound(
-      roomSettings.themeCategory,
-      roomSettings.impostorCount,
-      roomSettings.turnSeconds,
-      roomSettings.missBehavior,
-      roomSettings.balanceEndsGame
+      impostorSettings.themeCategory,
+      impostorSettings.impostorCount,
+      impostorSettings.turnSeconds,
+      impostorSettings.missBehavior,
+      impostorSettings.balanceEndsGame
     ).then((result) => {
       if (result.error) {
         setRoomNotice(mapRoomNotice(t, result.error));
@@ -355,7 +362,7 @@ export function AppNavigator() {
 
     setRoomNotice(t('room.roundStarting'));
 
-    void startGuessWhoRound(roomSettings.guessWhoCategory).then((result) => {
+    void startGuessWhoRound(roomSettings.games['guess-who'].category).then((result) => {
       if (result.error) {
         setRoomNotice(
           result.error === 'ROUND_MIN_PLAYERS' ? t('room.minimumPlayersRequiredGuessWho') : mapRoomNotice(t, result.error)
@@ -374,12 +381,20 @@ export function AppNavigator() {
   }
 
   function runStartSelectedRound(onSuccess?: () => void) {
-    if (getSelectedGameId(activeRoom) === 'guess-who') {
+    const selectedGameId = getSelectedGameId(activeRoom);
+    const startHandler = gameRegistry[selectedGameId]?.startHandler ?? 'none';
+
+    if (startHandler === 'guess-who') {
       runStartGuessWhoRound(onSuccess);
       return;
     }
 
-    runStartImpostorRound(onSuccess);
+    if (startHandler === 'impostor') {
+      runStartImpostorRound(onSuccess);
+      return;
+    }
+
+    setRoomNotice(t('room.gameUnavailable'));
   }
 
   useEffect(() => {
@@ -486,10 +501,10 @@ export function AppNavigator() {
   }, [activeRoom?.room.id, activeRoom?.room.status, backToLobby, t]);
 
   useEffect(() => {
-    if (activeRoom?.room.selected_game_id) {
-      hydrateSelectedGame(activeRoom.room.selected_game_id);
+    if (activeRoom) {
+      hydrateSelectedGames(activeRoom.selectedGameIds);
     }
-  }, [activeRoom?.room.selected_game_id, hydrateSelectedGame]);
+  }, [activeRoom?.room.id, activeRoom?.room.selected_game_id, activeRoom?.room.selected_game_ids, hydrateSelectedGames]);
 
   useEffect(() => {
     if (!isGameSettingsOpen) {
@@ -775,7 +790,7 @@ export function AppNavigator() {
   function handleLobbyAction(actionId: LobbyActionId) {
     switch (actionId) {
       case 'createRoom':
-        void createRoom('impostor').then((result) => {
+        void createRoom(normalizeGameIds(selectedGameIds)).then((result) => {
           if (result.error) {
             setRoomNotice(mapRoomNotice(t, result.error));
             return;
@@ -841,9 +856,20 @@ export function AppNavigator() {
     setIsGamesCatalogOpen(true);
   }
 
-  function selectCatalogGame(gameId: 'impostor' | 'guess-who', closePanel = false) {
+  function getNextSelectedGameIds(currentGameIds: GameId[], gameId: GameId) {
+    if (currentGameIds.includes(gameId)) {
+      const nextGameIds = currentGameIds.filter((selectedGameId) => selectedGameId !== gameId);
+      return nextGameIds.length ? nextGameIds : currentGameIds;
+    }
+
+    return normalizeGameIds([...currentGameIds, gameId]);
+  }
+
+  function selectCatalogGame(gameId: GameId, closePanel = false) {
+    const nextGameIds = getNextSelectedGameIds(getRoomSelectedGameIds(activeRoom), gameId);
+
     if (activeRoom) {
-      void saveSelectedGame(gameId).then((result) => {
+      void saveSelectedGames(nextGameIds).then((result) => {
         if (result.error) {
           setRoomNotice(mapRoomNotice(t, result.error));
           return;
@@ -860,6 +886,7 @@ export function AppNavigator() {
       return;
     }
 
+    toggleGameSelection(gameId);
     setRoomNotice(null);
     if (closePanel) {
       setIsGamesCatalogOpen(false);
@@ -1023,10 +1050,16 @@ export function AppNavigator() {
     }
 
     if (resolvedScreen === 'room' && activeRoom) {
-      const selectedGame =
-        featuredGames.find((game) => game.id === activeRoom.room.selected_game_id) ?? featuredGames[0] ?? null;
-      const selectedGameId = selectedGame?.id ?? 'impostor';
-      const canStartGame = selectedGameId === 'guess-who' ? canStartGuessWhoRound(activeRoom) : canStartImpostorRound(activeRoom);
+      const selectedGameIdsForRoom = getRoomSelectedGameIds(activeRoom);
+      const selectedGamesForRoom = getGamesByIds(selectedGameIdsForRoom);
+      const selectedGameId = selectedGameIdsForRoom[0] ?? 'impostor';
+      const selectedGameConfig = gameRegistry[selectedGameId];
+      const canStartGame =
+        selectedGameConfig.startHandler === 'guess-who'
+          ? canStartGuessWhoRound(activeRoom)
+          : selectedGameConfig.startHandler === 'impostor'
+            ? canStartImpostorRound(activeRoom)
+            : false;
 
       return (
         <PrivateRoomScreen
@@ -1034,14 +1067,16 @@ export function AppNavigator() {
           roomUrl={buildRoomJoinUrl(activeRoom.room.code)}
           roomStatus={activeRoom.room.status}
           members={activeRoom.members}
-          selectedGame={selectedGame}
+          selectedGames={selectedGamesForRoom}
           settings={roomSettings}
           canManageRoom={activeRoom.isHost}
           canStartGame={canStartGame}
           startDisabledReason={
             canStartGame
               ? null
-              : selectedGameId === 'guess-who'
+              : selectedGameConfig.startHandler === 'none'
+                ? t('room.gameUnavailable')
+                : selectedGameId === 'guess-who'
                 ? t('room.minimumPlayersRequiredGuessWho')
                 : t('room.minimumPlayersRequired')
           }
@@ -1089,7 +1124,14 @@ export function AppNavigator() {
           selectedGameIds={selectedGameIds}
           onToggleGame={toggleGameSelection}
           onSave={() => {
-            void saveSelectedGame('impostor').then((result) => {
+            const nextGameIds = normalizeGameIds(selectedGameIds);
+
+            if (!activeRoom) {
+              saveGames();
+              return;
+            }
+
+            void saveSelectedGames(nextGameIds).then((result) => {
               if (result.error) {
                 setRoomNotice(mapRoomNotice(t, result.error));
                 return;
@@ -1107,7 +1149,7 @@ export function AppNavigator() {
       return (
         <RoomSettingsScreen
           settings={roomSettings}
-          selectedGameId={getSelectedGameId(activeRoom)}
+          selectedGameIds={getRoomSelectedGameIds(activeRoom)}
           onChangeSettings={updateRoomSettings}
           onSave={saveRoomSettings}
         />
@@ -1278,8 +1320,8 @@ export function AppNavigator() {
     if (activeTab === 'settings') {
       return (
         <GamesCatalogScreen
-          onSelectImpostor={() => selectCatalogGame('impostor')}
-          onSelectGuessWho={() => selectCatalogGame('guess-who')}
+          selectedGameIds={selectedGameIds}
+          onToggleGame={selectCatalogGame}
         />
       );
     }
@@ -1385,8 +1427,8 @@ export function AppNavigator() {
     return (
       <GamesCatalogScreen
         embedded
-        onSelectImpostor={() => selectCatalogGame('impostor', true)}
-        onSelectGuessWho={() => selectCatalogGame('guess-who', true)}
+        selectedGameIds={getRoomSelectedGameIds(activeRoom)}
+        onToggleGame={selectCatalogGame}
       />
     );
   }
@@ -1611,8 +1653,8 @@ export function AppNavigator() {
 
       <GameSettingsModal
         visible={isGameSettingsOpen}
-        gameLabel={t(`gameMeta.names.${activeRoom?.room.selected_game_id ?? 'impostor'}`)}
-        selectedGameId={getSelectedGameId(activeRoom)}
+        gameLabel={t('common.games')}
+        selectedGameIds={getRoomSelectedGameIds(activeRoom)}
         settings={draftRoomSettings}
         onChangeSettings={setDraftRoomSettings}
         onCancel={() => {

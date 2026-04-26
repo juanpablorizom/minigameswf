@@ -75,6 +75,7 @@ export type Database = {
           host_user_id: string;
           status: RoomStatus;
           selected_game_id: string | null;
+          selected_game_ids: string[];
           visibility: RoomVisibility;
           created_at: string;
           updated_at: string;
@@ -85,6 +86,7 @@ export type Database = {
           host_user_id: string;
           status?: RoomStatus;
           selected_game_id?: string | null;
+          selected_game_ids?: string[];
           visibility?: RoomVisibility;
           created_at?: string;
           updated_at?: string;
@@ -95,6 +97,7 @@ export type Database = {
           host_user_id?: string;
           status?: RoomStatus;
           selected_game_id?: string | null;
+          selected_game_ids?: string[];
           visibility?: RoomVisibility;
           created_at?: string;
           updated_at?: string;
@@ -298,7 +301,7 @@ export type Database = {
     Functions: {
       create_private_room: {
         Args: {
-          p_selected_game_id?: string | null;
+          p_selected_game_ids?: string[];
         };
         Returns: Database['public']['Tables']['rooms']['Row'][];
       };
