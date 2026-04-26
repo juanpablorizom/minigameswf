@@ -1005,6 +1005,18 @@ export async function submitGuessWhoAnswer(roomId: string, guess: string) {
   return normalizeResult(data as RoomGuessWhoAssignmentRow | RoomGuessWhoAssignmentRow[] | null);
 }
 
+export async function finishGuessWhoRound(roomId: string) {
+  const { data, error } = await supabase.rpc('finish_guess_who_round', {
+    p_room_id: roomId
+  });
+
+  if (error) {
+    throw new Error(buildRoomErrorMessage(error.message));
+  }
+
+  return normalizeResult(data as RoomRoundRow | RoomRoundRow[] | null);
+}
+
 export async function startFacesGesturesRound(roomId: string, turnSeconds: number) {
   const { data, error } = await supabase.rpc('start_faces_gestures_round', {
     p_room_id: roomId,

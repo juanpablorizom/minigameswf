@@ -45,7 +45,11 @@ export function GameSettingsModal({
             </Pressable>
           </View>
 
-          <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
+          <ScrollView
+            style={styles.bodyScroll}
+            contentContainerStyle={styles.body}
+            showsVerticalScrollIndicator={false}
+          >
             <RoomSettingsScreen
               embedded
               settings={settings}
@@ -82,7 +86,9 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
       borderWidth: 1,
       borderColor: theme.colors.border,
       backgroundColor: theme.colors.surface,
-      overflow: 'hidden'
+      overflow: 'hidden',
+      flexShrink: 1,
+      minHeight: 0
     },
     header: {
       paddingHorizontal: layout.screenPaddingX,
@@ -112,10 +118,16 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
       color: theme.colors.textSecondary,
       ...textStyles.bodyStrong
     },
+    bodyScroll: {
+      flexGrow: 1,
+      flexShrink: 1,
+      minHeight: 0
+    },
     body: {
       paddingHorizontal: layout.screenPaddingX,
       paddingTop: spacing.lg,
-      paddingBottom: spacing.lg
+      paddingBottom: spacing.lg,
+      flexGrow: 1
     },
     actions: {
       paddingHorizontal: layout.screenPaddingX,

@@ -12,6 +12,7 @@ import {
   startImpostorRound as startImpostorRoundRequest,
   startGuessWhoRound as startGuessWhoRoundRequest,
   submitGuessWhoAnswer as submitGuessWhoAnswerRequest,
+  finishGuessWhoRound as finishGuessWhoRoundRequest,
   startFacesGesturesRound as startFacesGesturesRoundRequest,
   submitFacesGesturesGuess as submitFacesGesturesGuessRequest,
   finishFacesGesturesRound as finishFacesGesturesRoundRequest,
@@ -68,6 +69,7 @@ type RoomContextValue = {
   ) => Promise<RoomActionResult>;
   startGuessWhoRound: (categoryId: GuessWhoCategoryId) => Promise<RoomActionResult>;
   submitGuessWhoAnswer: (guess: string) => Promise<RoomActionResult & { correct?: boolean }>;
+  finishGuessWhoRound: () => Promise<RoomActionResult>;
   startFacesGesturesRound: (turnSeconds: number) => Promise<RoomActionResult>;
   submitFacesGesturesGuess: (guess: string) => Promise<RoomActionResult & { correct?: boolean }>;
   finishFacesGesturesRound: () => Promise<RoomActionResult>;
@@ -258,17 +260,25 @@ export function RoomProvider({ children }: PropsWithChildren) {
 
     const shouldPoll =
       syncState !== 'live' ||
+      activeRoom.room.status === 'waiting' ||
       (activeRoom.room.status === 'active' && !activeRoom.round);
 
     if (!shouldPoll) {
       return;
     }
 
+    const pollInterval =
+      activeRoom.room.status === 'waiting'
+        ? 1500
+        : activeRoom.room.status === 'active'
+          ? 1800
+          : 2500;
+
     const interval = setInterval(() => {
       void refreshResolvedActiveRoom().catch(() => {
         // Polling is only a safety net when realtime hasn't fully caught up.
       });
-    }, activeRoom.room.status === 'active' ? 1800 : 2500);
+    }, pollInterval);
 
     return () => {
       clearInterval(interval);
@@ -445,6 +455,24 @@ export function RoomProvider({ children }: PropsWithChildren) {
           const roomDetails = await getRoomDetails(activeRoom.room.id, user.id);
           setActiveRoom(roomDetails);
           return { roomId: activeRoom.room.id, correct: Boolean(result?.solved_at) };
+        } catch (error) {
+          return { error: mapRoomError(error) };
+        } finally {
+          setIsBusy(false);
+        }
+      },
+      finishGuessWhoRound: async () => {
+        if (!user || !activeRoom) {
+          return { error: 'AUTH_REQUIRED' };
+        }
+
+        setIsBusy(true);
+
+        try {
+          await finishGuessWhoRoundRequest(activeRoom.room.id);
+          const roomDetails = await getRoomDetails(activeRoom.room.id, user.id);
+          setActiveRoom(roomDetails);
+          return { roomId: activeRoom.room.id };
         } catch (error) {
           return { error: mapRoomError(error) };
         } finally {

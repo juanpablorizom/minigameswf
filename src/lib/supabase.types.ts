@@ -700,6 +700,12 @@ export type Database = {
         };
         Returns: Database['public']['Tables']['room_rounds']['Row'][];
       };
+      finish_guess_who_round: {
+        Args: {
+          p_room_id: string;
+        };
+        Returns: Database['public']['Tables']['room_rounds']['Row'][];
+      };
       get_faces_gestures_round_state: {
         Args: {
           p_room_id: string;

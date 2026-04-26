@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Linking, Modal, Pressable, Share, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Animated, Linking, Modal, Pressable, ScrollView, Share, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { featuredGames, lobbyScenarios } from '../data/mockData';
@@ -210,6 +210,7 @@ export function AppNavigator() {
     startImpostorRound,
     startGuessWhoRound,
     submitGuessWhoAnswer,
+    finishGuessWhoRound,
     startFacesGesturesRound,
     submitFacesGesturesGuess,
     finishFacesGesturesRound,
@@ -1447,6 +1448,7 @@ export function AppNavigator() {
           <GuessWhoGameplayScreen
             players={gameplayPlayers}
             roundSetup={activeRoom.round}
+            canManageRoom={activeRoom.isHost}
             isBusy={roomBusy}
             notice={roomNotice}
             onSubmitGuess={(guess) => {
@@ -1457,6 +1459,16 @@ export function AppNavigator() {
                 }
 
                 setRoomNotice(result.correct ? t('guessWho.correct') : t('guessWho.tryAgain'));
+              });
+            }}
+            onFinishRound={() => {
+              void finishGuessWhoRound().then((result) => {
+                if (result.error) {
+                  setRoomNotice(mapRoomNotice(t, result.error));
+                  return;
+                }
+
+                setRoomNotice(null);
               });
             }}
           />
@@ -2170,10 +2182,14 @@ export function AppNavigator() {
                   <Text style={styles.panelCloseLabel}>{t('auth.modalClose')}</Text>
                 </Pressable>
               </View>
-              <View style={styles.panelBody}>
+              <ScrollView
+                style={styles.panelBodyScroll}
+                contentContainerStyle={styles.panelBodyScrollContent}
+                showsVerticalScrollIndicator={false}
+              >
                 <Text style={styles.catalogCopy}>{t('gamesCatalog.subtitle')}</Text>
                 {renderGamesCatalogPanel()}
-              </View>
+              </ScrollView>
             </View>
           </View>
         </Modal>
@@ -2535,7 +2551,9 @@ function createStyles(theme: ReturnType<typeof useTheme>, isCompactScreen: boole
     backgroundColor: theme.colors.background,
     borderWidth: 1,
     borderColor: theme.colors.border,
-    alignSelf: 'center'
+    alignSelf: 'center',
+    flexShrink: 1,
+    minHeight: 0
   },
   panelHeader: {
     minHeight: 64,
@@ -2568,6 +2586,15 @@ function createStyles(theme: ReturnType<typeof useTheme>, isCompactScreen: boole
   },
   panelBody: {
     flex: 1
+  },
+  panelBodyScroll: {
+    flexGrow: 1,
+    flexShrink: 1,
+    minHeight: 0
+  },
+  panelBodyScrollContent: {
+    flexGrow: 1,
+    paddingBottom: spacing.lg
   },
   catalogCopy: {
     color: theme.colors.textSecondary,

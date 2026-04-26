@@ -1210,6 +1210,76 @@ begin
 end;
 $$;
 
+create or replace function public.finish_guess_who_round(p_room_id uuid)
+returns public.room_rounds
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  current_user_id uuid := auth.uid();
+  target_room public.rooms;
+  target_round public.room_rounds;
+begin
+  if current_user_id is null then
+    raise exception 'AUTH_REQUIRED';
+  end if;
+
+  select *
+  into target_room
+  from public.rooms
+  where id = p_room_id
+  limit 1;
+
+  if target_room.id is null then
+    raise exception 'ROOM_NOT_FOUND';
+  end if;
+
+  if target_room.host_user_id <> current_user_id then
+    raise exception 'ROUND_HOST_ONLY';
+  end if;
+
+  select *
+  into target_round
+  from public.room_rounds
+  where room_id = p_room_id
+    and game_id = 'guess-who'
+  order by round_number desc
+  limit 1;
+
+  if target_round.id is null then
+    raise exception 'ROUND_NOT_FOUND';
+  end if;
+
+  if target_round.status <> 'active' then
+    return target_round;
+  end if;
+
+  update public.room_guess_who_assignments
+  set failed_at = timezone('utc', now())
+  where round_id = target_round.id
+    and solved_at is null
+    and failed_at is null;
+
+  update public.room_rounds
+  set status = 'finished',
+      phase = 'result',
+      outcome = 'continue'
+  where id = target_round.id
+  returning * into target_round;
+
+  insert into public.room_activity (room_id, actor_user_id, type, payload)
+  values (
+    p_room_id,
+    current_user_id,
+    'guess_who_round_finished',
+    jsonb_build_object('round_id', target_round.id)
+  );
+
+  return target_round;
+end;
+$$;
+
 create or replace function public.start_faces_gestures_round(
   p_room_id uuid,
   p_turn_seconds integer default 60

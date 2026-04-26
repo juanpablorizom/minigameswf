@@ -13,17 +13,21 @@ import { spacing, typography, useTheme } from '../theme';
 type GuessWhoGameplayScreenProps = {
   players: Player[];
   roundSetup: GuessWhoRoundSetup;
+  canManageRoom: boolean;
   isBusy: boolean;
   notice: string | null;
   onSubmitGuess: (guess: string) => void;
+  onFinishRound: () => void;
 };
 
 export function GuessWhoGameplayScreen({
   players,
   roundSetup,
+  canManageRoom,
   isBusy,
   notice,
-  onSubmitGuess
+  onSubmitGuess,
+  onFinishRound
 }: GuessWhoGameplayScreenProps) {
   const { t } = useTranslation();
   const theme = useTheme();
@@ -76,6 +80,9 @@ export function GuessWhoGameplayScreen({
         {isSolved ? <Text style={styles.success}>{t('guessWho.correct')}</Text> : null}
         {isFailed ? <Text style={styles.notice}>{t('guessWho.noAttempts')}</Text> : null}
         {notice ? <Text style={styles.notice}>{notice}</Text> : null}
+        {canManageRoom && !isFinished ? (
+          <AppButton label={t('gameplay.finishRound')} onPress={onFinishRound} variant="ghost" disabled={isBusy} />
+        ) : null}
       </SurfaceCard>
 
       <SurfaceCard>
