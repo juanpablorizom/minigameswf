@@ -58,7 +58,7 @@ export const lobbyScenarios: Record<LobbyScenarioKey, LobbyScenario> = {
   }
 };
 
-export const initialSelectedGameIds: GameId[] = ['impostor', 'guess-who'];
+export const initialSelectedGameIds: GameId[] = ['impostor', 'guess-who', 'faces-gestures', 'trivia', 'who-said', 'majority', 'troll'];
 
 export const initialRoomSettings: RoomSettings = {
   games: {
@@ -71,6 +71,31 @@ export const initialRoomSettings: RoomSettings = {
     },
     'guess-who': {
       category: 'popular'
+    },
+    'faces-gestures': {
+      turnSeconds: 60
+    },
+    trivia: {
+      questionCount: 5,
+      turnSeconds: 20,
+      topics: ['famosos', 'f1', 'cultura-general']
+    },
+    'who-said': {
+      topic: 'libre',
+      writeSeconds: 45,
+      guessSeconds: 20
+    },
+    majority: {
+      category: 'comida',
+      roundCount: 5,
+      answerSeconds: 20,
+      predictionSeconds: 15
+    },
+    troll: {
+      category: 'animals',
+      discussionSeconds: 45,
+      votingSeconds: 30,
+      roundCount: 1
     }
   }
 };

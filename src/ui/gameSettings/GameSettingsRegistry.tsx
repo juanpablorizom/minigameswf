@@ -2,7 +2,10 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { guessWhoCategoryOptions } from '../../data/guessWho/categories';
+import { majorityCategoryOptions } from '../../data/majority';
 import { impostorThemeOptions } from '../../data/themes';
+import { triviaTopicOptions } from '../../data/trivia';
+import { whoSaidTopicOptions } from '../../data/whoSaid';
 import type { GameId, RoomSettings } from '../../navigation/types';
 import { radius, spacing, typography, useTheme } from '../theme';
 
@@ -14,6 +17,16 @@ type GameSettingsFieldsProps = {
 
 const impostorCountOptions = [1, 2, 3, 4];
 const turnOptions = [0, 30, 45, 60, 300];
+const triviaQuestionCountOptions = [3, 5, 8, 10];
+const triviaTurnOptions = [10, 15, 20, 30];
+const whoSaidWriteOptions = [30, 45, 60, 90];
+const whoSaidGuessOptions = [15, 20, 30, 45];
+const majorityRoundOptions = [3, 5, 8, 10];
+const majorityAnswerOptions = [10, 15, 20, 30];
+const majorityPredictionOptions = [10, 15, 20, 30];
+const trollRoundOptions = [1, 2, 3];
+const trollDiscussionOptions = [30, 45, 60, 90];
+const trollVotingOptions = [15, 30, 45, 60];
 const missBehaviorOptions: RoomSettings['games']['impostor']['missBehavior'][] = ['repeat', 'end'];
 
 export function GameSettingsFields({ gameId, settings, onChangeSettings }: GameSettingsFieldsProps) {
@@ -39,6 +52,353 @@ export function GameSettingsFields({ gameId, settings, onChangeSettings }: GameS
                   games: {
                     ...settings.games,
                     'guess-who': { ...guessWhoSettings, category }
+                  }
+                })
+              }
+            />
+          ))}
+        </View>
+      </View>
+    );
+  }
+
+  if (gameId === 'faces-gestures') {
+    const facesGesturesSettings = settings.games['faces-gestures'];
+
+    return (
+      <View style={styles.block}>
+        <Text style={styles.sectionTitle}>{t('roomSettings.turnTimer')}</Text>
+        <View style={styles.optionRow}>
+          {[30, 45, 60, 90].map((turnSeconds) => (
+            <OptionChip
+              key={turnSeconds}
+              label={`${turnSeconds}s`}
+              active={facesGesturesSettings.turnSeconds === turnSeconds}
+              onPress={() =>
+                onChangeSettings({
+                  ...settings,
+                  games: {
+                    ...settings.games,
+                    'faces-gestures': { ...facesGesturesSettings, turnSeconds }
+                  }
+                })
+              }
+            />
+          ))}
+        </View>
+      </View>
+    );
+  }
+
+  if (gameId === 'trivia') {
+    const triviaSettings = settings.games.trivia;
+
+    return (
+      <View style={styles.block}>
+        <Text style={styles.sectionTitle}>{t('roomSettings.triviaQuestionCount')}</Text>
+        <View style={styles.optionRow}>
+          {triviaQuestionCountOptions.map((questionCount) => (
+            <OptionChip
+              key={questionCount}
+              label={String(questionCount)}
+              active={triviaSettings.questionCount === questionCount}
+              onPress={() =>
+                onChangeSettings({
+                  ...settings,
+                  games: {
+                    ...settings.games,
+                    trivia: { ...triviaSettings, questionCount }
+                  }
+                })
+              }
+            />
+          ))}
+        </View>
+
+        <Text style={styles.sectionTitle}>{t('roomSettings.turnTimer')}</Text>
+        <View style={styles.optionRow}>
+          {triviaTurnOptions.map((turnSeconds) => (
+            <OptionChip
+              key={turnSeconds}
+              label={`${turnSeconds}s`}
+              active={triviaSettings.turnSeconds === turnSeconds}
+              onPress={() =>
+                onChangeSettings({
+                  ...settings,
+                  games: {
+                    ...settings.games,
+                    trivia: { ...triviaSettings, turnSeconds }
+                  }
+                })
+              }
+            />
+          ))}
+        </View>
+
+        <Text style={styles.sectionTitle}>{t('roomSettings.triviaTopics')}</Text>
+        <View style={styles.optionColumn}>
+          {triviaTopicOptions.map((topic) => {
+            const active = triviaSettings.topics.includes(topic);
+            return (
+              <OptionChip
+                key={topic}
+                label={t(`roomSettings.triviaTopicOptions.${topic}`)}
+                active={active}
+                onPress={() => {
+                  const nextTopics = active
+                    ? triviaSettings.topics.filter((item) => item !== topic)
+                    : [...triviaSettings.topics, topic];
+
+                  onChangeSettings({
+                    ...settings,
+                    games: {
+                      ...settings.games,
+                      trivia: { ...triviaSettings, topics: nextTopics.length ? nextTopics : triviaSettings.topics }
+                    }
+                  });
+                }}
+              />
+            );
+          })}
+        </View>
+      </View>
+    );
+  }
+
+  if (gameId === 'who-said') {
+    const whoSaidSettings = settings.games['who-said'];
+
+    return (
+      <View style={styles.block}>
+        <Text style={styles.sectionTitle}>{t('roomSettings.whoSaidTopic')}</Text>
+        <View style={styles.optionColumn}>
+          {whoSaidTopicOptions.map((topic) => (
+            <OptionChip
+              key={topic}
+              label={t(`roomSettings.whoSaidTopicOptions.${topic}`)}
+              active={whoSaidSettings.topic === topic}
+              onPress={() =>
+                onChangeSettings({
+                  ...settings,
+                  games: {
+                    ...settings.games,
+                    'who-said': { ...whoSaidSettings, topic }
+                  }
+                })
+              }
+            />
+          ))}
+        </View>
+
+        <Text style={styles.sectionTitle}>{t('roomSettings.whoSaidWriteTime')}</Text>
+        <View style={styles.optionRow}>
+          {whoSaidWriteOptions.map((writeSeconds) => (
+            <OptionChip
+              key={writeSeconds}
+              label={`${writeSeconds}s`}
+              active={whoSaidSettings.writeSeconds === writeSeconds}
+              onPress={() =>
+                onChangeSettings({
+                  ...settings,
+                  games: {
+                    ...settings.games,
+                    'who-said': { ...whoSaidSettings, writeSeconds }
+                  }
+                })
+              }
+            />
+          ))}
+        </View>
+
+        <Text style={styles.sectionTitle}>{t('roomSettings.whoSaidGuessTime')}</Text>
+        <View style={styles.optionRow}>
+          {whoSaidGuessOptions.map((guessSeconds) => (
+            <OptionChip
+              key={guessSeconds}
+              label={`${guessSeconds}s`}
+              active={whoSaidSettings.guessSeconds === guessSeconds}
+              onPress={() =>
+                onChangeSettings({
+                  ...settings,
+                  games: {
+                    ...settings.games,
+                    'who-said': { ...whoSaidSettings, guessSeconds }
+                  }
+                })
+              }
+            />
+          ))}
+        </View>
+      </View>
+    );
+  }
+
+  if (gameId === 'majority') {
+    const majoritySettings = settings.games.majority;
+
+    return (
+      <View style={styles.block}>
+        <Text style={styles.sectionTitle}>{t('roomSettings.majorityCategory')}</Text>
+        <View style={styles.optionColumn}>
+          {majorityCategoryOptions.map((category) => (
+            <OptionChip
+              key={category}
+              label={t(`roomSettings.majorityCategoryOptions.${category}`)}
+              active={majoritySettings.category === category}
+              onPress={() =>
+                onChangeSettings({
+                  ...settings,
+                  games: {
+                    ...settings.games,
+                    majority: { ...majoritySettings, category }
+                  }
+                })
+              }
+            />
+          ))}
+        </View>
+
+        <Text style={styles.sectionTitle}>{t('roomSettings.majorityRounds')}</Text>
+        <View style={styles.optionRow}>
+          {majorityRoundOptions.map((roundCount) => (
+            <OptionChip
+              key={roundCount}
+              label={String(roundCount)}
+              active={majoritySettings.roundCount === roundCount}
+              onPress={() =>
+                onChangeSettings({
+                  ...settings,
+                  games: {
+                    ...settings.games,
+                    majority: { ...majoritySettings, roundCount }
+                  }
+                })
+              }
+            />
+          ))}
+        </View>
+
+        <Text style={styles.sectionTitle}>{t('roomSettings.majorityAnswerTime')}</Text>
+        <View style={styles.optionRow}>
+          {majorityAnswerOptions.map((answerSeconds) => (
+            <OptionChip
+              key={answerSeconds}
+              label={`${answerSeconds}s`}
+              active={majoritySettings.answerSeconds === answerSeconds}
+              onPress={() =>
+                onChangeSettings({
+                  ...settings,
+                  games: {
+                    ...settings.games,
+                    majority: { ...majoritySettings, answerSeconds }
+                  }
+                })
+              }
+            />
+          ))}
+        </View>
+
+        <Text style={styles.sectionTitle}>{t('roomSettings.majorityPredictionTime')}</Text>
+        <View style={styles.optionRow}>
+          {majorityPredictionOptions.map((predictionSeconds) => (
+            <OptionChip
+              key={predictionSeconds}
+              label={`${predictionSeconds}s`}
+              active={majoritySettings.predictionSeconds === predictionSeconds}
+              onPress={() =>
+                onChangeSettings({
+                  ...settings,
+                  games: {
+                    ...settings.games,
+                    majority: { ...majoritySettings, predictionSeconds }
+                  }
+                })
+              }
+            />
+          ))}
+        </View>
+      </View>
+    );
+  }
+
+  if (gameId === 'troll') {
+    const trollSettings = settings.games.troll;
+
+    return (
+      <View style={styles.block}>
+        <Text style={styles.sectionTitle}>{t('roomSettings.theme')}</Text>
+        <View style={styles.optionColumn}>
+          {impostorThemeOptions.map((category) => (
+            <OptionChip
+              key={category}
+              label={t(`roomSettings.themeOptions.${category}`)}
+              active={trollSettings.category === category}
+              onPress={() =>
+                onChangeSettings({
+                  ...settings,
+                  games: {
+                    ...settings.games,
+                    troll: { ...trollSettings, category }
+                  }
+                })
+              }
+            />
+          ))}
+        </View>
+
+        <Text style={styles.sectionTitle}>{t('roomSettings.rounds')}</Text>
+        <View style={styles.optionRow}>
+          {trollRoundOptions.map((roundCount) => (
+            <OptionChip
+              key={roundCount}
+              label={String(roundCount)}
+              active={trollSettings.roundCount === roundCount}
+              onPress={() =>
+                onChangeSettings({
+                  ...settings,
+                  games: {
+                    ...settings.games,
+                    troll: { ...trollSettings, roundCount }
+                  }
+                })
+              }
+            />
+          ))}
+        </View>
+
+        <Text style={styles.sectionTitle}>{t('roomSettings.trollDiscussionTime')}</Text>
+        <View style={styles.optionRow}>
+          {trollDiscussionOptions.map((discussionSeconds) => (
+            <OptionChip
+              key={discussionSeconds}
+              label={`${discussionSeconds}s`}
+              active={trollSettings.discussionSeconds === discussionSeconds}
+              onPress={() =>
+                onChangeSettings({
+                  ...settings,
+                  games: {
+                    ...settings.games,
+                    troll: { ...trollSettings, discussionSeconds }
+                  }
+                })
+              }
+            />
+          ))}
+        </View>
+
+        <Text style={styles.sectionTitle}>{t('roomSettings.trollVotingTime')}</Text>
+        <View style={styles.optionRow}>
+          {trollVotingOptions.map((votingSeconds) => (
+            <OptionChip
+              key={votingSeconds}
+              label={`${votingSeconds}s`}
+              active={trollSettings.votingSeconds === votingSeconds}
+              onPress={() =>
+                onChangeSettings({
+                  ...settings,
+                  games: {
+                    ...settings.games,
+                    troll: { ...trollSettings, votingSeconds }
                   }
                 })
               }

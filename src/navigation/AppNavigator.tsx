@@ -16,17 +16,21 @@ import { AccountScreen } from '../ui/screens/AccountScreen';
 import { AppearanceScreen } from '../ui/screens/AppearanceScreen';
 import { ChooseGamesScreen } from '../ui/screens/ChooseGamesScreen';
 import { GamesCatalogScreen } from '../ui/screens/GamesCatalogScreen';
+import { FacesGesturesGameplayScreen } from '../ui/screens/FacesGesturesGameplayScreen';
 import { GameplayScreen } from '../ui/screens/GameplayScreen';
 import { GuessWhoGameplayScreen } from '../ui/screens/GuessWhoGameplayScreen';
 import { JoinRoomScreen } from '../ui/screens/JoinRoomScreen';
 import { LobbyScreen } from '../ui/screens/LobbyScreen';
+import { MajorityGameplayScreen } from '../ui/screens/MajorityGameplayScreen';
 import { PrivateRoomScreen } from '../ui/screens/PrivateRoomScreen';
 import { ProfileScreen } from '../ui/screens/ProfileScreen';
 import { ResultsScreen } from '../ui/screens/ResultsScreen';
 import { RoomSettingsScreen } from '../ui/screens/RoomSettingsScreen';
 import { ScanRoomScreen } from '../ui/screens/ScanRoomScreen';
 import { SettingsScreen } from '../ui/screens/SettingsScreen';
+import { TriviaGameplayScreen } from '../ui/screens/TriviaGameplayScreen';
 import { WelcomeScreen } from '../ui/screens/WelcomeScreen';
+import { WhoSaidGameplayScreen } from '../ui/screens/WhoSaidGameplayScreen';
 import { AppButton } from '../ui/components/AppButton';
 import { GameSettingsModal } from '../ui/components/GameSettingsModal';
 import { MinimalIcon, type MinimalIconName } from '../ui/components/MinimalIcon';
@@ -87,6 +91,22 @@ function mapRoomNotice(translate: (key: string, options?: Record<string, unknown
 
   if (error === 'GUESS_WHO_ALREADY_SOLVED') {
     return translate('guessWho.correct');
+  }
+
+  if (error === 'FACES_GESTURES_ALREADY_SOLVED') {
+    return translate('facesGestures.completed');
+  }
+
+  if (error === 'FACES_GESTURES_ACTOR_CANNOT_GUESS') {
+    return translate('facesGestures.actorCannotGuess');
+  }
+
+  if (error === 'AUTHOR_CANNOT_GUESS') {
+    return translate('whoSaid.authorWait');
+  }
+
+  if (error === 'PHRASE_REQUIRED') {
+    return translate('whoSaid.placeholder');
   }
 
   if (error === 'ROUND_THEME_NOT_FOUND') {
@@ -190,6 +210,22 @@ export function AppNavigator() {
     startImpostorRound,
     startGuessWhoRound,
     submitGuessWhoAnswer,
+    startFacesGesturesRound,
+    submitFacesGesturesGuess,
+    finishFacesGesturesRound,
+    startTriviaRound,
+    submitTriviaAnswer,
+    advanceTriviaQuestion,
+    startWhoSaidRound,
+    submitWhoSaidPhrase,
+    submitWhoSaidGuess,
+    advanceWhoSaidRound,
+    startMajorityRound,
+    submitMajorityAnswer,
+    submitMajorityPrediction,
+    advanceMajorityRound,
+    scoreTournamentRound,
+    resetTournament,
     castImpostorVote,
     resolveImpostorVote,
     returnRoomToLobby,
@@ -295,6 +331,22 @@ export function AppNavigator() {
     return getActiveMemberCount(room) >= 2;
   }
 
+  function canStartFacesGesturesRound(room: RoomDetails | null) {
+    return getActiveMemberCount(room) >= 2;
+  }
+
+  function canStartTriviaRound(room: RoomDetails | null) {
+    return getActiveMemberCount(room) >= 1;
+  }
+
+  function canStartWhoSaidRound(room: RoomDetails | null) {
+    return getActiveMemberCount(room) >= 2;
+  }
+
+  function canStartMajorityRound(room: RoomDetails | null) {
+    return getActiveMemberCount(room) >= 2;
+  }
+
   function getRoomSelectedGameIds(room: RoomDetails | null) {
     return room ? room.selectedGameIds : selectedGameIds;
   }
@@ -380,9 +432,170 @@ export function AppNavigator() {
     });
   }
 
-  function runStartSelectedRound(onSuccess?: () => void) {
-    const selectedGameId = getSelectedGameId(activeRoom);
-    const startHandler = gameRegistry[selectedGameId]?.startHandler ?? 'none';
+  function runStartFacesGesturesRound(onSuccess?: () => void) {
+    if (!activeRoom || activeRoom.room.status === 'finished') {
+      setRoomNotice(t('lobby.errors.noActiveRoomFallback'));
+      backToLobby();
+      return;
+    }
+
+    if (!canStartFacesGesturesRound(activeRoom)) {
+      setRoomNotice(t('room.minimumPlayersRequiredFacesGestures'));
+      continueRoom();
+      return;
+    }
+
+    setRoomNotice(t('room.roundStarting'));
+
+    void startFacesGesturesRound(roomSettings.games['faces-gestures'].turnSeconds).then((result) => {
+      if (result.error) {
+        setRoomNotice(
+          result.error === 'ROUND_MIN_PLAYERS'
+            ? t('room.minimumPlayersRequiredFacesGestures')
+            : mapRoomNotice(t, result.error)
+        );
+        return;
+      }
+
+      setRoomNotice(null);
+      if (onSuccess) {
+        onSuccess();
+        return;
+      }
+
+      startGameplay();
+    });
+  }
+
+  function runStartTriviaRound(onSuccess?: () => void) {
+    if (!activeRoom || activeRoom.room.status === 'finished') {
+      setRoomNotice(t('lobby.errors.noActiveRoomFallback'));
+      backToLobby();
+      return;
+    }
+
+    if (!canStartTriviaRound(activeRoom)) {
+      setRoomNotice(t('room.minimumPlayersRequiredTrivia'));
+      continueRoom();
+      return;
+    }
+
+    const triviaSettings = roomSettings.games.trivia;
+    setRoomNotice(t('room.roundStarting'));
+
+    void startTriviaRound(triviaSettings.questionCount, triviaSettings.turnSeconds, triviaSettings.topics).then((result) => {
+      if (result.error) {
+        setRoomNotice(
+          result.error === 'ROUND_MIN_PLAYERS' ? t('room.minimumPlayersRequiredTrivia') : mapRoomNotice(t, result.error)
+        );
+        return;
+      }
+
+      setRoomNotice(null);
+      if (onSuccess) {
+        onSuccess();
+        return;
+      }
+
+      startGameplay();
+    });
+  }
+
+  function runStartWhoSaidRound(onSuccess?: () => void) {
+    if (!activeRoom || activeRoom.room.status === 'finished') {
+      setRoomNotice(t('lobby.errors.noActiveRoomFallback'));
+      backToLobby();
+      return;
+    }
+
+    if (!canStartWhoSaidRound(activeRoom)) {
+      setRoomNotice(t('room.minimumPlayersRequiredWhoSaid'));
+      continueRoom();
+      return;
+    }
+
+    const whoSaidSettings = roomSettings.games['who-said'];
+    setRoomNotice(t('room.roundStarting'));
+
+    void startWhoSaidRound(whoSaidSettings.topic, whoSaidSettings.writeSeconds, whoSaidSettings.guessSeconds).then((result) => {
+      if (result.error) {
+        setRoomNotice(
+          result.error === 'ROUND_MIN_PLAYERS' ? t('room.minimumPlayersRequiredWhoSaid') : mapRoomNotice(t, result.error)
+        );
+        return;
+      }
+
+      setRoomNotice(null);
+      if (onSuccess) {
+        onSuccess();
+        return;
+      }
+
+      startGameplay();
+    });
+  }
+
+  function runStartMajorityRound(onSuccess?: () => void) {
+    if (!activeRoom || activeRoom.room.status === 'finished') {
+      setRoomNotice(t('lobby.errors.noActiveRoomFallback'));
+      backToLobby();
+      return;
+    }
+
+    if (!canStartMajorityRound(activeRoom)) {
+      setRoomNotice(t('room.minimumPlayersRequiredMajority'));
+      continueRoom();
+      return;
+    }
+
+    const majoritySettings = roomSettings.games.majority;
+    setRoomNotice(t('room.roundStarting'));
+
+    void startMajorityRound(
+      majoritySettings.category,
+      majoritySettings.roundCount,
+      majoritySettings.answerSeconds,
+      majoritySettings.predictionSeconds
+    ).then((result) => {
+      if (result.error) {
+        setRoomNotice(
+          result.error === 'ROUND_MIN_PLAYERS' ? t('room.minimumPlayersRequiredMajority') : mapRoomNotice(t, result.error)
+        );
+        return;
+      }
+
+      setRoomNotice(null);
+      if (onSuccess) {
+        onSuccess();
+        return;
+      }
+
+      startGameplay();
+    });
+  }
+
+  function runStartGameRound(gameId: GameId, onSuccess?: () => void) {
+    const startHandler = gameRegistry[gameId]?.startHandler ?? 'none';
+
+    if (startHandler === 'majority') {
+      runStartMajorityRound(onSuccess);
+      return;
+    }
+
+    if (startHandler === 'who-said') {
+      runStartWhoSaidRound(onSuccess);
+      return;
+    }
+
+    if (startHandler === 'trivia') {
+      runStartTriviaRound(onSuccess);
+      return;
+    }
+
+    if (startHandler === 'faces-gestures') {
+      runStartFacesGesturesRound(onSuccess);
+      return;
+    }
 
     if (startHandler === 'guess-who') {
       runStartGuessWhoRound(onSuccess);
@@ -395,6 +608,51 @@ export function AppNavigator() {
     }
 
     setRoomNotice(t('room.gameUnavailable'));
+  }
+
+  function runStartSelectedRound(onSuccess?: () => void) {
+    runStartGameRound(getSelectedGameId(activeRoom), onSuccess);
+  }
+
+  function continueTournamentFromCurrentRound() {
+    if (!activeRoom?.round) {
+      return;
+    }
+
+    const currentGameId = activeRoom.round.gameId;
+    const roomGameIds = getRoomSelectedGameIds(activeRoom);
+    const currentIndex = roomGameIds.indexOf(currentGameId);
+    const nextGameId = currentIndex >= 0 ? roomGameIds[currentIndex + 1] : null;
+
+    void scoreTournamentRound().then((result) => {
+      if (result.error) {
+        setRoomNotice(mapRoomNotice(t, result.error));
+        return;
+      }
+
+      if (nextGameId) {
+        runStartGameRound(nextGameId, () => {
+          playAgain();
+        });
+        return;
+      }
+
+      setRoomNotice(null);
+      revealResults();
+    });
+  }
+
+  function replayTournament() {
+    void resetTournament().then((result) => {
+      if (result.error) {
+        setRoomNotice(mapRoomNotice(t, result.error));
+        return;
+      }
+
+      runStartSelectedRound(() => {
+        playAgain();
+      });
+    });
   }
 
   useEffect(() => {
@@ -517,7 +775,7 @@ export function AppNavigator() {
       return;
     }
 
-    if (currentScreen === 'gameplay') {
+    if (currentScreen === 'gameplay' || currentScreen === 'results') {
       return;
     }
 
@@ -1055,7 +1313,15 @@ export function AppNavigator() {
       const selectedGameId = selectedGameIdsForRoom[0] ?? 'impostor';
       const selectedGameConfig = gameRegistry[selectedGameId];
       const canStartGame =
-        selectedGameConfig.startHandler === 'guess-who'
+        selectedGameConfig.startHandler === 'majority'
+          ? canStartMajorityRound(activeRoom)
+          : selectedGameConfig.startHandler === 'who-said'
+          ? canStartWhoSaidRound(activeRoom)
+          : selectedGameConfig.startHandler === 'trivia'
+          ? canStartTriviaRound(activeRoom)
+          : selectedGameConfig.startHandler === 'faces-gestures'
+          ? canStartFacesGesturesRound(activeRoom)
+          : selectedGameConfig.startHandler === 'guess-who'
           ? canStartGuessWhoRound(activeRoom)
           : selectedGameConfig.startHandler === 'impostor'
             ? canStartImpostorRound(activeRoom)
@@ -1076,6 +1342,14 @@ export function AppNavigator() {
               ? null
               : selectedGameConfig.startHandler === 'none'
                 ? t('room.gameUnavailable')
+                : selectedGameId === 'trivia'
+                ? t('room.minimumPlayersRequiredTrivia')
+                : selectedGameId === 'who-said'
+                ? t('room.minimumPlayersRequiredWhoSaid')
+                : selectedGameId === 'majority'
+                ? t('room.minimumPlayersRequiredMajority')
+                : selectedGameId === 'faces-gestures'
+                ? t('room.minimumPlayersRequiredFacesGestures')
                 : selectedGameId === 'guess-who'
                 ? t('room.minimumPlayersRequiredGuessWho')
                 : t('room.minimumPlayersRequired')
@@ -1189,6 +1463,169 @@ export function AppNavigator() {
         );
       }
 
+      if (activeRoom?.round?.gameId === 'faces-gestures') {
+        return (
+          <FacesGesturesGameplayScreen
+            players={gameplayPlayers}
+            roundSetup={activeRoom.round}
+            canManageRoom={activeRoom.isHost}
+            isBusy={roomBusy}
+            notice={roomNotice}
+            onSubmitGuess={(guess) => {
+              void submitFacesGesturesGuess(guess).then((result) => {
+                if (result.error) {
+                  setRoomNotice(mapRoomNotice(t, result.error));
+                  return;
+                }
+
+                setRoomNotice(result.correct ? null : t('facesGestures.tryAgain'));
+              });
+            }}
+            onFinishRound={() => {
+              void finishFacesGesturesRound().then((result) => {
+                if (result.error) {
+                  setRoomNotice(mapRoomNotice(t, result.error));
+                  return;
+                }
+
+                setRoomNotice(null);
+              });
+            }}
+          />
+        );
+      }
+
+      if (activeRoom?.round?.gameId === 'trivia') {
+        return (
+          <TriviaGameplayScreen
+            players={gameplayPlayers}
+            roundSetup={activeRoom.round}
+            canManageRoom={activeRoom.isHost}
+            isBusy={roomBusy}
+            notice={roomNotice}
+            onSubmitAnswer={(answer) => {
+              void submitTriviaAnswer(answer).then((result) => {
+                if (result.error) {
+                  setRoomNotice(mapRoomNotice(t, result.error));
+                  return;
+                }
+
+                setRoomNotice(result.correct ? t('trivia.correct') : t('trivia.wrong'));
+              });
+            }}
+            onAdvance={() => {
+              if (activeRoom.round?.gameId === 'trivia' && activeRoom.round.status === 'finished') {
+                continueTournamentFromCurrentRound();
+                return;
+              }
+
+              void advanceTriviaQuestion().then((result) => {
+                if (result.error) {
+                  setRoomNotice(mapRoomNotice(t, result.error));
+                  return;
+                }
+
+                setRoomNotice(null);
+              });
+            }}
+          />
+        );
+      }
+
+      if (activeRoom?.round?.gameId === 'who-said') {
+        return (
+          <WhoSaidGameplayScreen
+            players={gameplayPlayers}
+            roundSetup={activeRoom.round}
+            canManageRoom={activeRoom.isHost}
+            isBusy={roomBusy}
+            notice={roomNotice}
+            onSubmitPhrase={(phrase) => {
+              void submitWhoSaidPhrase(phrase).then((result) => {
+                if (result.error) {
+                  setRoomNotice(mapRoomNotice(t, result.error));
+                  return;
+                }
+
+                setRoomNotice(t('whoSaid.ready'));
+              });
+            }}
+            onSubmitGuess={(guessedUserId) => {
+              void submitWhoSaidGuess(guessedUserId).then((result) => {
+                if (result.error) {
+                  setRoomNotice(mapRoomNotice(t, result.error));
+                  return;
+                }
+
+                setRoomNotice(result.correct ? t('whoSaid.correct') : t('whoSaid.guessed'));
+              });
+            }}
+            onAdvance={() => {
+              if (activeRoom.round?.gameId === 'who-said' && activeRoom.round.status === 'finished') {
+                continueTournamentFromCurrentRound();
+                return;
+              }
+
+              void advanceWhoSaidRound().then((result) => {
+                if (result.error) {
+                  setRoomNotice(mapRoomNotice(t, result.error));
+                  return;
+                }
+
+                setRoomNotice(null);
+              });
+            }}
+          />
+        );
+      }
+
+      if (activeRoom?.round?.gameId === 'majority') {
+        return (
+          <MajorityGameplayScreen
+            players={gameplayPlayers}
+            roundSetup={activeRoom.round}
+            canManageRoom={activeRoom.isHost}
+            isBusy={roomBusy}
+            notice={roomNotice}
+            onSubmitAnswer={(option) => {
+              void submitMajorityAnswer(option).then((result) => {
+                if (result.error) {
+                  setRoomNotice(mapRoomNotice(t, result.error));
+                  return;
+                }
+
+                setRoomNotice(t('majority.ready'));
+              });
+            }}
+            onSubmitPrediction={(option) => {
+              void submitMajorityPrediction(option).then((result) => {
+                if (result.error) {
+                  setRoomNotice(mapRoomNotice(t, result.error));
+                  return;
+                }
+
+                setRoomNotice(result.correct ? t('majority.correct') : t('majority.ready'));
+              });
+            }}
+            onAdvance={() => {
+              if (activeRoom.round?.gameId === 'majority' && activeRoom.round.status === 'finished') {
+                continueTournamentFromCurrentRound();
+                return;
+              }
+
+              void advanceMajorityRound().then((result) => {
+                if (result.error) {
+                  setRoomNotice(mapRoomNotice(t, result.error));
+                  return;
+                }
+
+                setRoomNotice(null);
+              });
+            }}
+          />
+        );
+      }
+
       return (
         <GameplayScreen
           players={gameplayPlayers}
@@ -1253,18 +1690,32 @@ export function AppNavigator() {
     return (
       <ResultsScreen
         members={activeRoom?.members}
-        round={activeRoom?.round?.gameId === 'impostor' ? activeRoom.round : null}
+        scores={activeRoom?.tournament.scores}
+        canManageRoom={activeRoom?.isHost ?? false}
         onPlayAgain={() => {
           if (!activeRoom?.isHost) {
             setRoomNotice(t('room.hostOnlyContinue'));
             return;
           }
 
-          runStartSelectedRound(() => {
-            playAgain();
+          replayTournament();
+        }}
+        onBackToRoom={() => {
+          if (!activeRoom?.isHost) {
+            continueRoom();
+            return;
+          }
+
+          void returnRoomToLobby().then((result) => {
+            if (result.error) {
+              setRoomNotice(mapRoomNotice(t, result.error));
+              return;
+            }
+
+            setRoomNotice(null);
+            continueRoom();
           });
         }}
-        onBackToLobby={backToLobby}
       />
     );
   }
@@ -1442,6 +1893,9 @@ export function AppNavigator() {
     const expelledPlayer = activeRoom.members.find((member) => member.userId === round.expelledUserId) ?? null;
     const expelledWasImpostor = expelledPlayer ? round.impostorIds.includes(expelledPlayer.userId) : false;
     const remainingImpostorIds = round.impostorIds.filter((playerId) => !round.eliminatedUserIds.includes(playerId));
+    const roomGameIds = getRoomSelectedGameIds(activeRoom);
+    const isTournament = roomGameIds.length > 1;
+    const hasNextTournamentGame = roomGameIds.indexOf(round.gameId) >= 0 && roomGameIds.indexOf(round.gameId) < roomGameIds.length - 1;
     const resultHint =
       round.outcome === 'impostors_balanced'
         ? t('gameplay.balanceWin', { count: remainingImpostorIds.length })
@@ -1470,12 +1924,86 @@ export function AppNavigator() {
             {activeRoom.isHost ? (
               <View style={styles.confirmActions}>
                 <AppButton
-                  label={round.status === 'finished' ? t('gameplay.playAgain') : t('gameplay.nextRound')}
+                  label={
+                    isTournament && round.status === 'finished'
+                      ? hasNextTournamentGame
+                        ? t('tournament.nextGame')
+                        : t('tournament.results')
+                      : round.status === 'finished'
+                        ? t('gameplay.playAgain')
+                        : t('gameplay.nextRound')
+                  }
                   onPress={() => {
+                    if (isTournament && round.status === 'finished') {
+                      continueTournamentFromCurrentRound();
+                      return;
+                    }
+
                     runStartImpostorRound(() => {
                       playAgain();
                     });
                   }}
+                  disabled={roomBusy}
+                />
+                <AppButton
+                  label={t('gameplay.backToRoom')}
+                  onPress={() => {
+                    setRoomNotice(t('gameplay.returningToRoom'));
+                    void returnRoomToLobby().then((result) => {
+                      if (result.error) {
+                        setRoomNotice(mapRoomNotice(t, result.error));
+                        return;
+                      }
+
+                      setRoomNotice(null);
+                      continueRoom();
+                    });
+                  }}
+                  variant="secondary"
+                  disabled={roomBusy}
+                />
+              </View>
+            ) : (
+              <Text style={styles.resultWait}>{t('gameplay.waitingForHostDecision')}</Text>
+            )}
+          </View>
+        </View>
+      </Modal>
+    );
+  }
+
+  function renderTournamentRoundCompleteOverlay() {
+    if (
+      !activeRoom?.round ||
+      activeRoom.round.gameId === 'impostor' ||
+      activeRoom.round.gameId === 'trivia' ||
+      activeRoom.round.gameId === 'who-said' ||
+      activeRoom.round.gameId === 'majority' ||
+      activeRoom.round.status !== 'finished'
+    ) {
+      return null;
+    }
+
+    const roomGameIds = getRoomSelectedGameIds(activeRoom);
+
+    if (roomGameIds.length <= 1) {
+      return null;
+    }
+
+    const currentIndex = roomGameIds.indexOf(activeRoom.round.gameId);
+    const hasNextGame = currentIndex >= 0 && currentIndex < roomGameIds.length - 1;
+
+    return (
+      <Modal visible transparent animationType="fade" onRequestClose={() => {}}>
+        <View style={styles.overlayBackdropCentered}>
+          <View style={styles.resultPanel}>
+            <Text style={styles.resultTitle}>{t('tournament.roundDone')}</Text>
+            <Text style={styles.resultBody}>{t(`gameMeta.names.${activeRoom.round.gameId}`)}</Text>
+            {activeRoom.isHost ? (
+              <View style={styles.confirmActions}>
+                <AppButton
+                  label={hasNextGame ? t('tournament.nextGame') : t('tournament.results')}
+                  onPress={continueTournamentFromCurrentRound}
                   disabled={roomBusy}
                 />
                 <AppButton
@@ -1668,6 +2196,7 @@ export function AppNavigator() {
       />
 
       {renderRoundResultOverlay()}
+      {renderTournamentRoundCompleteOverlay()}
 
       {isLeaveRoomConfirmOpen ? (
         <Modal visible transparent animationType="fade" onRequestClose={() => setIsLeaveRoomConfirmOpen(false)}>

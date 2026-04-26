@@ -172,9 +172,12 @@ export type Database = {
           phase: RoomRoundPhase;
           vote_deadline_at: string | null;
           vote_duration_seconds: number;
+          answer_duration_seconds: number;
           miss_behavior: RoomMissBehavior;
           balance_rule_enabled: boolean;
           outcome: RoomRoundOutcome;
+          actor_user_id: string | null;
+          scored_at: string | null;
           started_by_user_id: string;
           status: RoomRoundStatus;
           created_at: string;
@@ -193,9 +196,12 @@ export type Database = {
           phase?: RoomRoundPhase;
           vote_deadline_at?: string | null;
           vote_duration_seconds?: number;
+          answer_duration_seconds?: number;
           miss_behavior?: RoomMissBehavior;
           balance_rule_enabled?: boolean;
           outcome?: RoomRoundOutcome;
+          actor_user_id?: string | null;
+          scored_at?: string | null;
           started_by_user_id: string;
           status?: RoomRoundStatus;
           created_at?: string;
@@ -214,9 +220,12 @@ export type Database = {
           phase?: RoomRoundPhase;
           vote_deadline_at?: string | null;
           vote_duration_seconds?: number;
+          answer_duration_seconds?: number;
           miss_behavior?: RoomMissBehavior;
           balance_rule_enabled?: boolean;
           outcome?: RoomRoundOutcome;
+          actor_user_id?: string | null;
+          scored_at?: string | null;
           started_by_user_id?: string;
           status?: RoomRoundStatus;
           created_at?: string;
@@ -296,6 +305,324 @@ export type Database = {
         };
         Relationships: [];
       };
+      room_faces_gestures_answers: {
+        Row: {
+          id: string;
+          room_id: string;
+          round_id: string;
+          user_id: string;
+          guess_count: number;
+          last_guess: string | null;
+          normalized_last_guess: string | null;
+          solved_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          room_id: string;
+          round_id: string;
+          user_id: string;
+          guess_count?: number;
+          last_guess?: string | null;
+          normalized_last_guess?: string | null;
+          solved_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          room_id?: string;
+          round_id?: string;
+          user_id?: string;
+          guess_count?: number;
+          last_guess?: string | null;
+          normalized_last_guess?: string | null;
+          solved_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      room_tournament_scores: {
+        Row: {
+          id: string;
+          room_id: string;
+          user_id: string;
+          points: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          room_id: string;
+          user_id: string;
+          points?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          room_id?: string;
+          user_id?: string;
+          points?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      room_tournament_completed_games: {
+        Row: {
+          id: string;
+          room_id: string;
+          game_id: string;
+          game_order: number;
+          completed_at: string;
+        };
+        Insert: {
+          id?: string;
+          room_id: string;
+          game_id: string;
+          game_order?: number;
+          completed_at?: string;
+        };
+        Update: {
+          id?: string;
+          room_id?: string;
+          game_id?: string;
+          game_order?: number;
+          completed_at?: string;
+        };
+        Relationships: [];
+      };
+      room_trivia_questions: {
+        Row: {
+          id: string;
+          room_id: string;
+          round_id: string;
+          question_order: number;
+          source_question_id: string;
+          topic: string;
+          question: string;
+          answer: string;
+          aliases: string[];
+          normalized_answer: string;
+          normalized_aliases: string[];
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          room_id: string;
+          round_id: string;
+          question_order: number;
+          source_question_id: string;
+          topic: string;
+          question: string;
+          answer: string;
+          aliases?: string[];
+          normalized_answer: string;
+          normalized_aliases?: string[];
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          room_id?: string;
+          round_id?: string;
+          question_order?: number;
+          source_question_id?: string;
+          topic?: string;
+          question?: string;
+          answer?: string;
+          aliases?: string[];
+          normalized_answer?: string;
+          normalized_aliases?: string[];
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      room_trivia_answers: {
+        Row: {
+          id: string;
+          room_id: string;
+          round_id: string;
+          question_id: string;
+          user_id: string;
+          answer_text: string;
+          normalized_answer: string;
+          is_correct: boolean;
+          answered_at: string;
+        };
+        Insert: {
+          id?: string;
+          room_id: string;
+          round_id: string;
+          question_id: string;
+          user_id: string;
+          answer_text: string;
+          normalized_answer: string;
+          is_correct?: boolean;
+          answered_at?: string;
+        };
+        Update: {
+          id?: string;
+          room_id?: string;
+          round_id?: string;
+          question_id?: string;
+          user_id?: string;
+          answer_text?: string;
+          normalized_answer?: string;
+          is_correct?: boolean;
+          answered_at?: string;
+        };
+        Relationships: [];
+      };
+      room_who_said_phrases: {
+        Row: {
+          id: string;
+          room_id: string;
+          round_id: string;
+          author_user_id: string;
+          phrase_order: number | null;
+          topic: string;
+          phrase_text: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          room_id: string;
+          round_id: string;
+          author_user_id: string;
+          phrase_order?: number | null;
+          topic: string;
+          phrase_text: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          room_id?: string;
+          round_id?: string;
+          author_user_id?: string;
+          phrase_order?: number | null;
+          topic?: string;
+          phrase_text?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      room_who_said_guesses: {
+        Row: {
+          id: string;
+          room_id: string;
+          round_id: string;
+          phrase_id: string;
+          user_id: string;
+          guessed_user_id: string;
+          is_correct: boolean;
+          guessed_at: string;
+        };
+        Insert: {
+          id?: string;
+          room_id: string;
+          round_id: string;
+          phrase_id: string;
+          user_id: string;
+          guessed_user_id: string;
+          is_correct?: boolean;
+          guessed_at?: string;
+        };
+        Update: {
+          id?: string;
+          room_id?: string;
+          round_id?: string;
+          phrase_id?: string;
+          user_id?: string;
+          guessed_user_id?: string;
+          is_correct?: boolean;
+          guessed_at?: string;
+        };
+        Relationships: [];
+      };
+      room_majority_questions: {
+        Row: {
+          id: string;
+          room_id: string;
+          round_id: string;
+          question_order: number;
+          source_question_id: string;
+          category: string;
+          question: string;
+          options: string[];
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          room_id: string;
+          round_id: string;
+          question_order: number;
+          source_question_id: string;
+          category: string;
+          question: string;
+          options?: string[];
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          room_id?: string;
+          round_id?: string;
+          question_order?: number;
+          source_question_id?: string;
+          category?: string;
+          question?: string;
+          options?: string[];
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      room_majority_responses: {
+        Row: {
+          id: string;
+          room_id: string;
+          round_id: string;
+          question_id: string;
+          user_id: string;
+          answer_option: string | null;
+          prediction_option: string | null;
+          answered_at: string | null;
+          predicted_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          room_id: string;
+          round_id: string;
+          question_id: string;
+          user_id: string;
+          answer_option?: string | null;
+          prediction_option?: string | null;
+          answered_at?: string | null;
+          predicted_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          room_id?: string;
+          round_id?: string;
+          question_id?: string;
+          user_id?: string;
+          answer_option?: string | null;
+          prediction_option?: string | null;
+          answered_at?: string | null;
+          predicted_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {
@@ -352,6 +679,223 @@ export type Database = {
           failed_at: string | null;
           is_current_user: boolean;
         }>;
+      };
+      start_faces_gestures_round: {
+        Args: {
+          p_room_id: string;
+          p_turn_seconds?: number;
+        };
+        Returns: Database['public']['Tables']['room_rounds']['Row'][];
+      };
+      submit_faces_gestures_guess: {
+        Args: {
+          p_room_id: string;
+          p_guess: string;
+        };
+        Returns: Database['public']['Tables']['room_faces_gestures_answers']['Row'][];
+      };
+      finish_faces_gestures_round: {
+        Args: {
+          p_room_id: string;
+        };
+        Returns: Database['public']['Tables']['room_rounds']['Row'][];
+      };
+      get_faces_gestures_round_state: {
+        Args: {
+          p_room_id: string;
+        };
+        Returns: Array<{
+          round_id: string;
+          round_number: number;
+          actor_user_id: string;
+          character_label: string | null;
+          round_status: RoomRoundStatus;
+          round_phase: 'reveal' | 'result';
+          vote_deadline_at: string | null;
+          vote_duration_seconds: number;
+          started_at: string;
+          user_id: string;
+          guess_count: number;
+          last_guess: string | null;
+          solved_at: string | null;
+          is_current_user: boolean;
+        }>;
+      };
+      start_trivia_round: {
+        Args: {
+          p_room_id: string;
+          p_question_count?: number;
+          p_turn_seconds?: number;
+          p_topics?: string[];
+        };
+        Returns: Database['public']['Tables']['room_rounds']['Row'][];
+      };
+      submit_trivia_answer: {
+        Args: {
+          p_room_id: string;
+          p_answer: string;
+        };
+        Returns: Database['public']['Tables']['room_trivia_answers']['Row'][];
+      };
+      advance_trivia_question: {
+        Args: {
+          p_room_id: string;
+        };
+        Returns: Database['public']['Tables']['room_rounds']['Row'][];
+      };
+      get_trivia_round_state: {
+        Args: {
+          p_room_id: string;
+        };
+        Returns: Array<{
+          round_id: string;
+          question_id: string;
+          question_order: number;
+          question_count: number;
+          topic: string;
+          question: string;
+          round_status: RoomRoundStatus;
+          round_phase: 'reveal' | 'result';
+          vote_deadline_at: string | null;
+          vote_duration_seconds: number;
+          started_at: string;
+          user_id: string;
+          answer_text: string | null;
+          is_correct: boolean | null;
+          answered_at: string | null;
+          correct_count: number;
+          is_current_user: boolean;
+        }>;
+      };
+      start_who_said_round: {
+        Args: {
+          p_room_id: string;
+          p_topic?: string;
+          p_write_seconds?: number;
+          p_guess_seconds?: number;
+        };
+        Returns: Database['public']['Tables']['room_rounds']['Row'][];
+      };
+      submit_who_said_phrase: {
+        Args: {
+          p_room_id: string;
+          p_phrase: string;
+        };
+        Returns: Database['public']['Tables']['room_who_said_phrases']['Row'][];
+      };
+      submit_who_said_guess: {
+        Args: {
+          p_room_id: string;
+          p_guessed_user_id: string;
+        };
+        Returns: Database['public']['Tables']['room_who_said_guesses']['Row'][];
+      };
+      advance_who_said_round: {
+        Args: {
+          p_room_id: string;
+        };
+        Returns: Database['public']['Tables']['room_rounds']['Row'][];
+      };
+      get_who_said_round_state: {
+        Args: {
+          p_room_id: string;
+        };
+        Returns: Array<{
+          round_id: string;
+          round_number: number;
+          topic: string;
+          round_status: RoomRoundStatus;
+          round_phase: 'reveal' | 'voting' | 'result';
+          vote_deadline_at: string | null;
+          vote_duration_seconds: number;
+          started_at: string;
+          phrase_count: number;
+          submitted_count: number;
+          current_phrase_id: string | null;
+          current_phrase_text: string | null;
+          current_phrase_order: number | null;
+          current_phrase_author_user_id: string | null;
+          is_current_phrase_author: boolean;
+          user_id: string;
+          has_submitted_phrase: boolean;
+          guessed_user_id: string | null;
+          is_correct: boolean | null;
+          guessed_at: string | null;
+          is_current_user: boolean;
+        }>;
+      };
+      start_majority_round: {
+        Args: {
+          p_room_id: string;
+          p_category?: string;
+          p_round_count?: number;
+          p_answer_seconds?: number;
+          p_prediction_seconds?: number;
+        };
+        Returns: Database['public']['Tables']['room_rounds']['Row'][];
+      };
+      submit_majority_answer: {
+        Args: {
+          p_room_id: string;
+          p_option: string;
+        };
+        Returns: Database['public']['Tables']['room_majority_responses']['Row'][];
+      };
+      submit_majority_prediction: {
+        Args: {
+          p_room_id: string;
+          p_option: string;
+        };
+        Returns: Database['public']['Tables']['room_majority_responses']['Row'][];
+      };
+      advance_majority_round: {
+        Args: {
+          p_room_id: string;
+        };
+        Returns: Database['public']['Tables']['room_rounds']['Row'][];
+      };
+      get_majority_round_state: {
+        Args: {
+          p_room_id: string;
+        };
+        Returns: Array<{
+          round_id: string;
+          question_id: string;
+          round_number: number;
+          round_count: number;
+          category: string;
+          question: string;
+          options: string[];
+          majority_options: string[];
+          option_counts: Record<string, number>;
+          round_status: RoomRoundStatus;
+          round_phase: 'reveal' | 'voting' | 'result';
+          vote_deadline_at: string | null;
+          vote_duration_seconds: number;
+          started_at: string;
+          user_id: string;
+          answer_option: string | null;
+          prediction_option: string | null;
+          answered_at: string | null;
+          predicted_at: string | null;
+          is_prediction_correct: boolean | null;
+          is_current_user: boolean;
+        }>;
+      };
+      score_room_tournament_round: {
+        Args: {
+          p_room_id: string;
+        };
+        Returns: Array<{
+          user_id: string;
+          points: number;
+        }>;
+      };
+      reset_room_tournament: {
+        Args: {
+          p_room_id: string;
+        };
+        Returns: Database['public']['Tables']['rooms']['Row'][];
       };
       start_impostor_round: {
         Args: {

@@ -24,7 +24,7 @@ export function GamesCatalogScreen({ embedded = false, selectedGameIds, onToggle
   const styles = createStyles(theme);
   const { width } = useWindowDimensions();
   const isWide = width >= 860;
-  const [helpGameId, setHelpGameId] = useState<'impostor' | 'guess-who' | null>(null);
+  const [helpGameId, setHelpGameId] = useState<GameId | null>(null);
 
   const content = (
     <View style={styles.catalogShell}>
@@ -73,11 +73,22 @@ export function GamesCatalogScreen({ embedded = false, selectedGameIds, onToggle
   );
 }
 
-function HowToPlayModal({ gameId, onClose }: { gameId: 'impostor' | 'guess-who' | null; onClose: () => void }) {
+function HowToPlayModal({ gameId, onClose }: { gameId: GameId | null; onClose: () => void }) {
   const { t } = useTranslation();
   const theme = useTheme();
   const styles = createStyles(theme);
-  const prefix = gameId === 'guess-who' ? 'gamesCatalog.guessWhoHowToPlay' : 'gamesCatalog.howToPlay';
+  const prefix =
+    gameId === 'guess-who'
+      ? 'gamesCatalog.guessWhoHowToPlay'
+      : gameId === 'faces-gestures'
+        ? 'gamesCatalog.facesGesturesHowToPlay'
+        : gameId === 'trivia'
+          ? 'gamesCatalog.triviaHowToPlay'
+          : gameId === 'who-said'
+            ? 'gamesCatalog.whoSaidHowToPlay'
+            : gameId === 'majority'
+              ? 'gamesCatalog.majorityHowToPlay'
+              : 'gamesCatalog.howToPlay';
 
   return (
     <Modal visible={Boolean(gameId)} transparent animationType="fade" onRequestClose={onClose}>

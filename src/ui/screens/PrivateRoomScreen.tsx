@@ -83,6 +83,14 @@ export function PrivateRoomScreen({
     return t(`roomSettings.guessWhoCategoryOptions.${value}`);
   }
 
+  function whoSaidTopicLabel(value: RoomSettings['games']['who-said']['topic']) {
+    return t(`roomSettings.whoSaidTopicOptions.${value}`);
+  }
+
+  function majorityCategoryLabel(value: RoomSettings['games']['majority']['category']) {
+    return t(`roomSettings.majorityCategoryOptions.${value}`);
+  }
+
   function turnTimerValue(value: number) {
     if (value === 0) {
       return t('roomSettings.turnTimerOptions.none');
@@ -103,6 +111,51 @@ export function PrivateRoomScreen({
             {t('room.guessWhoCategoryLine', { value: guessWhoCategoryLabel(settings.games['guess-who'].category) })}
           </Text>
           <Text style={styles.itemSubtitle}>{t('room.guessWhoAttemptsLine')}</Text>
+        </>
+      );
+    }
+
+    if (game.id === 'faces-gestures') {
+      return <Text style={styles.itemSubtitle}>{t('room.turnTimerLine', { value: turnTimerValue(settings.games['faces-gestures'].turnSeconds) })}</Text>;
+    }
+
+    if (game.id === 'trivia') {
+      return (
+        <>
+          <Text style={styles.itemSubtitle}>{t('room.triviaQuestionsLine', { value: settings.games.trivia.questionCount })}</Text>
+          <Text style={styles.itemSubtitle}>{t('room.turnTimerLine', { value: turnTimerValue(settings.games.trivia.turnSeconds) })}</Text>
+        </>
+      );
+    }
+
+    if (game.id === 'who-said') {
+      return (
+        <>
+          <Text style={styles.itemSubtitle}>{t('room.whoSaidTopicLine', { value: whoSaidTopicLabel(settings.games['who-said'].topic) })}</Text>
+          <Text style={styles.itemSubtitle}>{t('room.whoSaidWriteLine', { value: turnTimerValue(settings.games['who-said'].writeSeconds) })}</Text>
+          <Text style={styles.itemSubtitle}>{t('room.whoSaidGuessLine', { value: turnTimerValue(settings.games['who-said'].guessSeconds) })}</Text>
+        </>
+      );
+    }
+
+    if (game.id === 'majority') {
+      return (
+        <>
+          <Text style={styles.itemSubtitle}>{t('room.majorityCategoryLine', { value: majorityCategoryLabel(settings.games.majority.category) })}</Text>
+          <Text style={styles.itemSubtitle}>{t('room.roundsLine', { value: settings.games.majority.roundCount })}</Text>
+          <Text style={styles.itemSubtitle}>{t('room.majorityAnswerLine', { value: turnTimerValue(settings.games.majority.answerSeconds) })}</Text>
+          <Text style={styles.itemSubtitle}>{t('room.majorityPredictionLine', { value: turnTimerValue(settings.games.majority.predictionSeconds) })}</Text>
+        </>
+      );
+    }
+
+    if (game.id === 'troll') {
+      return (
+        <>
+          <Text style={styles.itemSubtitle}>{t('room.themeLine', { value: themeLabel(settings.games.troll.category) })}</Text>
+          <Text style={styles.itemSubtitle}>{t('room.roundsLine', { value: settings.games.troll.roundCount })}</Text>
+          <Text style={styles.itemSubtitle}>{t('room.trollDiscussionLine', { value: turnTimerValue(settings.games.troll.discussionSeconds) })}</Text>
+          <Text style={styles.itemSubtitle}>{t('room.trollVotingLine', { value: turnTimerValue(settings.games.troll.votingSeconds) })}</Text>
         </>
       );
     }

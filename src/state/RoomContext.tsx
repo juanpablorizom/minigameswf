@@ -12,6 +12,22 @@ import {
   startImpostorRound as startImpostorRoundRequest,
   startGuessWhoRound as startGuessWhoRoundRequest,
   submitGuessWhoAnswer as submitGuessWhoAnswerRequest,
+  startFacesGesturesRound as startFacesGesturesRoundRequest,
+  submitFacesGesturesGuess as submitFacesGesturesGuessRequest,
+  finishFacesGesturesRound as finishFacesGesturesRoundRequest,
+  startTriviaRound as startTriviaRoundRequest,
+  submitTriviaAnswer as submitTriviaAnswerRequest,
+  advanceTriviaQuestion as advanceTriviaQuestionRequest,
+  startWhoSaidRound as startWhoSaidRoundRequest,
+  submitWhoSaidPhrase as submitWhoSaidPhraseRequest,
+  submitWhoSaidGuess as submitWhoSaidGuessRequest,
+  advanceWhoSaidRound as advanceWhoSaidRoundRequest,
+  startMajorityRound as startMajorityRoundRequest,
+  submitMajorityAnswer as submitMajorityAnswerRequest,
+  submitMajorityPrediction as submitMajorityPredictionRequest,
+  advanceMajorityRound as advanceMajorityRoundRequest,
+  scoreRoomTournamentRound as scoreRoomTournamentRoundRequest,
+  resetRoomTournament as resetRoomTournamentRequest,
   advanceImpostorRound as advanceImpostorRoundRequest,
   castImpostorVote as castImpostorVoteRequest,
   resolveImpostorVote as resolveImpostorVoteRequest,
@@ -24,7 +40,7 @@ import {
   type RoomDetails,
   type RoomRealtimeState
 } from '../data/rooms';
-import type { GameId, GuessWhoCategoryId, ImpostorCategoryId } from '../navigation/types';
+import type { GameId, GuessWhoCategoryId, ImpostorCategoryId, MajorityCategoryId, TriviaTopicId, WhoSaidTopicId } from '../navigation/types';
 import { useAuth } from './AuthContext';
 
 type RoomActionResult = {
@@ -52,6 +68,27 @@ type RoomContextValue = {
   ) => Promise<RoomActionResult>;
   startGuessWhoRound: (categoryId: GuessWhoCategoryId) => Promise<RoomActionResult>;
   submitGuessWhoAnswer: (guess: string) => Promise<RoomActionResult & { correct?: boolean }>;
+  startFacesGesturesRound: (turnSeconds: number) => Promise<RoomActionResult>;
+  submitFacesGesturesGuess: (guess: string) => Promise<RoomActionResult & { correct?: boolean }>;
+  finishFacesGesturesRound: () => Promise<RoomActionResult>;
+  startTriviaRound: (questionCount: number, turnSeconds: number, topics: TriviaTopicId[]) => Promise<RoomActionResult>;
+  submitTriviaAnswer: (answer: string) => Promise<RoomActionResult & { correct?: boolean }>;
+  advanceTriviaQuestion: () => Promise<RoomActionResult>;
+  startWhoSaidRound: (topic: WhoSaidTopicId, writeSeconds: number, guessSeconds: number) => Promise<RoomActionResult>;
+  submitWhoSaidPhrase: (phrase: string) => Promise<RoomActionResult>;
+  submitWhoSaidGuess: (guessedUserId: string) => Promise<RoomActionResult & { correct?: boolean }>;
+  advanceWhoSaidRound: () => Promise<RoomActionResult>;
+  startMajorityRound: (
+    category: MajorityCategoryId,
+    roundCount: number,
+    answerSeconds: number,
+    predictionSeconds: number
+  ) => Promise<RoomActionResult>;
+  submitMajorityAnswer: (option: string) => Promise<RoomActionResult>;
+  submitMajorityPrediction: (option: string) => Promise<RoomActionResult & { correct?: boolean }>;
+  advanceMajorityRound: () => Promise<RoomActionResult>;
+  scoreTournamentRound: () => Promise<RoomActionResult>;
+  resetTournament: () => Promise<RoomActionResult>;
   advanceImpostorRound: () => Promise<RoomActionResult>;
   castImpostorVote: (targetUserId: string) => Promise<RoomActionResult>;
   resolveImpostorVote: () => Promise<RoomActionResult>;
@@ -408,6 +445,294 @@ export function RoomProvider({ children }: PropsWithChildren) {
           const roomDetails = await getRoomDetails(activeRoom.room.id, user.id);
           setActiveRoom(roomDetails);
           return { roomId: activeRoom.room.id, correct: Boolean(result?.solved_at) };
+        } catch (error) {
+          return { error: mapRoomError(error) };
+        } finally {
+          setIsBusy(false);
+        }
+      },
+      startFacesGesturesRound: async (turnSeconds) => {
+        if (!user || !activeRoom) {
+          return { error: 'AUTH_REQUIRED' };
+        }
+
+        setIsBusy(true);
+
+        try {
+          await startFacesGesturesRoundRequest(activeRoom.room.id, turnSeconds);
+          const roomDetails = await getRoomDetails(activeRoom.room.id, user.id);
+          setActiveRoom(roomDetails);
+          return { roomId: activeRoom.room.id };
+        } catch (error) {
+          return { error: mapRoomError(error) };
+        } finally {
+          setIsBusy(false);
+        }
+      },
+      submitFacesGesturesGuess: async (guess) => {
+        if (!user || !activeRoom) {
+          return { error: 'AUTH_REQUIRED' };
+        }
+
+        setIsBusy(true);
+
+        try {
+          const result = await submitFacesGesturesGuessRequest(activeRoom.room.id, guess);
+          const roomDetails = await getRoomDetails(activeRoom.room.id, user.id);
+          setActiveRoom(roomDetails);
+          return { roomId: activeRoom.room.id, correct: Boolean(result?.solved_at) };
+        } catch (error) {
+          return { error: mapRoomError(error) };
+        } finally {
+          setIsBusy(false);
+        }
+      },
+      finishFacesGesturesRound: async () => {
+        if (!user || !activeRoom) {
+          return { error: 'AUTH_REQUIRED' };
+        }
+
+        setIsBusy(true);
+
+        try {
+          await finishFacesGesturesRoundRequest(activeRoom.room.id);
+          const roomDetails = await getRoomDetails(activeRoom.room.id, user.id);
+          setActiveRoom(roomDetails);
+          return { roomId: activeRoom.room.id };
+        } catch (error) {
+          return { error: mapRoomError(error) };
+        } finally {
+          setIsBusy(false);
+        }
+      },
+      startTriviaRound: async (questionCount, turnSeconds, topics) => {
+        if (!user || !activeRoom) {
+          return { error: 'AUTH_REQUIRED' };
+        }
+
+        setIsBusy(true);
+
+        try {
+          await startTriviaRoundRequest(activeRoom.room.id, questionCount, turnSeconds, topics);
+          const roomDetails = await getRoomDetails(activeRoom.room.id, user.id);
+          setActiveRoom(roomDetails);
+          return { roomId: activeRoom.room.id };
+        } catch (error) {
+          return { error: mapRoomError(error) };
+        } finally {
+          setIsBusy(false);
+        }
+      },
+      submitTriviaAnswer: async (answer) => {
+        if (!user || !activeRoom) {
+          return { error: 'AUTH_REQUIRED' };
+        }
+
+        setIsBusy(true);
+
+        try {
+          const result = await submitTriviaAnswerRequest(activeRoom.room.id, answer);
+          const roomDetails = await getRoomDetails(activeRoom.room.id, user.id);
+          setActiveRoom(roomDetails);
+          return { roomId: activeRoom.room.id, correct: Boolean(result?.is_correct) };
+        } catch (error) {
+          return { error: mapRoomError(error) };
+        } finally {
+          setIsBusy(false);
+        }
+      },
+      advanceTriviaQuestion: async () => {
+        if (!user || !activeRoom) {
+          return { error: 'AUTH_REQUIRED' };
+        }
+
+        setIsBusy(true);
+
+        try {
+          await advanceTriviaQuestionRequest(activeRoom.room.id);
+          const roomDetails = await getRoomDetails(activeRoom.room.id, user.id);
+          setActiveRoom(roomDetails);
+          return { roomId: activeRoom.room.id };
+        } catch (error) {
+          return { error: mapRoomError(error) };
+        } finally {
+          setIsBusy(false);
+        }
+      },
+      startWhoSaidRound: async (topic, writeSeconds, guessSeconds) => {
+        if (!user || !activeRoom) {
+          return { error: 'AUTH_REQUIRED' };
+        }
+
+        setIsBusy(true);
+
+        try {
+          await startWhoSaidRoundRequest(activeRoom.room.id, topic, writeSeconds, guessSeconds);
+          const roomDetails = await getRoomDetails(activeRoom.room.id, user.id);
+          setActiveRoom(roomDetails);
+          return { roomId: activeRoom.room.id };
+        } catch (error) {
+          return { error: mapRoomError(error) };
+        } finally {
+          setIsBusy(false);
+        }
+      },
+      submitWhoSaidPhrase: async (phrase) => {
+        if (!user || !activeRoom) {
+          return { error: 'AUTH_REQUIRED' };
+        }
+
+        setIsBusy(true);
+
+        try {
+          await submitWhoSaidPhraseRequest(activeRoom.room.id, phrase);
+          const roomDetails = await getRoomDetails(activeRoom.room.id, user.id);
+          setActiveRoom(roomDetails);
+          return { roomId: activeRoom.room.id };
+        } catch (error) {
+          return { error: mapRoomError(error) };
+        } finally {
+          setIsBusy(false);
+        }
+      },
+      submitWhoSaidGuess: async (guessedUserId) => {
+        if (!user || !activeRoom) {
+          return { error: 'AUTH_REQUIRED' };
+        }
+
+        setIsBusy(true);
+
+        try {
+          const result = await submitWhoSaidGuessRequest(activeRoom.room.id, guessedUserId);
+          const roomDetails = await getRoomDetails(activeRoom.room.id, user.id);
+          setActiveRoom(roomDetails);
+          return { roomId: activeRoom.room.id, correct: Boolean(result?.is_correct) };
+        } catch (error) {
+          return { error: mapRoomError(error) };
+        } finally {
+          setIsBusy(false);
+        }
+      },
+      advanceWhoSaidRound: async () => {
+        if (!user || !activeRoom) {
+          return { error: 'AUTH_REQUIRED' };
+        }
+
+        setIsBusy(true);
+
+        try {
+          await advanceWhoSaidRoundRequest(activeRoom.room.id);
+          const roomDetails = await getRoomDetails(activeRoom.room.id, user.id);
+          setActiveRoom(roomDetails);
+          return { roomId: activeRoom.room.id };
+        } catch (error) {
+          return { error: mapRoomError(error) };
+        } finally {
+          setIsBusy(false);
+        }
+      },
+      startMajorityRound: async (category, roundCount, answerSeconds, predictionSeconds) => {
+        if (!user || !activeRoom) {
+          return { error: 'AUTH_REQUIRED' };
+        }
+
+        setIsBusy(true);
+
+        try {
+          await startMajorityRoundRequest(activeRoom.room.id, category, roundCount, answerSeconds, predictionSeconds);
+          const roomDetails = await getRoomDetails(activeRoom.room.id, user.id);
+          setActiveRoom(roomDetails);
+          return { roomId: activeRoom.room.id };
+        } catch (error) {
+          return { error: mapRoomError(error) };
+        } finally {
+          setIsBusy(false);
+        }
+      },
+      submitMajorityAnswer: async (option) => {
+        if (!user || !activeRoom) {
+          return { error: 'AUTH_REQUIRED' };
+        }
+
+        setIsBusy(true);
+
+        try {
+          await submitMajorityAnswerRequest(activeRoom.room.id, option);
+          const roomDetails = await getRoomDetails(activeRoom.room.id, user.id);
+          setActiveRoom(roomDetails);
+          return { roomId: activeRoom.room.id };
+        } catch (error) {
+          return { error: mapRoomError(error) };
+        } finally {
+          setIsBusy(false);
+        }
+      },
+      submitMajorityPrediction: async (option) => {
+        if (!user || !activeRoom) {
+          return { error: 'AUTH_REQUIRED' };
+        }
+
+        setIsBusy(true);
+
+        try {
+          await submitMajorityPredictionRequest(activeRoom.room.id, option);
+          const roomDetails = await getRoomDetails(activeRoom.room.id, user.id);
+          setActiveRoom(roomDetails);
+          return { roomId: activeRoom.room.id, correct: undefined };
+        } catch (error) {
+          return { error: mapRoomError(error) };
+        } finally {
+          setIsBusy(false);
+        }
+      },
+      advanceMajorityRound: async () => {
+        if (!user || !activeRoom) {
+          return { error: 'AUTH_REQUIRED' };
+        }
+
+        setIsBusy(true);
+
+        try {
+          await advanceMajorityRoundRequest(activeRoom.room.id);
+          const roomDetails = await getRoomDetails(activeRoom.room.id, user.id);
+          setActiveRoom(roomDetails);
+          return { roomId: activeRoom.room.id };
+        } catch (error) {
+          return { error: mapRoomError(error) };
+        } finally {
+          setIsBusy(false);
+        }
+      },
+      scoreTournamentRound: async () => {
+        if (!user || !activeRoom) {
+          return { error: 'AUTH_REQUIRED' };
+        }
+
+        setIsBusy(true);
+
+        try {
+          await scoreRoomTournamentRoundRequest(activeRoom.room.id);
+          const roomDetails = await getRoomDetails(activeRoom.room.id, user.id);
+          setActiveRoom(roomDetails);
+          return { roomId: activeRoom.room.id };
+        } catch (error) {
+          return { error: mapRoomError(error) };
+        } finally {
+          setIsBusy(false);
+        }
+      },
+      resetTournament: async () => {
+        if (!user || !activeRoom) {
+          return { error: 'AUTH_REQUIRED' };
+        }
+
+        setIsBusy(true);
+
+        try {
+          await resetRoomTournamentRequest(activeRoom.room.id);
+          const roomDetails = await getRoomDetails(activeRoom.room.id, user.id);
+          setActiveRoom(roomDetails);
+          return { roomId: activeRoom.room.id };
         } catch (error) {
           return { error: mapRoomError(error) };
         } finally {

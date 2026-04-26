@@ -1,9 +1,8 @@
-import { useEffect, useRef } from 'react';
-import { Animated, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import type { RoomMemberView } from '../../data/rooms';
-import { podium } from '../../data/mockData';
-import type { ImpostorRoundSetup } from '../../navigation/types';
+import type { TournamentScore } from '../../navigation/types';
 import { AppButton } from '../components/AppButton';
 import { AppScreen } from '../components/AppScreen';
 import { AvatarSilhouette } from '../components/AvatarSilhouette';
@@ -14,101 +13,64 @@ import { textStyles } from '../system/typography';
 
 type ResultsScreenProps = {
   members?: RoomMemberView[];
-  round?: ImpostorRoundSetup | null;
+  scores?: TournamentScore[];
+  canManageRoom?: boolean;
   onPlayAgain: () => void;
-  onBackToLobby: () => void;
+  onBackToRoom: () => void;
 };
 
-export function ResultsScreen({ members = [], round = null, onPlayAgain, onBackToLobby }: ResultsScreenProps) {
+export function ResultsScreen({
+  members = [],
+  scores = [],
+  canManageRoom = false,
+  onPlayAgain,
+  onBackToRoom
+}: ResultsScreenProps) {
+  const { t } = useTranslation();
   const theme = useTheme();
   const styles = createStyles(theme);
-  const revealValue = useRef(new Animated.Value(0)).current;
-  const impostorMembers = members.filter((member) => round?.impostorIds.includes(member.userId));
-  const revealedNames = impostorMembers.length ? impostorMembers.map((member) => member.displayName).join(', ') : podium[0]?.name ?? 'Impostor';
-  const civiliansWon = round?.outcome === 'impostors_caught';
-  const impostorsWon = round ? !civiliansWon : false;
-  const rows = members.length
-    ? members.map((member) => {
-        const isImpostor = Boolean(round?.impostorIds.includes(member.userId));
-        const won = isImpostor ? impostorsWon : civiliansWon;
-
-        return {
-          id: member.id,
-          name: member.displayName,
-          role: isImpostor ? 'Impostor' : 'Tripulante',
-          result: won ? 'Gano' : 'Perdio',
-          tone: won ? 'success' : 'neutral'
-        } as const;
-      })
-    : podium.map((entry, index) => ({
-        id: entry.id,
-        name: entry.name,
-        role: index === 0 ? 'Impostor' : 'Tripulante',
-        result: index === 0 ? 'Perdio' : 'Gano',
-        tone: index === 0 ? 'neutral' : 'success'
-      } as const));
-
-  useEffect(() => {
-    revealValue.setValue(0);
-    Animated.spring(revealValue, {
-      toValue: 1,
-      friction: 7,
-      tension: 72,
-      useNativeDriver: true
-    }).start();
-  }, [revealValue, revealedNames]);
-
-  const revealStyle = {
-    opacity: revealValue,
-    transform: [
-      {
-        translateY: revealValue.interpolate({
-          inputRange: [0, 1],
-          outputRange: [18, 0]
-        })
-      },
-      {
-        scale: revealValue.interpolate({
-          inputRange: [0, 1],
-          outputRange: [0.94, 1]
-        })
-      }
-    ]
-  };
+  const rows = members
+    .filter((member) => member.isActive)
+    .map((member) => ({
+      id: member.userId,
+      name: member.displayName,
+      points: scores.find((score) => score.userId === member.userId)?.points ?? 0
+    }))
+    .sort((a, b) => b.points - a.points || a.name.localeCompare(b.name));
+  const podium = rows.slice(0, 3);
 
   return (
-    <AppScreen>
-      <Animated.View style={revealStyle}>
-        <SurfaceCard>
-          <View style={styles.revealHeader}>
-            <Badge label="Impostor revelado" tone="accent" />
-            <Text style={styles.revealTitle}>{revealedNames}</Text>
-            <Text style={styles.revealCopy}>
-              {civiliansWon
-                ? 'El grupo encontro al impostor y cerro la ronda.'
-                : 'El impostor sobrevivio la votacion y se llevo la ronda.'}
-            </Text>
-          </View>
-        </SurfaceCard>
-      </Animated.View>
+    <AppScreen title={t('tournament.title')} subtitle={t('tournament.subtitle')}>
+      <SurfaceCard>
+        <View style={styles.podiumRow}>
+          {podium.map((entry, index) => (
+            <View key={entry.id} style={[styles.podiumCard, index === 0 && styles.winnerCard]}>
+              <Badge label={t(`tournament.place.${index + 1}`)} tone={index === 0 ? 'accent' : 'neutral'} />
+              <AvatarSilhouette size={58} />
+              <Text style={styles.podiumName}>{entry.name}</Text>
+              <Text style={styles.podiumPoints}>{t('tournament.points', { count: entry.points })}</Text>
+            </View>
+          ))}
+        </View>
+      </SurfaceCard>
 
       <SurfaceCard>
-        <Text style={styles.sectionTitle}>Resultados</Text>
-        {rows.map((entry) => (
+        <Text style={styles.sectionTitle}>{t('tournament.scoreboard')}</Text>
+        {rows.map((entry, index) => (
           <View key={entry.id} style={styles.scoreRow}>
-            <AvatarSilhouette size={46} />
+            <Text style={styles.rank}>#{index + 1}</Text>
             <View style={styles.scoreMeta}>
               <Text style={styles.scoreName}>{entry.name}</Text>
-              <Text style={styles.scoreBadge}>{entry.role}</Text>
+              <Text style={styles.scoreBadge}>{t('tournament.points', { count: entry.points })}</Text>
             </View>
-            <Badge label={entry.result} tone={entry.tone} />
+            {index === 0 ? <Badge label={t('tournament.winner')} tone="success" /> : null}
           </View>
         ))}
       </SurfaceCard>
 
       <View style={styles.actions}>
-        <AppButton label="Jugar de nuevo" onPress={onPlayAgain} />
-        <AppButton label="Salir" onPress={onBackToLobby} variant="secondary" />
+        <AppButton label={t('tournament.backToRoom')} onPress={onBackToRoom} variant="secondary" />
+        {canManageRoom ? <AppButton label={t('tournament.playAgain')} onPress={onPlayAgain} /> : null}
       </View>
     </AppScreen>
   );
@@ -116,24 +78,37 @@ export function ResultsScreen({ members = [], round = null, onPlayAgain, onBackT
 
 function createStyles(theme: ReturnType<typeof useTheme>) {
   return StyleSheet.create({
-    revealHeader: {
+    podiumRow: {
+      flexDirection: 'row',
+      gap: spacing.sm,
+      alignItems: 'stretch'
+    },
+    podiumCard: {
+      flex: 1,
+      minHeight: 170,
+      borderRadius: 28,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.surfaceMuted,
+      padding: spacing.md,
       alignItems: 'center',
-      gap: spacing.md,
-      paddingVertical: spacing.md
+      justifyContent: 'center',
+      gap: spacing.sm
     },
-    revealTitle: {
-      color: theme.colors.highlight,
-      fontSize: 44,
-      lineHeight: 50,
-      fontWeight: '800',
-      textAlign: 'center'
+    winnerCard: {
+      borderColor: theme.colors.primary,
+      backgroundColor: theme.colors.badgeAccentBackground
     },
-    revealCopy: {
-      color: theme.colors.textSecondary,
-      fontSize: typography.body,
-      lineHeight: 24,
+    podiumName: {
+      color: theme.colors.textPrimary,
       textAlign: 'center',
-      maxWidth: 520
+      fontSize: typography.body,
+      fontWeight: '900'
+    },
+    podiumPoints: {
+      color: theme.colors.textSecondary,
+      fontSize: typography.caption,
+      fontWeight: '800'
     },
     sectionTitle: {
       color: theme.colors.textPrimary,
@@ -144,8 +119,15 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
       alignItems: 'center',
       gap: spacing.md
     },
+    rank: {
+      width: 44,
+      color: theme.colors.highlight,
+      fontSize: typography.body,
+      fontWeight: '900'
+    },
     scoreMeta: {
       flex: 1,
+      minWidth: 0,
       gap: 2
     },
     scoreName: {
