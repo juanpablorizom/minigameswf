@@ -102,3 +102,10 @@ export async function updateThemePreference(userId: string, themePreference: App
     .from('user_settings')
     .upsert({ user_id: userId, theme_preference: themePreference }, { onConflict: 'user_id' });
 }
+
+export async function updateProfileAppearance(userId: string, avatarId: string, frameId: string) {
+  await supabase
+    .from('profiles')
+    .update({ avatar_id: avatarId, frame_id: frameId })
+    .eq('id', userId);
+}

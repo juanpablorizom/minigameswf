@@ -19,6 +19,7 @@ const LANGUAGE_STORAGE_KEY = 'minigameswf.language';
 const THEME_STORAGE_KEY = 'minigameswf.theme';
 const GUEST_PROFILE_STORAGE_KEY = 'minigameswf.guest-profile';
 const ROOM_RESUME_STORAGE_KEY = 'minigameswf.room-resume';
+const MOTION_BACKGROUND_STORAGE_KEY = 'minigameswf.motion-background';
 
 type StorageAdapter = {
   getItem: (key: string) => Promise<string | null>;
@@ -138,4 +139,13 @@ export async function storeRoomResume(shouldResume: boolean) {
   }
 
   await appStorage.removeItem(ROOM_RESUME_STORAGE_KEY);
+}
+
+export async function loadStoredMotionBackground() {
+  const value = await appStorage.getItem(MOTION_BACKGROUND_STORAGE_KEY);
+  return value !== '0';
+}
+
+export async function storeMotionBackground(enabled: boolean) {
+  await appStorage.setItem(MOTION_BACKGROUND_STORAGE_KEY, enabled ? '1' : '0');
 }

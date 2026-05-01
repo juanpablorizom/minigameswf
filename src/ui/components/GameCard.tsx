@@ -36,9 +36,10 @@ export function GameCard({
       disabled={inactive}
       style={({ pressed, hovered }) => [
         styles.card,
-        selected && styles.cardSelected,
-        inactive && styles.cardInactive,
         hovered && styles.cardHover,
+        selected && styles.cardSelected,
+        selected && hovered && styles.cardSelectedHover,
+        inactive && styles.cardInactive,
         pressed && styles.cardPressed
       ]}
     >
@@ -99,6 +100,11 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
       borderWidth: 2,
       backgroundColor: theme.colors.badgeAccentBackground
     },
+    cardSelectedHover: {
+      borderColor: theme.colors.primary,
+      backgroundColor: theme.colors.badgeAccentBackground,
+      transform: [{ scale: 1.02 }, { translateY: -2 }]
+    },
     cardInactive: {
       borderColor: theme.colors.border,
       backgroundColor: theme.colors.backgroundElevated,
@@ -106,7 +112,8 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
     },
     cardHover: {
       borderColor: theme.colors.borderStrong,
-      backgroundColor: theme.colors.surface
+      backgroundColor: theme.colors.surface,
+      transform: [{ translateY: -2 }]
     },
     cardPressed: {
       transform: [{ scale: 0.992 }]

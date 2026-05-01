@@ -10,6 +10,7 @@ import {
   updateDisplayName as updateProfileDisplayName,
   updateLanguagePreference,
   updateThemePreference,
+  updateProfileAppearance,
   type ProfileRow,
   type UserSettingsRow
 } from '../data/account';
@@ -53,6 +54,7 @@ type AuthContextValue = {
   signOut: () => Promise<void>;
   changeLanguage: (language: AppLanguage) => Promise<AuthActionResult>;
   changeTheme: (theme: AppThemePreference) => Promise<AuthActionResult>;
+  changeAppearance: (avatarId: string, frameId: string) => Promise<AuthActionResult>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -449,6 +451,17 @@ export function AuthProvider({ children }: PropsWithChildren) {
           setSettings((current) => (current ? { ...current, theme_preference: resolvedTheme } : current));
         }
 
+        return {};
+      },
+      changeAppearance: async (avatarId, frameId) => {
+        if (!isSupabaseConfigured || !user) {
+          return { error: 'SUPABASE_NOT_CONFIGURED' };
+        }
+
+        setIsBusy(true);
+        await updateProfileAppearance(user.id, avatarId, frameId);
+        await refreshAccountState(user, language, themePreference);
+        setIsBusy(false);
         return {};
       }
     }),

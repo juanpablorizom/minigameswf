@@ -11,6 +11,7 @@ export const resources = {
         guest: 'Invitado',
         player: 'Jugador',
         cancel: 'Cancelar',
+        save: 'Guardar',
         stay: 'Quedarse',
         continue: 'Continuar',
         on: 'Activado',
@@ -105,6 +106,61 @@ export const resources = {
         notConfigured: 'Supabase todavía no está configurado.',
         savingLanguage: 'Guardando idioma...'
       },
+      profile: {
+        avatar: 'Avatar',
+        frame: 'Marco',
+        avatarPicker: 'Avatar y marco',
+        avatarPickerHint: 'Elige cómo te ven tus amigos y jugadores dentro de la sala.',
+        avatarSaved: 'Avatar actualizado.'
+      },
+      avatars: {
+        default: 'Silueta',
+        devil: 'Diablito',
+        joker: 'Joker',
+        masked: 'Enmascarado',
+        innocent: 'Inocente',
+        star: 'Estrella',
+        spark: 'Chispa'
+      },
+      frames: {
+        plain: 'Sin marco',
+        gold: 'Oro',
+        crimson: 'Carmesí',
+        mint: 'Menta',
+        dashed: 'Discontinuo'
+      },
+      friends: {
+        title: 'Amigos',
+        subtitle: 'Agrega amigos por usuario y acepta solicitudes.',
+        onlineTitle: 'Amigos online',
+        activeCount: '{{count}} activos',
+        invite: 'Invitar',
+        emptyInvite: 'Invitar',
+        empty: 'Invita a tus amigos para jugar juntos.',
+        emptyHint: 'Cuando acepten tu solicitud aparecerán aquí.',
+        noRequests: 'No tienes solicitudes pendientes.',
+        friendsTab: 'Amigos',
+        requestsTab: 'Solicitudes',
+        addFriend: 'Agregar amigo',
+        sendRequest: 'Enviar',
+        searchPlaceholder: 'username de tu amigo',
+        requestSent: 'Solicitud enviada.',
+        requestAccepted: 'Solicitud aceptada.',
+        requestRejected: 'Solicitud rechazada.',
+        removed: 'Amigo eliminado.',
+        acceptRequest: 'Aceptar',
+        rejectRequest: 'Rechazar',
+        removeFriend: 'Quitar amigo',
+        notFound: 'No encontramos ese usuario.',
+        alreadyFriends: 'Ya existe una solicitud o amistad con ese usuario.',
+        selfBlocked: 'No puedes agregarte a ti mismo.',
+        usernameRequired: 'Escribe un username.',
+        status: {
+          online: 'Online',
+          offline: 'Offline',
+          pending: 'Pendiente'
+        }
+      },
       settings: {
         title: 'Ajustes',
         subtitle: 'Controla idioma, sistema visual y tu sesión.',
@@ -122,6 +178,8 @@ export const resources = {
         appearanceCardHint: 'Elige un estilo visual completo para toda la interfaz. La selección vive dentro de un panel dedicado.',
         openAppearance: 'Abrir apariencia',
         activeAppearance: 'Activa',
+        motionBackground: 'Fondo en movimiento',
+        motionBackgroundHint: 'Activa un movimiento sutil en el fondo de la app.',
         themeChoices: {
           'neutral-light': {
             label: 'Neutro claro',
@@ -263,6 +321,11 @@ export const resources = {
         subtitle: 'Elige los minijuegos para tu grupo.',
         selectedCount: '{{count}} juegos seleccionados',
         futureSlot: 'Próximamente',
+        impostorHowToPlayTitle: 'Cómo funciona Impostor',
+        impostorHowToPlayIntro: 'Todos reciben una palabra secreta, excepto los impostores.',
+        impostorHowToPlayStepOne: '1. La sala conversa y hace preguntas sin revelar demasiado.',
+        impostorHowToPlayStepTwo: '2. Cuando el grupo sospecha de alguien, vota para expulsarlo.',
+        impostorHowToPlayStepThree: '3. Los inocentes ganan si descubren a los impostores; los impostores ganan si sobreviven.',
         howToPlayTitle: 'Cómo funciona Impostor',
         howToPlayIntro: 'Todos reciben una palabra secreta, excepto los impostores.',
         howToPlayStepOne: '1. La sala conversa y hace preguntas sin revelar demasiado.',
@@ -292,7 +355,17 @@ export const resources = {
         majorityHowToPlayIntro: 'Elige y predice la mayoría.',
         majorityHowToPlayStepOne: '1. Todos eligen.',
         majorityHowToPlayStepTwo: '2. Predice la mayoría.',
-        majorityHowToPlayStepThree: '3. Empates cuentan.'
+        majorityHowToPlayStepThree: '3. Empates cuentan.',
+        trollHowToPlayTitle: 'Cómo funciona Troll Diferente',
+        trollHowToPlayIntro: 'Una palabra real, un impostor sin palabra y un troll con palabra equivocada.',
+        trollHowToPlayStepOne: '1. Cada jugador recibe una palabra: real, impostor sin nada, o troll con engaño.',
+        trollHowToPlayStepTwo: '2. La sala discute y vota a quien crean impostor.',
+        trollHowToPlayStepThree: '3. El troll gana si los inocentes echan a un troll por error.',
+        whoseTopHowToPlayTitle: 'Cómo funciona ¿De quién es este top?',
+        whoseTopHowToPlayIntro: 'Cada jugador crea un top personal y la sala intenta adivinar de quién es.',
+        whoseTopHowToPlayStepOne: '1. Todos ordenan su top en secreto.',
+        whoseTopHowToPlayStepTwo: '2. La sala ve un top anónimo y vota por su autor.',
+        whoseTopHowToPlayStepThree: '3. Ganas puntos por adivinar y por confundir al grupo.'
       },
       roomSettings: {
         title: 'Configuración del juego',
@@ -786,6 +859,7 @@ export const resources = {
         guest: 'Guest',
         player: 'Player',
         cancel: 'Cancel',
+        save: 'Save',
         stay: 'Stay',
         continue: 'Continue',
         on: 'On',
@@ -880,6 +954,61 @@ export const resources = {
         notConfigured: 'Supabase is not configured yet.',
         savingLanguage: 'Saving language...'
       },
+      profile: {
+        avatar: 'Avatar',
+        frame: 'Frame',
+        avatarPicker: 'Avatar and frame',
+        avatarPickerHint: 'Choose how friends and room players see you.',
+        avatarSaved: 'Avatar updated.'
+      },
+      avatars: {
+        default: 'Silhouette',
+        devil: 'Devil',
+        joker: 'Joker',
+        masked: 'Masked',
+        innocent: 'Innocent',
+        star: 'Star',
+        spark: 'Spark'
+      },
+      frames: {
+        plain: 'No frame',
+        gold: 'Gold',
+        crimson: 'Crimson',
+        mint: 'Mint',
+        dashed: 'Dashed'
+      },
+      friends: {
+        title: 'Friends',
+        subtitle: 'Add friends by username and accept requests.',
+        onlineTitle: 'Online friends',
+        activeCount: '{{count}} active',
+        invite: 'Invite',
+        emptyInvite: 'Invite',
+        empty: 'Invite your friends to play together.',
+        emptyHint: 'Accepted friends will appear here.',
+        noRequests: 'No pending requests.',
+        friendsTab: 'Friends',
+        requestsTab: 'Requests',
+        addFriend: 'Add friend',
+        sendRequest: 'Send',
+        searchPlaceholder: "friend's username",
+        requestSent: 'Request sent.',
+        requestAccepted: 'Request accepted.',
+        requestRejected: 'Request rejected.',
+        removed: 'Friend removed.',
+        acceptRequest: 'Accept',
+        rejectRequest: 'Reject',
+        removeFriend: 'Remove friend',
+        notFound: 'We could not find that user.',
+        alreadyFriends: 'A request or friendship already exists with that user.',
+        selfBlocked: 'You cannot add yourself.',
+        usernameRequired: 'Enter a username.',
+        status: {
+          online: 'Online',
+          offline: 'Offline',
+          pending: 'Pending'
+        }
+      },
       settings: {
         title: 'Settings',
         subtitle: 'Control language, visual system, and your session.',
@@ -897,6 +1026,8 @@ export const resources = {
         appearanceCardHint: 'Choose a complete visual style for the whole interface. Selection lives inside a dedicated panel.',
         openAppearance: 'Open appearance',
         activeAppearance: 'Active',
+        motionBackground: 'Motion background',
+        motionBackgroundHint: 'Enable subtle background movement across the app.',
         themeChoices: {
           'neutral-light': {
             label: 'Neutral light',
@@ -1037,6 +1168,11 @@ export const resources = {
         subtitle: 'Choose minigames for your group.',
         selectedCount: '{{count}} games selected',
         futureSlot: 'Coming soon',
+        impostorHowToPlayTitle: 'How Impostor Works',
+        impostorHowToPlayIntro: 'Everyone gets a secret word, except the impostors.',
+        impostorHowToPlayStepOne: '1. The room talks and asks questions without revealing too much.',
+        impostorHowToPlayStepTwo: '2. When the group suspects someone, everyone votes to remove them.',
+        impostorHowToPlayStepThree: '3. Innocents win by finding the impostors; impostors win by surviving.',
         howToPlayTitle: 'How Impostor Works',
         howToPlayIntro: 'Everyone gets a secret word, except the impostors.',
         howToPlayStepOne: '1. The room talks and asks questions without revealing too much.',
@@ -1066,7 +1202,17 @@ export const resources = {
         majorityHowToPlayIntro: 'Choose and predict the majority.',
         majorityHowToPlayStepOne: '1. Everyone chooses.',
         majorityHowToPlayStepTwo: '2. Predict the majority.',
-        majorityHowToPlayStepThree: '3. Ties count.'
+        majorityHowToPlayStepThree: '3. Ties count.',
+        trollHowToPlayTitle: 'How Troll Diferente Works',
+        trollHowToPlayIntro: 'One real word, one impostor with no word, and one troll with the wrong word.',
+        trollHowToPlayStepOne: '1. Each player receives a word: real, no-word impostor, or misleading troll.',
+        trollHowToPlayStepTwo: '2. The room discusses and votes for whoever seems like the impostor.',
+        trollHowToPlayStepThree: '3. The troll wins if innocents remove a troll by mistake.',
+        whoseTopHowToPlayTitle: 'How Whose Top Works',
+        whoseTopHowToPlayIntro: 'Each player creates a personal top list and the room guesses whose it is.',
+        whoseTopHowToPlayStepOne: '1. Everyone secretly orders their top list.',
+        whoseTopHowToPlayStepTwo: '2. The room sees an anonymous top and votes for its author.',
+        whoseTopHowToPlayStepThree: '3. Score by guessing correctly and by fooling the room.'
       },
       roomSettings: {
         title: 'Game settings',

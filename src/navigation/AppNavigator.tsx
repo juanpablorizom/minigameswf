@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Linking, Modal, PanResponder, Platform, Pressable, ScrollView, Share, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Animated, Easing, Linking, Modal, PanResponder, Platform, Pressable, ScrollView, Share, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { featuredGames, lobbyScenarios } from '../data/mockData';
@@ -7,16 +7,19 @@ import { gameRegistry, getGamesByIds, normalizeGameIds } from '../data/gameRegis
 import { impostorThemeWords } from '../data/themes';
 import type { RoomDetails } from '../data/rooms';
 import { buildRoomJoinUrl, extractRoomCodeFromValue, normalizeRoomCode } from '../lib/roomLinks';
-import { loadStoredRoomResume, storeRoomResume } from '../lib/storage';
+import { loadStoredMotionBackground, loadStoredRoomResume, storeMotionBackground, storeRoomResume } from '../lib/storage';
 import type { GameId, LobbyActionId, LobbyScenario, Player } from './types';
 import { useAppFlow } from '../state/AppFlowContext';
 import { useAuth } from '../state/AuthContext';
+import { useFriends } from '../state/FriendsContext';
 import { useRoom } from '../state/RoomContext';
 import { AccountScreen } from '../ui/screens/AccountScreen';
 import { AppearanceScreen } from '../ui/screens/AppearanceScreen';
+import { AvatarPickerScreen } from '../ui/screens/AvatarPickerScreen';
 import { ChooseGamesScreen } from '../ui/screens/ChooseGamesScreen';
 import { GamesCatalogScreen } from '../ui/screens/GamesCatalogScreen';
 import { FacesGesturesGameplayScreen } from '../ui/screens/FacesGesturesGameplayScreen';
+import { FriendsScreen } from '../ui/screens/FriendsScreen';
 import { GameplayScreen } from '../ui/screens/GameplayScreen';
 import { GuessWhoGameplayScreen } from '../ui/screens/GuessWhoGameplayScreen';
 import { JoinRoomScreen } from '../ui/screens/JoinRoomScreen';
@@ -187,6 +190,7 @@ export function AppNavigator() {
     displayName,
     username,
     email,
+    profile,
     language,
     themePreference,
     signInWithEmail,
@@ -197,8 +201,18 @@ export function AppNavigator() {
     linkGuestAccountWithEmail,
     signOut,
     changeLanguage,
-    changeTheme
+    changeTheme,
+    changeAppearance
   } = useAuth();
+  const {
+    friends,
+    pendingRequests,
+    isBusy: friendsBusy,
+    sendRequest: sendFriendRequest,
+    respondRequest: respondToFriendRequest,
+    removeFriend,
+    refreshFriends
+  } = useFriends();
   const {
     isReady: roomsReady,
     isBusy: roomBusy,
@@ -281,9 +295,13 @@ export function AppNavigator() {
   const [isSettingsPanelOpen, setIsSettingsPanelOpen] = useState(false);
   const [isAccountPanelOpen, setIsAccountPanelOpen] = useState(false);
   const [isAppearancePanelOpen, setIsAppearancePanelOpen] = useState(false);
+  const [isAvatarPickerOpen, setIsAvatarPickerOpen] = useState(false);
+  const [isFriendsPanelOpen, setIsFriendsPanelOpen] = useState(false);
+  const [friendsNotice, setFriendsNotice] = useState<string | null>(null);
   const [isGamesCatalogOpen, setIsGamesCatalogOpen] = useState(false);
   const [isLeaveRoomConfirmOpen, setIsLeaveRoomConfirmOpen] = useState(false);
   const [isGameSettingsOpen, setIsGameSettingsOpen] = useState(false);
+  const [isMotionBackgroundEnabled, setIsMotionBackgroundEnabled] = useState(true);
   const [draftRoomSettings, setDraftRoomSettings] = useState(roomSettings);
   const [resumeRoomReady, setResumeRoomReady] = useState(false);
   const [shouldResumeRoom, setShouldResumeRoom] = useState(false);
@@ -339,8 +357,32 @@ export function AppNavigator() {
       return t('auth.googleNotReady');
     }
 
-    return error;
+  return error;
+}
+
+function mapFriendNotice(translate: (key: string, options?: Record<string, unknown>) => string, error?: string | null) {
+  if (!error) {
+    return null;
   }
+
+  if (error.includes('FRIEND_NOT_FOUND')) {
+    return translate('friends.notFound');
+  }
+
+  if (error.includes('FRIEND_ALREADY_EXISTS') || error.includes('duplicate key')) {
+    return translate('friends.alreadyFriends');
+  }
+
+  if (error.includes('FRIEND_SELF')) {
+    return translate('friends.selfBlocked');
+  }
+
+  if (error.includes('FRIEND_USERNAME_REQUIRED')) {
+    return translate('friends.usernameRequired');
+  }
+
+  return error;
+}
 
   function canStartSelectedTheme() {
     return Boolean(impostorThemeWords[roomSettings.games.impostor.themeCategory]?.length);
@@ -818,6 +860,12 @@ export function AppNavigator() {
   useEffect(() => {
     let isMounted = true;
 
+    void loadStoredMotionBackground().then((enabled) => {
+      if (isMounted) {
+        setIsMotionBackgroundEnabled(enabled);
+      }
+    });
+
     void loadStoredRoomResume().then((shouldRestore) => {
       if (!isMounted) {
         return;
@@ -1238,7 +1286,13 @@ export function AppNavigator() {
         setIsGamesCatalogOpen(true);
         break;
       case 'inviteFriends':
-        void shareRoomCode();
+        if (activeRoom) {
+          void shareRoomCode();
+          return;
+        }
+
+        setFriendsNotice(null);
+        setIsFriendsPanelOpen(true);
         break;
       case 'resumeActivity':
         if (activeRoom) {
@@ -1357,6 +1411,7 @@ export function AppNavigator() {
         <LobbyScreen
           displayName={displayName ?? email?.split('@')[0] ?? (isGuest ? t('common.guest') : t('common.player'))}
           scenario={buildLobbyScenario(null, isGuest, t)}
+          friends={friends}
           onAction={handleLobbyAction}
           notice={roomNotice ?? t('room.roomClosedNotice', { defaultValue: 'La sala se cerró correctamente.' })}
         />
@@ -1373,6 +1428,7 @@ export function AppNavigator() {
         <LobbyScreen
           displayName={displayName ?? email?.split('@')[0] ?? (isGuest ? t('common.guest') : t('common.player'))}
           scenario={resolvedLobbyScenario}
+          friends={friends}
           onAction={handleLobbyAction}
           notice={roomNotice ?? t('lobby.errors.noActiveRoomFallback')}
         />
@@ -1384,6 +1440,7 @@ export function AppNavigator() {
         <LobbyScreen
           displayName={displayName ?? email?.split('@')[0] ?? (isGuest ? t('common.guest') : t('common.player'))}
           scenario={resolvedLobbyScenario}
+          friends={friends}
           onAction={handleLobbyAction}
           notice={roomNotice}
         />
@@ -1991,6 +2048,8 @@ export function AppNavigator() {
         isGuest={isGuest}
         language={language}
         themePreference={themePreference}
+        avatarId={profile?.avatar_id}
+        frameId={profile?.frame_id}
         isBusy={isBusy}
         notice={settingsNotice}
         onOpenAccount={() => {
@@ -2000,6 +2059,10 @@ export function AppNavigator() {
         onOpenAppearance={() => {
           setSettingsNotice(null);
           setIsAppearancePanelOpen(true);
+        }}
+        onOpenAvatar={() => {
+          setSettingsNotice(null);
+          setIsAvatarPickerOpen(true);
         }}
         onChangeLanguage={(nextLanguage) => {
           void changeLanguage(nextLanguage).then((result) => {
@@ -2012,6 +2075,7 @@ export function AppNavigator() {
         onLogout={() => {
           setIsAppearancePanelOpen(false);
           setIsAccountPanelOpen(false);
+          setIsAvatarPickerOpen(false);
           setIsSettingsPanelOpen(false);
           setAccountNotice(null);
           setSettingsNotice(null);
@@ -2123,6 +2187,11 @@ export function AppNavigator() {
       <AppearanceScreen
         embedded
         themePreference={themePreference}
+        motionBackgroundEnabled={isMotionBackgroundEnabled}
+        onToggleMotionBackground={(enabled) => {
+          setIsMotionBackgroundEnabled(enabled);
+          void storeMotionBackground(enabled);
+        }}
         onChangeTheme={(nextTheme) => {
           void changeTheme(nextTheme).then((result) => {
             setSettingsNotice(result.error ?? null);
@@ -2300,7 +2369,7 @@ export function AppNavigator() {
 
   return (
     <View style={styles.container}>
-      <AmbientBackground />
+      <AmbientBackground motionEnabled={isMotionBackgroundEnabled} />
       <View style={[styles.topBar, isLobbyShell && styles.topBarLobby]}>
         {!isLobbyShell ? (
           <View style={styles.headerIdentity}>
@@ -2315,15 +2384,28 @@ export function AppNavigator() {
         <View style={styles.topBarActions}>
           {canGoBack ? (
             <View style={styles.topBarNavActions}>
-              <Pressable onPress={handleBackPress} style={styles.topBarAction} accessibilityRole="button" accessibilityLabel={t('common.back')}>
-                {width < 480 || Platform.OS !== 'web' ? (
-                  <MinimalIcon name="chevronLeft" size={20} color={theme.colors.textPrimary} />
-                ) : (
-                  <Text style={styles.back}>{t('common.back')}</Text>
-                )}
+              <Pressable
+                onPress={handleBackPress}
+                style={({ pressed, hovered }) => [styles.navButton, hovered && styles.navButtonHover, pressed && styles.navButtonPressed]}
+                accessibilityRole="button"
+                accessibilityLabel={t('common.back')}
+              >
+                <MinimalIcon name="arrowLeft" size={18} color={theme.colors.textPrimary} strokeWidth={2.4} />
+                {!isCompactScreen ? <Text style={styles.navButtonLabel}>{t('common.back')}</Text> : null}
               </Pressable>
-              <Pressable onPress={handleExitPress} style={styles.topBarAction}>
-                <Text style={styles.exit}>{t('common.exit')}</Text>
+              <Pressable
+                onPress={handleExitPress}
+                style={({ pressed, hovered }) => [
+                  styles.navButton,
+                  styles.navButtonDanger,
+                  hovered && styles.navButtonDangerHover,
+                  pressed && styles.navButtonPressed
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel={t('common.exit')}
+              >
+                <MinimalIcon name="close" size={18} color={theme.colors.textPrimary} strokeWidth={2.4} />
+                {!isCompactScreen ? <Text style={styles.navButtonLabel}>{t('common.exit')}</Text> : null}
               </Pressable>
             </View>
           ) : null}
@@ -2428,6 +2510,86 @@ export function AppNavigator() {
         </Modal>
       ) : null}
 
+      {isFriendsPanelOpen ? (
+        <Modal
+          visible
+          transparent
+          animationType="fade"
+          onRequestClose={() => {
+            setIsFriendsPanelOpen(false);
+          }}
+        >
+          <View style={styles.overlayBackdrop}>
+            <Pressable style={StyleSheet.absoluteFillObject} onPress={() => setIsFriendsPanelOpen(false)} />
+            <View style={styles.accountPanel}>
+              <View style={styles.panelHeader}>
+                <Text style={styles.panelTitle}>{t('friends.title')}</Text>
+                <Pressable onPress={() => setIsFriendsPanelOpen(false)} style={styles.panelClose}>
+                  <Text style={styles.panelCloseLabel}>{t('auth.modalClose')}</Text>
+                </Pressable>
+              </View>
+              <ScrollView style={styles.panelBodyScroll} contentContainerStyle={styles.panelBodyScrollContent} showsVerticalScrollIndicator={false}>
+                <FriendsScreen
+                  embedded
+                  friends={friends}
+                  pendingRequests={pendingRequests}
+                  isBusy={friendsBusy}
+                  notice={friendsNotice}
+                  onSendRequest={(targetUsername) => {
+                    void sendFriendRequest(targetUsername).then((result) => {
+                      setFriendsNotice(result.error ? mapFriendNotice(t, result.error) : t('friends.requestSent'));
+                    });
+                  }}
+                  onRespondRequest={(friendshipId, accept) => {
+                    void respondToFriendRequest(friendshipId, accept).then((result) => {
+                      setFriendsNotice(result.error ? mapFriendNotice(t, result.error) : t(accept ? 'friends.requestAccepted' : 'friends.requestRejected'));
+                    });
+                  }}
+                  onRemoveFriend={(friendshipId) => {
+                    void removeFriend(friendshipId).then((result) => {
+                      setFriendsNotice(result.error ? mapFriendNotice(t, result.error) : t('friends.removed'));
+                    });
+                  }}
+                />
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
+      ) : null}
+
+      {isAvatarPickerOpen ? (
+        <Modal visible transparent animationType="fade" onRequestClose={() => setIsAvatarPickerOpen(false)}>
+          <View style={styles.overlayBackdrop}>
+            <Pressable style={StyleSheet.absoluteFillObject} onPress={() => setIsAvatarPickerOpen(false)} />
+            <View style={styles.accountPanel}>
+              <View style={styles.panelHeader}>
+                <Text style={styles.panelTitle}>{t('profile.avatarPicker')}</Text>
+                <Pressable onPress={() => setIsAvatarPickerOpen(false)} style={styles.panelClose}>
+                  <Text style={styles.panelCloseLabel}>{t('auth.modalClose')}</Text>
+                </Pressable>
+              </View>
+              <ScrollView style={styles.panelBodyScroll} contentContainerStyle={styles.panelBodyScrollContent} showsVerticalScrollIndicator={false}>
+                <AvatarPickerScreen
+                  embedded
+                  avatarId={profile?.avatar_id}
+                  frameId={profile?.frame_id}
+                  isBusy={isBusy}
+                  notice={settingsNotice}
+                  onSave={(avatarId, frameId) => {
+                    void changeAppearance(avatarId, frameId).then((result) => {
+                      setSettingsNotice(result.error ?? t('profile.avatarSaved'));
+                      if (!result.error) {
+                        setIsAvatarPickerOpen(false);
+                      }
+                    });
+                  }}
+                />
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
+      ) : null}
+
       {isGamesCatalogOpen ? (
         <Modal visible transparent animationType="fade" onRequestClose={() => setIsGamesCatalogOpen(false)}>
           <View style={styles.overlayBackdropCentered}>
@@ -2497,13 +2659,83 @@ export function AppNavigator() {
   );
 }
 
-function AmbientBackground() {
+function AmbientBackground({ motionEnabled }: { motionEnabled: boolean }) {
   const theme = useTheme();
+  const drift1 = useRef(new Animated.Value(0)).current;
+  const drift2 = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (!motionEnabled) {
+      drift1.stopAnimation();
+      drift2.stopAnimation();
+      drift1.setValue(0);
+      drift2.setValue(0);
+      return;
+    }
+
+    const makeLoop = (value: Animated.Value, duration: number) =>
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(value, {
+            toValue: 1,
+            duration,
+            easing: Easing.inOut(Easing.sin),
+            useNativeDriver: true
+          }),
+          Animated.timing(value, {
+            toValue: 0,
+            duration,
+            easing: Easing.inOut(Easing.sin),
+            useNativeDriver: true
+          })
+        ])
+      );
+
+    const topLoop = makeLoop(drift1, 18000);
+    const bottomLoop = makeLoop(drift2, 22000);
+    topLoop.start();
+    bottomLoop.start();
+
+    return () => {
+      topLoop.stop();
+      bottomLoop.stop();
+    };
+  }, [drift1, drift2, motionEnabled]);
+
+  const translateTop = drift1.interpolate({ inputRange: [0, 1], outputRange: [-30, 30] });
+  const translateBottom = drift2.interpolate({ inputRange: [0, 1], outputRange: [20, -20] });
+  const opacityTop = drift1.interpolate({ inputRange: [0, 1], outputRange: [0.36, 0.46] });
 
   return (
     <View pointerEvents="none" style={[StyleSheet.absoluteFillObject, { backgroundColor: theme.colors.background }]}>
-      <View style={[ambientStyles.paperWashTop, { backgroundColor: theme.colors.surface }]} />
-      <View style={[ambientStyles.paperWashBottom, { backgroundColor: theme.colors.backgroundElevated }]} />
+      <Animated.View
+        style={[
+          ambientStyles.paperWashTop,
+          {
+            backgroundColor: theme.colors.surface,
+            opacity: motionEnabled ? opacityTop : 0.42,
+            transform: [{ translateX: motionEnabled ? translateTop : 0 }, { rotate: '-7deg' }]
+          }
+        ]}
+      />
+      <Animated.View
+        style={[
+          ambientStyles.paperWashBottom,
+          {
+            backgroundColor: theme.colors.backgroundElevated,
+            transform: [{ translateY: motionEnabled ? translateBottom : 0 }, { rotate: '8deg' }]
+          }
+        ]}
+      />
+      <Animated.View
+        style={[
+          ambientStyles.primaryDrift,
+          {
+            backgroundColor: theme.colors.primary,
+            transform: [{ translateX: motionEnabled ? translateBottom : 0 }, { translateY: motionEnabled ? translateTop : 0 }]
+          }
+        ]}
+      />
       <View style={[ambientStyles.paperFiber, { borderColor: theme.colors.border }]} />
     </View>
   );
@@ -2562,6 +2794,15 @@ const ambientStyles = StyleSheet.create({
     borderTopWidth: 1,
     borderBottomWidth: 1,
     opacity: 0.16
+  },
+  primaryDrift: {
+    position: 'absolute',
+    top: '28%',
+    left: '12%',
+    width: 240,
+    height: 240,
+    borderRadius: 120,
+    opacity: 0.06
   }
 });
 
@@ -2639,11 +2880,40 @@ function createStyles(theme: ReturnType<typeof useTheme>, isCompactScreen: boole
     gap: spacing.sm,
     justifyContent: 'flex-end'
   },
-  topBarAction: {
+  navButton: {
+    minHeight: 42,
+    minWidth: 42,
+    borderRadius: radius.pill,
+    paddingHorizontal: isCompactScreen ? spacing.sm : spacing.md,
     paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.sm,
-    minHeight: 38,
-    justifyContent: 'center'
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surface
+  },
+  navButtonHover: {
+    borderColor: theme.colors.borderStrong,
+    backgroundColor: theme.colors.backgroundElevated,
+    transform: [{ translateY: -1 }]
+  },
+  navButtonDanger: {
+    borderColor: theme.colors.error
+  },
+  navButtonDangerHover: {
+    borderColor: theme.colors.error,
+    backgroundColor: theme.mode === 'dark' ? 'rgba(217, 115, 106, 0.14)' : 'rgba(178, 75, 68, 0.12)',
+    transform: [{ translateY: -1 }]
+  },
+  navButtonPressed: {
+    transform: [{ scale: 0.97 }]
+  },
+  navButtonLabel: {
+    color: theme.colors.textPrimary,
+    fontSize: typography.body,
+    fontWeight: '800'
   },
   content: {
     flex: 1

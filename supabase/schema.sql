@@ -6,6 +6,8 @@ create table if not exists public.profiles (
   username text not null unique,
   display_name text,
   avatar_url text,
+  avatar_id text not null default 'default',
+  frame_id text not null default 'plain',
   preferred_language text not null default 'es' check (preferred_language in ('es', 'en')),
   created_at timestamptz not null default timezone('utc', now()),
   updated_at timestamptz not null default timezone('utc', now())
@@ -20,8 +22,28 @@ create table if not exists public.user_settings (
   updated_at timestamptz not null default timezone('utc', now())
 );
 
+create table if not exists public.user_friendships (
+  id uuid primary key default gen_random_uuid(),
+  requester_id uuid not null references public.profiles(id) on delete cascade,
+  addressee_id uuid not null references public.profiles(id) on delete cascade,
+  status text not null default 'pending' check (status in ('pending', 'accepted', 'blocked')),
+  created_at timestamptz not null default timezone('utc', now()),
+  responded_at timestamptz,
+  unique (requester_id, addressee_id),
+  check (requester_id <> addressee_id)
+);
+
+create index if not exists user_friendships_addressee_idx
+on public.user_friendships (addressee_id, status);
+
+create index if not exists user_friendships_requester_idx
+on public.user_friendships (requester_id, status);
+
 alter table public.user_settings
 add column if not exists theme_preference text not null default 'default';
+
+alter table public.profiles add column if not exists avatar_id text not null default 'default';
+alter table public.profiles add column if not exists frame_id text not null default 'plain';
 
 create table if not exists public.rooms (
   id uuid primary key default gen_random_uuid(),
@@ -444,6 +466,7 @@ on public.room_troll_assignments (round_id);
 
 alter table public.profiles enable row level security;
 alter table public.user_settings enable row level security;
+alter table public.user_friendships enable row level security;
 alter table public.rooms enable row level security;
 alter table public.room_members enable row level security;
 alter table public.room_activity enable row level security;
@@ -5194,6 +5217,152 @@ begin
 end;
 $$;
 
+create or replace function public.update_profile_appearance(
+  p_avatar_id text,
+  p_frame_id text
+)
+returns public.profiles
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  current_user_id uuid := auth.uid();
+  target_profile public.profiles;
+begin
+  if current_user_id is null then
+    raise exception 'AUTH_REQUIRED';
+  end if;
+
+  update public.profiles
+  set avatar_id = coalesce(nullif(p_avatar_id, ''), 'default'),
+      frame_id = coalesce(nullif(p_frame_id, ''), 'plain'),
+      updated_at = timezone('utc', now())
+  where id = current_user_id
+  returning * into target_profile;
+
+  return target_profile;
+end;
+$$;
+
+create or replace function public.add_friend_by_username(target_username text)
+returns public.user_friendships
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  current_user_id uuid := auth.uid();
+  target_profile public.profiles;
+  existing_friendship public.user_friendships;
+  next_friendship public.user_friendships;
+begin
+  if current_user_id is null then
+    raise exception 'AUTH_REQUIRED';
+  end if;
+
+  select *
+  into target_profile
+  from public.profiles
+  where lower(username) = lower(trim(target_username))
+  limit 1;
+
+  if target_profile.id is null then
+    raise exception 'FRIEND_NOT_FOUND';
+  end if;
+
+  if target_profile.id = current_user_id then
+    raise exception 'FRIEND_SELF';
+  end if;
+
+  select *
+  into existing_friendship
+  from public.user_friendships
+  where (requester_id = current_user_id and addressee_id = target_profile.id)
+     or (requester_id = target_profile.id and addressee_id = current_user_id)
+  limit 1;
+
+  if existing_friendship.id is not null then
+    raise exception 'FRIEND_ALREADY_EXISTS';
+  end if;
+
+  insert into public.user_friendships (requester_id, addressee_id, status)
+  values (current_user_id, target_profile.id, 'pending')
+  returning * into next_friendship;
+
+  return next_friendship;
+end;
+$$;
+
+create or replace function public.respond_friend_request(friendship_id uuid, accept boolean)
+returns public.user_friendships
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  current_user_id uuid := auth.uid();
+  next_friendship public.user_friendships;
+begin
+  if current_user_id is null then
+    raise exception 'AUTH_REQUIRED';
+  end if;
+
+  if accept then
+    update public.user_friendships
+    set status = 'accepted',
+        responded_at = timezone('utc', now())
+    where id = friendship_id
+      and addressee_id = current_user_id
+      and status = 'pending'
+    returning * into next_friendship;
+  else
+    delete from public.user_friendships
+    where id = friendship_id
+      and addressee_id = current_user_id
+      and status = 'pending'
+    returning * into next_friendship;
+  end if;
+
+  return next_friendship;
+end;
+$$;
+
+create or replace view public.friend_list_view as
+select
+  friendship.id as friendship_id,
+  case
+    when friendship.requester_id = auth.uid() then friendship.addressee_id
+    else friendship.requester_id
+  end as friend_id,
+  profile.display_name,
+  profile.username,
+  profile.avatar_id,
+  profile.frame_id,
+  friendship.status as friendship_status,
+  case
+    when friendship.status = 'accepted' and room_member.is_active is true then 'online'
+    when friendship.status = 'accepted' then 'offline'
+    else 'pending'
+  end as presence_status,
+  case
+    when friendship.requester_id = auth.uid() then 'outgoing'
+    else 'incoming'
+  end as request_direction,
+  friendship.created_at,
+  friendship.responded_at
+from public.user_friendships friendship
+join public.profiles profile
+  on profile.id = case
+    when friendship.requester_id = auth.uid() then friendship.addressee_id
+    else friendship.requester_id
+  end
+left join public.room_members room_member
+  on room_member.user_id = profile.id
+ and room_member.is_active = true
+where auth.uid() = friendship.requester_id
+   or auth.uid() = friendship.addressee_id;
+
 do $$
 begin
   if not exists (
@@ -5251,6 +5420,31 @@ create policy "Users can update own settings"
 on public.user_settings
 for update
 using (auth.uid() = user_id);
+
+drop policy if exists "Users can read own friendships" on public.user_friendships;
+create policy "Users can read own friendships"
+on public.user_friendships
+for select
+using (auth.uid() = requester_id or auth.uid() = addressee_id);
+
+drop policy if exists "Users can create friend requests" on public.user_friendships;
+create policy "Users can create friend requests"
+on public.user_friendships
+for insert
+with check (auth.uid() = requester_id);
+
+drop policy if exists "Users can respond to received requests" on public.user_friendships;
+create policy "Users can respond to received requests"
+on public.user_friendships
+for update
+using (auth.uid() = addressee_id)
+with check (auth.uid() = addressee_id);
+
+drop policy if exists "Users can delete own friendships" on public.user_friendships;
+create policy "Users can delete own friendships"
+on public.user_friendships
+for delete
+using (auth.uid() = requester_id or auth.uid() = addressee_id);
 
 drop policy if exists "Members can read rooms" on public.rooms;
 create policy "Members can read rooms"

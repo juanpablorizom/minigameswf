@@ -2,6 +2,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { featuredGames } from '../../data/mockData';
+import type { FriendView } from '../../data/friends';
 import type { LobbyActionId, LobbyScenario } from '../../navigation/types';
 import { AppButton } from '../components/AppButton';
 import { AppScreen } from '../components/AppScreen';
@@ -15,17 +16,12 @@ import { useTheme } from '../theme';
 type LobbyScreenProps = {
   displayName: string;
   scenario: LobbyScenario;
+  friends: FriendView[];
   onAction: (actionId: LobbyActionId) => void;
   notice?: string | null;
 };
 
-const friends = [
-  { id: 'carlos', name: 'Carlos', status: 'En lobby', active: true },
-  { id: 'sofia', name: 'Sofia', status: 'Jugando', active: true },
-  { id: 'diego', name: 'Diego', status: 'Inactivo', active: true }
-];
-
-export function LobbyScreen({ displayName, scenario, onAction, notice = null }: LobbyScreenProps) {
+export function LobbyScreen({ displayName, scenario, friends, onAction, notice = null }: LobbyScreenProps) {
   const { t } = useTranslation();
   const theme = useTheme();
   const styles = createStyles(theme);
@@ -98,27 +94,28 @@ export function LobbyScreen({ displayName, scenario, onAction, notice = null }: 
       </SurfaceCard>
 
       <View style={styles.friendsHeader}>
-        <Text style={styles.sectionTitle}>Amigos online</Text>
-        <Text style={styles.activeCount}>3 activos</Text>
+        <Text style={styles.sectionTitle}>{t('friends.onlineTitle')}</Text>
+        <Text style={styles.activeCount}>{t('friends.activeCount', { count: friends.filter((friend) => friend.presence_status === 'online').length })}</Text>
       </View>
       <View style={styles.friendRail}>
         {friends.map((friend) => (
-          <View key={friend.id} style={styles.friend}>
+          <View key={friend.friend_id} style={styles.friend}>
             <View>
-              <AvatarSilhouette size={64} />
-              <View style={styles.onlineDot} />
+              <AvatarSilhouette size={64} avatarId={friend.avatar_id} frameId={friend.frame_id} />
+              {friend.presence_status === 'online' ? <View style={styles.onlineDot} /> : null}
             </View>
-            <Text style={styles.friendName}>{friend.name}</Text>
-            <Text style={styles.friendStatus}>{friend.status}</Text>
+            <Text style={styles.friendName}>{friend.display_name ?? friend.username}</Text>
+            <Text style={styles.friendStatus}>{t(`friends.status.${friend.presence_status}`)}</Text>
           </View>
         ))}
         <Pressable style={styles.inviteFriend} onPress={() => onAction('inviteFriends')}>
           <View style={styles.invitePlus}>
             <MinimalIcon name="plus" size={30} color={theme.colors.textMuted} strokeWidth={2.2} />
           </View>
-          <Text style={styles.friendStatus}>Invitar</Text>
+          <Text style={styles.friendStatus}>{friends.length ? t('friends.invite') : t('friends.emptyInvite')}</Text>
         </Pressable>
       </View>
+      {!friends.length ? <Text style={styles.emptyFriends}>{t('friends.empty')}</Text> : null}
 
       <Pressable
         onPress={() => onAction('openGamesCatalog')}
@@ -249,6 +246,10 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
       color: theme.colors.textMuted,
       fontSize: typography.caption,
       textAlign: 'center'
+    },
+    emptyFriends: {
+      color: theme.colors.textSecondary,
+      ...textStyles.body
     },
     inviteFriend: {
       width: 82,

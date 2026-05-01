@@ -267,7 +267,7 @@ export function PrivateRoomScreen({
         </View>
         {members.map((member) => (
           <View key={member.id} style={styles.playerRow}>
-            <AvatarSilhouette size={44} />
+            <AvatarSilhouette size={44} avatarId={member.avatarId} frameId={member.frameId} />
             <View style={styles.playerMeta}>
               <View style={styles.playerTitleRow}>
                 <Text style={styles.playerName}>{member.displayName}</Text>

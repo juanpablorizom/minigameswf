@@ -1,11 +1,10 @@
-import { useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { featuredGames } from '../../data/mockData';
 import { gameRegistry } from '../../data/gameRegistry';
 import type { GameId } from '../../navigation/types';
-import { AppButton } from '../components/AppButton';
 import { GameCard } from '../components/GameCard';
 import { AppScreen } from '../components/AppScreen';
 import { layout, spacing, useResponsive } from '../system/layout';
@@ -18,6 +17,17 @@ type GamesCatalogScreenProps = {
   onToggleGame: (gameId: GameId) => void;
 };
 
+const HOW_TO_PLAY_PREFIX: Record<GameId, string> = {
+  impostor: 'gamesCatalog.impostorHowToPlay',
+  'guess-who': 'gamesCatalog.guessWhoHowToPlay',
+  'faces-gestures': 'gamesCatalog.facesGesturesHowToPlay',
+  trivia: 'gamesCatalog.triviaHowToPlay',
+  'who-said': 'gamesCatalog.whoSaidHowToPlay',
+  majority: 'gamesCatalog.majorityHowToPlay',
+  troll: 'gamesCatalog.trollHowToPlay',
+  'whose-top': 'gamesCatalog.whoseTopHowToPlay'
+};
+
 export function GamesCatalogScreen({ embedded = false, selectedGameIds, onToggleGame }: GamesCatalogScreenProps) {
   const { t } = useTranslation();
   const theme = useTheme();
@@ -25,6 +35,19 @@ export function GamesCatalogScreen({ embedded = false, selectedGameIds, onToggle
   const responsive = useResponsive();
   const [helpGameId, setHelpGameId] = useState<GameId | null>(null);
   const columnStyle = responsive.isDesktop ? styles.cellDesktop : responsive.isTablet ? styles.cellTablet : styles.cell;
+
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof document === 'undefined') {
+      return;
+    }
+
+    const previousOverflowY = document.documentElement.style.overflowY;
+    document.documentElement.style.overflowY = 'scroll';
+
+    return () => {
+      document.documentElement.style.overflowY = previousOverflowY;
+    };
+  }, []);
 
   const content = (
     <View style={styles.catalogShell}>
@@ -78,37 +101,36 @@ function HowToPlayModal({ gameId, onClose }: { gameId: GameId | null; onClose: (
   const { t } = useTranslation();
   const theme = useTheme();
   const styles = createStyles(theme);
-  const prefix =
-    gameId === 'guess-who'
-      ? 'gamesCatalog.guessWhoHowToPlay'
-      : gameId === 'faces-gestures'
-        ? 'gamesCatalog.facesGesturesHowToPlay'
-        : gameId === 'trivia'
-          ? 'gamesCatalog.triviaHowToPlay'
-          : gameId === 'who-said'
-            ? 'gamesCatalog.whoSaidHowToPlay'
-            : gameId === 'majority'
-              ? 'gamesCatalog.majorityHowToPlay'
-              : 'gamesCatalog.howToPlay';
+  const lastPrefixRef = useRef<string | null>(null);
+  const nextPrefix = gameId ? HOW_TO_PLAY_PREFIX[gameId] : null;
+
+  if (nextPrefix) {
+    lastPrefixRef.current = nextPrefix;
+  }
+
+  const prefix = nextPrefix ?? lastPrefixRef.current;
 
   return (
     <Modal visible={Boolean(gameId)} transparent animationType="fade" onRequestClose={onClose}>
       <View style={styles.overlayBackdrop}>
         <Pressable style={StyleSheet.absoluteFillObject} onPress={onClose} />
         <View style={styles.helpPanel}>
-          <View style={styles.helpHeader}>
-            <Text style={styles.helpTitle}>{t(`${prefix}Title`)}</Text>
-            <Pressable onPress={onClose} style={styles.closeButton} accessibilityRole="button" accessibilityLabel={t('auth.modalClose')}>
-              <Text style={styles.closeLabel}>{t('auth.modalClose')}</Text>
-            </Pressable>
-          </View>
-          <View style={styles.helpBody}>
-            <Text style={styles.helpCopy}>{t(`${prefix}Intro`)}</Text>
-            <Text style={styles.helpStep}>{t(`${prefix}StepOne`)}</Text>
-            <Text style={styles.helpStep}>{t(`${prefix}StepTwo`)}</Text>
-            <Text style={styles.helpStep}>{t(`${prefix}StepThree`)}</Text>
-          </View>
-          <AppButton label={t('auth.modalClose')} onPress={onClose} variant="secondary" />
+          {prefix ? (
+            <>
+              <View style={styles.helpHeader}>
+                <Text style={styles.helpTitle}>{t(`${prefix}Title`)}</Text>
+                <Pressable onPress={onClose} style={styles.closeButton} accessibilityRole="button" accessibilityLabel={t('auth.modalClose')}>
+                  <Text style={styles.closeLabel}>{t('auth.modalClose')}</Text>
+                </Pressable>
+              </View>
+              <View style={styles.helpBody}>
+                <Text style={styles.helpCopy}>{t(`${prefix}Intro`)}</Text>
+                <Text style={styles.helpStep}>{t(`${prefix}StepOne`)}</Text>
+                <Text style={styles.helpStep}>{t(`${prefix}StepTwo`)}</Text>
+                <Text style={styles.helpStep}>{t(`${prefix}StepThree`)}</Text>
+              </View>
+            </>
+          ) : null}
         </View>
       </View>
     </Modal>

@@ -34,6 +34,8 @@ export function ResultsScreen({
     .map((member) => ({
       id: member.userId,
       name: member.displayName,
+      avatarId: member.avatarId,
+      frameId: member.frameId,
       points: scores.find((score) => score.userId === member.userId)?.points ?? 0
     }))
     .sort((a, b) => b.points - a.points || a.name.localeCompare(b.name));
@@ -46,7 +48,7 @@ export function ResultsScreen({
           {podium.map((entry, index) => (
             <View key={entry.id} style={[styles.podiumCard, index === 0 && styles.winnerCard]}>
               <Badge label={t(`tournament.place.${index + 1}`)} tone={index === 0 ? 'accent' : 'neutral'} />
-              <AvatarSilhouette size={58} />
+              <AvatarSilhouette size={58} avatarId={entry.avatarId} frameId={entry.frameId} />
               <Text style={styles.podiumName}>{entry.name}</Text>
               <Text style={styles.podiumPoints}>{t('tournament.points', { count: entry.points })}</Text>
             </View>

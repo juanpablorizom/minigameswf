@@ -24,6 +24,8 @@ export type Database = {
           username: string;
           display_name: string | null;
           avatar_url: string | null;
+          avatar_id: string;
+          frame_id: string;
           preferred_language: AppLanguage;
           created_at: string;
           updated_at: string;
@@ -33,6 +35,8 @@ export type Database = {
           username: string;
           display_name?: string | null;
           avatar_url?: string | null;
+          avatar_id?: string;
+          frame_id?: string;
           preferred_language?: AppLanguage;
           created_at?: string;
           updated_at?: string;
@@ -42,6 +46,8 @@ export type Database = {
           username?: string;
           display_name?: string | null;
           avatar_url?: string | null;
+          avatar_id?: string;
+          frame_id?: string;
           preferred_language?: AppLanguage;
           created_at?: string;
           updated_at?: string;
@@ -72,6 +78,33 @@ export type Database = {
           theme_preference?: AppThemePreference;
           created_at?: string;
           updated_at?: string;
+        };
+        Relationships: [];
+      };
+      user_friendships: {
+        Row: {
+          id: string;
+          requester_id: string;
+          addressee_id: string;
+          status: 'pending' | 'accepted' | 'blocked';
+          created_at: string;
+          responded_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          requester_id: string;
+          addressee_id: string;
+          status?: 'pending' | 'accepted' | 'blocked';
+          created_at?: string;
+          responded_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          requester_id?: string;
+          addressee_id?: string;
+          status?: 'pending' | 'accepted' | 'blocked';
+          created_at?: string;
+          responded_at?: string | null;
         };
         Relationships: [];
       };
@@ -748,8 +781,40 @@ export type Database = {
         Relationships: [];
       };
     };
-    Views: Record<string, never>;
+    Views: {
+      friend_list_view: {
+        Row: {
+          friendship_id: string;
+          friend_id: string;
+          display_name: string | null;
+          username: string;
+          avatar_id: string;
+          frame_id: string;
+          friendship_status: 'pending' | 'accepted' | 'blocked';
+          presence_status: 'online' | 'offline' | 'pending';
+          request_direction: 'incoming' | 'outgoing';
+          created_at: string;
+          responded_at: string | null;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+    };
     Functions: {
+      add_friend_by_username: {
+        Args: {
+          target_username: string;
+        };
+        Returns: Database['public']['Tables']['user_friendships']['Row'][];
+      };
+      respond_friend_request: {
+        Args: {
+          friendship_id: string;
+          accept: boolean;
+        };
+        Returns: Database['public']['Tables']['user_friendships']['Row'][];
+      };
       create_private_room: {
         Args: {
           p_selected_game_ids?: string[];

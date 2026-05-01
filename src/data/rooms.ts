@@ -52,6 +52,8 @@ export type RoomMemberView = {
   displayName: string;
   username: string;
   avatarUrl: string | null;
+  avatarId: string;
+  frameId: string;
   role: RoomMemberRole;
   joinedAt: string;
   isActive: boolean;
@@ -962,6 +964,8 @@ export async function getRoomDetails(roomId: string, currentUserId: string): Pro
       displayName: profile?.display_name ?? profile?.username ?? 'Player',
       username: profile?.username ?? `user-${member.user_id.slice(0, 6)}`,
       avatarUrl: profile?.avatar_url ?? null,
+      avatarId: profile?.avatar_id ?? 'default',
+      frameId: profile?.frame_id ?? 'plain',
       role: member.role,
       joinedAt: member.joined_at,
       isActive: member.is_active,

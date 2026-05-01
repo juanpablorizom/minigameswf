@@ -19,10 +19,13 @@ type ProfileScreenProps = {
   isGuest: boolean;
   language: AppLanguage;
   themePreference: AppThemePreference;
+  avatarId?: string | null;
+  frameId?: string | null;
   isBusy: boolean;
   notice: string | null;
   onOpenAccount: () => void;
   onOpenAppearance: () => void;
+  onOpenAvatar: () => void;
   onChangeLanguage: (language: AppLanguage) => void;
   onLogout: () => void;
 };
@@ -34,10 +37,13 @@ export function ProfileScreen({
   isGuest,
   language,
   themePreference,
+  avatarId = 'default',
+  frameId = 'plain',
   isBusy,
   notice,
   onOpenAccount,
   onOpenAppearance,
+  onOpenAvatar,
   onChangeLanguage,
   onLogout
 }: ProfileScreenProps) {
@@ -55,7 +61,7 @@ export function ProfileScreen({
 
       <SurfaceCard>
         <View style={styles.profileHeader}>
-          <AvatarSilhouette size={76} />
+          <AvatarSilhouette size={76} avatarId={avatarId} frameId={frameId} />
           <View style={styles.profileMeta}>
             <View style={styles.nameRow}>
               <Text style={styles.profileName}>{accountLabel}</Text>
@@ -69,6 +75,7 @@ export function ProfileScreen({
         <View style={styles.cardDivider} />
         <Text style={styles.sectionTitle}>Menu</Text>
         <MenuRow label="Datos de cuenta" value={isGuest ? 'Invitado' : 'Activa'} onPress={onOpenAccount} />
+        <MenuRow label={t('profile.avatarPicker')} value={t('profile.avatar')} onPress={onOpenAvatar} />
         <MenuRow label="Apariencia" value={t(`settings.themeChoices.${themePreference}.label`)} onPress={onOpenAppearance} />
         <View style={styles.languageRow}>
           <Text style={styles.menuLabel}>Idioma</Text>
