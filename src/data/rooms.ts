@@ -18,6 +18,12 @@ import type {
   TriviaAnswerState,
   TriviaRoundSetup,
   TriviaTopicId,
+  TrollAssignment,
+  TrollRole,
+  TrollRoundSetup,
+  WhoseTopCategoryId,
+  WhoseTopGuessState,
+  WhoseTopRoundSetup,
   WhoSaidGuessState,
   WhoSaidRoundSetup,
   WhoSaidTopicId
@@ -33,6 +39,9 @@ export type RoomTriviaAnswerRow = Database['public']['Tables']['room_trivia_answ
 export type RoomWhoSaidPhraseRow = Database['public']['Tables']['room_who_said_phrases']['Row'];
 export type RoomWhoSaidGuessRow = Database['public']['Tables']['room_who_said_guesses']['Row'];
 export type RoomMajorityResponseRow = Database['public']['Tables']['room_majority_responses']['Row'];
+export type RoomTrollAssignmentRow = Database['public']['Tables']['room_troll_assignments']['Row'];
+export type RoomWhoseTopSubmissionRow = Database['public']['Tables']['room_whose_top_submissions']['Row'];
+export type RoomWhoseTopGuessRow = Database['public']['Tables']['room_whose_top_guesses']['Row'];
 export type RoomTournamentScoreRow = Database['public']['Tables']['room_tournament_scores']['Row'];
 export type RoomTournamentCompletedGameRow = Database['public']['Tables']['room_tournament_completed_games']['Row'];
 export type ProfileRow = Database['public']['Tables']['profiles']['Row'];
@@ -151,6 +160,32 @@ type WhoSaidRoundStateRow = {
   is_current_user: boolean;
 };
 
+type WhoseTopRoundStateRow = {
+  round_id: string;
+  round_number: number;
+  category: string;
+  top_size: number;
+  option_labels: string[];
+  round_status: 'active' | 'finished';
+  round_phase: 'reveal' | 'voting' | 'result';
+  vote_deadline_at: string | null;
+  vote_duration_seconds: number;
+  started_at: string;
+  top_count: number;
+  submitted_count: number;
+  current_top_id: string | null;
+  current_top_items: string[];
+  current_top_order: number | null;
+  current_top_author_user_id: string | null;
+  is_current_top_author: boolean;
+  user_id: string;
+  has_submitted_top: boolean;
+  guessed_user_id: string | null;
+  is_correct: boolean | null;
+  guessed_at: string | null;
+  is_current_user: boolean;
+};
+
 type MajorityRoundStateRow = {
   round_id: string;
   question_id: string;
@@ -175,6 +210,29 @@ type MajorityRoundStateRow = {
   is_current_user: boolean;
 };
 
+type TrollRoundStateRow = {
+  round_id: string;
+  round_number: number;
+  round_count: number;
+  category_id: string;
+  real_word: string | null;
+  troll_word: string | null;
+  round_status: 'active' | 'finished';
+  round_phase: 'reveal' | 'voting' | 'result';
+  vote_deadline_at: string | null;
+  vote_duration_seconds: number;
+  discussion_duration_seconds: number;
+  started_at: string;
+  outcome: 'troll_eliminated' | 'impostor_eliminated' | 'innocent_eliminated' | 'continue';
+  expelled_user_id: string | null;
+  eliminated_user_ids: string[];
+  user_id: string;
+  role: TrollRole | null;
+  word: string | null;
+  is_eliminated: boolean;
+  is_current_user: boolean;
+};
+
 function normalizeResult<T>(data: T | T[] | null) {
   if (!data) {
     return null;
@@ -191,8 +249,20 @@ function buildRoomErrorMessage(message: string) {
     message.includes('relation "public.room_round_votes" does not exist') ||
     message.includes('relation "public.room_who_said_phrases" does not exist') ||
     message.includes('relation "public.room_who_said_guesses" does not exist') ||
+    message.includes('relation "public.room_whose_top_submissions" does not exist') ||
+    message.includes('relation "public.room_whose_top_guesses" does not exist') ||
     message.includes('relation "public.room_majority_questions" does not exist') ||
     message.includes('relation "public.room_majority_responses" does not exist') ||
+    message.includes('relation "public.room_troll_assignments" does not exist') ||
+    message.includes('start_troll_round') ||
+    message.includes('cast_troll_vote') ||
+    message.includes('advance_troll_round') ||
+    message.includes('get_troll_round_state') ||
+    message.includes('start_whose_top_round') ||
+    message.includes('submit_whose_top') ||
+    message.includes('submit_whose_top_guess') ||
+    message.includes('advance_whose_top_round') ||
+    message.includes('get_whose_top_round_state') ||
     message.includes('room_rounds_theme_category_check')
   ) {
     return 'ROOMS_BACKEND_NOT_CONFIGURED';
@@ -538,6 +608,18 @@ async function getWhoSaidRoundState(roomId: string) {
   return (data ?? []) as WhoSaidRoundStateRow[];
 }
 
+async function getWhoseTopRoundState(roomId: string) {
+  const { data, error } = await supabase.rpc('get_whose_top_round_state', {
+    p_room_id: roomId
+  });
+
+  if (error) {
+    throw new Error(buildRoomErrorMessage(error.message));
+  }
+
+  return (data ?? []) as WhoseTopRoundStateRow[];
+}
+
 async function getMajorityRoundState(roomId: string) {
   const { data, error } = await supabase.rpc('get_majority_round_state', {
     p_room_id: roomId
@@ -548,6 +630,18 @@ async function getMajorityRoundState(roomId: string) {
   }
 
   return (data ?? []) as MajorityRoundStateRow[];
+}
+
+async function getTrollRoundState(roomId: string) {
+  const { data, error } = await supabase.rpc('get_troll_round_state', {
+    p_room_id: roomId
+  });
+
+  if (error) {
+    throw new Error(buildRoomErrorMessage(error.message));
+  }
+
+  return (data ?? []) as TrollRoundStateRow[];
 }
 
 function mapGuessWhoRound(rows: GuessWhoRoundStateRow[]): GuessWhoRoundSetup | null {
@@ -680,6 +774,45 @@ function mapWhoSaidRound(rows: WhoSaidRoundStateRow[]): WhoSaidRoundSetup | null
   };
 }
 
+function mapWhoseTopRound(rows: WhoseTopRoundStateRow[]): WhoseTopRoundSetup | null {
+  const firstRow = rows[0];
+
+  if (!firstRow) {
+    return null;
+  }
+
+  const guesses: WhoseTopGuessState[] = rows.map((row) => ({
+    userId: row.user_id,
+    hasSubmittedTop: row.has_submitted_top,
+    guessedUserId: row.guessed_user_id,
+    isCorrect: row.is_correct,
+    guessedAt: row.guessed_at,
+    isCurrentUser: row.is_current_user
+  }));
+
+  return {
+    gameId: 'whose-top',
+    roundId: firstRow.round_id,
+    roundNumber: firstRow.round_number,
+    category: firstRow.category as WhoseTopCategoryId,
+    topSize: firstRow.top_size === 3 || firstRow.top_size === 5 || firstRow.top_size === 10 ? firstRow.top_size : 5,
+    optionLabels: firstRow.option_labels,
+    status: firstRow.round_status,
+    phase: firstRow.round_phase,
+    voteDeadlineAt: firstRow.vote_deadline_at,
+    voteDurationSeconds: firstRow.vote_duration_seconds,
+    startedAt: firstRow.started_at,
+    topCount: firstRow.top_count,
+    submittedCount: firstRow.submitted_count,
+    currentTopId: firstRow.current_top_id,
+    currentTopItems: firstRow.current_top_items,
+    currentTopOrder: firstRow.current_top_order,
+    currentTopAuthorUserId: firstRow.current_top_author_user_id,
+    isCurrentTopAuthor: firstRow.is_current_top_author,
+    guesses
+  };
+}
+
 function mapMajorityRound(rows: MajorityRoundStateRow[]): MajorityRoundSetup | null {
   const firstRow = rows[0];
 
@@ -717,10 +850,58 @@ function mapMajorityRound(rows: MajorityRoundStateRow[]): MajorityRoundSetup | n
   };
 }
 
+function mapTrollRound(rows: TrollRoundStateRow[], votes: RoomRoundVoteRow[]): TrollRoundSetup | null {
+  const firstRow = rows[0];
+
+  if (!firstRow) {
+    return null;
+  }
+
+  const assignments: TrollAssignment[] = rows.map((row) => ({
+    userId: row.user_id,
+    role: row.role,
+    word: row.word,
+    isEliminated: row.is_eliminated,
+    isCurrentUser: row.is_current_user
+  }));
+
+  return {
+    gameId: 'troll',
+    roundId: firstRow.round_id,
+    roundNumber: firstRow.round_number,
+    roundCount: firstRow.round_count,
+    categoryId: firstRow.category_id as ImpostorCategoryId,
+    realWord: firstRow.real_word,
+    trollWord: firstRow.troll_word,
+    assignments,
+    votes: votes.map((vote) => ({
+      voterUserId: vote.voter_user_id,
+      targetUserId: vote.target_user_id
+    })),
+    eliminatedUserIds: firstRow.eliminated_user_ids,
+    expelledUserId: firstRow.expelled_user_id,
+    voteDeadlineAt: firstRow.vote_deadline_at,
+    voteDurationSeconds: firstRow.vote_duration_seconds,
+    discussionDurationSeconds: firstRow.discussion_duration_seconds,
+    startedAt: firstRow.started_at,
+    status: firstRow.round_status,
+    phase: firstRow.round_phase,
+    outcome: firstRow.outcome
+  };
+}
+
 function mapRoomRound(round: RoomRoundRow | null, votes: RoomRoundVoteRow[] = []): ImpostorRoundSetup | null {
   if (!round) {
     return null;
   }
+
+  const outcome: ImpostorRoundSetup['outcome'] =
+    round.outcome === 'impostors_caught' ||
+    round.outcome === 'impostors_balanced' ||
+    round.outcome === 'missed_impostor' ||
+    round.outcome === 'continue'
+      ? round.outcome
+      : 'continue';
 
   return {
     gameId: 'impostor',
@@ -742,7 +923,7 @@ function mapRoomRound(round: RoomRoundRow | null, votes: RoomRoundVoteRow[] = []
     })),
     startedAt: round.created_at,
     status: round.status,
-    outcome: round.outcome
+    outcome
   };
 }
 
@@ -757,14 +938,16 @@ export async function getRoomDetails(roomId: string, currentUserId: string): Pro
     return null;
   }
 
-  const [profiles, roundVotes, guessWhoState, facesGesturesState, triviaState, whoSaidState, majorityState, tournamentScores, tournamentCompletedGames] = await Promise.all([
+  const [profiles, roundVotes, guessWhoState, facesGesturesState, triviaState, whoSaidState, whoseTopState, majorityState, trollState, tournamentScores, tournamentCompletedGames] = await Promise.all([
     getProfilesForUsers(members.map((member) => member.user_id)),
-    round?.game_id === 'impostor' ? getRoomRoundVotes(round?.id ?? null) : Promise.resolve([]),
+    round?.game_id === 'impostor' || round?.game_id === 'troll' ? getRoomRoundVotes(round?.id ?? null) : Promise.resolve([]),
     round?.game_id === 'guess-who' ? getGuessWhoRoundState(roomId) : Promise.resolve([]),
     round?.game_id === 'faces-gestures' ? getFacesGesturesRoundState(roomId) : Promise.resolve([]),
     round?.game_id === 'trivia' ? getTriviaRoundState(roomId) : Promise.resolve([]),
     round?.game_id === 'who-said' ? getWhoSaidRoundState(roomId) : Promise.resolve([]),
+    round?.game_id === 'whose-top' ? getWhoseTopRoundState(roomId) : Promise.resolve([]),
     round?.game_id === 'majority' ? getMajorityRoundState(roomId) : Promise.resolve([]),
+    round?.game_id === 'troll' ? getTrollRoundState(roomId) : Promise.resolve([]),
     getRoomTournamentScores(roomId),
     getRoomTournamentCompletedGames(roomId)
   ]);
@@ -800,9 +983,13 @@ export async function getRoomDetails(roomId: string, currentUserId: string): Pro
             ? mapTriviaRound(triviaState)
             : round?.game_id === 'who-said'
               ? mapWhoSaidRound(whoSaidState)
-              : round?.game_id === 'majority'
-                ? mapMajorityRound(majorityState)
-                : mapRoomRound(round, roundVotes),
+              : round?.game_id === 'whose-top'
+                ? mapWhoseTopRound(whoseTopState)
+                : round?.game_id === 'majority'
+                  ? mapMajorityRound(majorityState)
+                  : round?.game_id === 'troll'
+                    ? mapTrollRound(trollState, roundVotes)
+                    : mapRoomRound(round, roundVotes),
     selectedGameIds: normalizeGameIds(room.selected_game_ids?.length ? room.selected_game_ids : [room.selected_game_id]),
     tournament: {
       scores: tournamentScores.map((score) => ({ userId: score.user_id, points: score.points })),
@@ -818,7 +1005,7 @@ export async function getRoomDetails(roomId: string, currentUserId: string): Pro
 export async function updateRoomSelectedGame(roomId: string, hostUserId: string, selectedGameId: string | null) {
   const { error } = await supabase
     .from('rooms')
-    .update({ selected_game_id: selectedGameId, selected_game_ids: selectedGameId ? [selectedGameId] : ['impostor'] })
+    .update({ selected_game_id: selectedGameId, selected_game_ids: selectedGameId ? [selectedGameId] : [] })
     .eq('id', roomId)
     .eq('host_user_id', hostUserId);
 
@@ -832,7 +1019,7 @@ export async function updateRoomSelectedGames(roomId: string, hostUserId: string
 
   const { error } = await supabase
     .from('rooms')
-    .update({ selected_game_id: safeGameIds[0], selected_game_ids: safeGameIds })
+    .update({ selected_game_id: safeGameIds[0] ?? null, selected_game_ids: safeGameIds })
     .eq('id', roomId)
     .eq('host_user_id', hostUserId);
 
@@ -1158,6 +1345,66 @@ export async function advanceWhoSaidRound(roomId: string) {
   return normalizeResult(data as RoomRoundRow | RoomRoundRow[] | null);
 }
 
+export async function startWhoseTopRound(
+  roomId: string,
+  category: WhoseTopCategoryId,
+  topSize: 3 | 5 | 10,
+  createSeconds: number,
+  guessSeconds: number
+) {
+  const { data, error } = await supabase.rpc('start_whose_top_round', {
+    p_category: category,
+    p_create_seconds: createSeconds,
+    p_guess_seconds: guessSeconds,
+    p_room_id: roomId,
+    p_top_size: topSize
+  });
+
+  if (error) {
+    throw new Error(buildRoomErrorMessage(error.message));
+  }
+
+  return normalizeResult(data as RoomRoundRow | RoomRoundRow[] | null);
+}
+
+export async function submitWhoseTop(roomId: string, items: string[]) {
+  const { data, error } = await supabase.rpc('submit_whose_top', {
+    p_items: items,
+    p_room_id: roomId
+  });
+
+  if (error) {
+    throw new Error(buildRoomErrorMessage(error.message));
+  }
+
+  return normalizeResult(data as RoomWhoseTopSubmissionRow | RoomWhoseTopSubmissionRow[] | null);
+}
+
+export async function submitWhoseTopGuess(roomId: string, guessedUserId: string) {
+  const { data, error } = await supabase.rpc('submit_whose_top_guess', {
+    p_guessed_user_id: guessedUserId,
+    p_room_id: roomId
+  });
+
+  if (error) {
+    throw new Error(buildRoomErrorMessage(error.message));
+  }
+
+  return normalizeResult(data as RoomWhoseTopGuessRow | RoomWhoseTopGuessRow[] | null);
+}
+
+export async function advanceWhoseTopRound(roomId: string) {
+  const { data, error } = await supabase.rpc('advance_whose_top_round', {
+    p_room_id: roomId
+  });
+
+  if (error) {
+    throw new Error(buildRoomErrorMessage(error.message));
+  }
+
+  return normalizeResult(data as RoomRoundRow | RoomRoundRow[] | null);
+}
+
 export async function startMajorityRound(
   roomId: string,
   category: MajorityCategoryId,
@@ -1208,6 +1455,53 @@ export async function submitMajorityPrediction(roomId: string, option: string) {
 
 export async function advanceMajorityRound(roomId: string) {
   const { data, error } = await supabase.rpc('advance_majority_round', {
+    p_room_id: roomId
+  });
+
+  if (error) {
+    throw new Error(buildRoomErrorMessage(error.message));
+  }
+
+  return normalizeResult(data as RoomRoundRow | RoomRoundRow[] | null);
+}
+
+export async function startTrollRound(
+  roomId: string,
+  category: ImpostorCategoryId,
+  discussionSeconds: number,
+  votingSeconds: number,
+  roundCount: number
+) {
+  const { data, error } = await supabase.rpc('start_troll_round', {
+    p_category: category,
+    p_discussion_seconds: discussionSeconds,
+    p_room_id: roomId,
+    p_round_count: roundCount,
+    p_voting_seconds: votingSeconds
+  });
+
+  if (error) {
+    throw new Error(buildRoomErrorMessage(error.message));
+  }
+
+  return normalizeResult(data as RoomRoundRow | RoomRoundRow[] | null);
+}
+
+export async function castTrollVote(roomId: string, targetUserId: string) {
+  const { data, error } = await supabase.rpc('cast_troll_vote', {
+    p_room_id: roomId,
+    p_target_user_id: targetUserId
+  });
+
+  if (error) {
+    throw new Error(buildRoomErrorMessage(error.message));
+  }
+
+  return normalizeResult(data as RoomRoundVoteRow | RoomRoundVoteRow[] | null);
+}
+
+export async function advanceTrollRound(roomId: string) {
+  const { data, error } = await supabase.rpc('advance_troll_round', {
     p_room_id: roomId
   });
 

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { featuredGames } from '../../data/mockData';
@@ -8,7 +8,7 @@ import type { GameId } from '../../navigation/types';
 import { AppButton } from '../components/AppButton';
 import { GameCard } from '../components/GameCard';
 import { AppScreen } from '../components/AppScreen';
-import { layout, spacing } from '../system/layout';
+import { layout, spacing, useResponsive } from '../system/layout';
 import { textStyles } from '../system/typography';
 import { useTheme } from '../theme';
 
@@ -22,15 +22,16 @@ export function GamesCatalogScreen({ embedded = false, selectedGameIds, onToggle
   const { t } = useTranslation();
   const theme = useTheme();
   const styles = createStyles(theme);
-  const { width } = useWindowDimensions();
-  const isWide = width >= 860;
+  const responsive = useResponsive();
   const [helpGameId, setHelpGameId] = useState<GameId | null>(null);
+  const columnStyle = responsive.isDesktop ? styles.cellDesktop : responsive.isTablet ? styles.cellTablet : styles.cell;
 
   const content = (
     <View style={styles.catalogShell}>
-      <View style={[styles.grid, isWide && styles.gridWide]}>
+      <Text style={styles.selectionCount}>{t('gamesCatalog.selectedCount', { count: selectedGameIds.length })}</Text>
+      <View style={[styles.grid, !responsive.isPhone && styles.gridWide]}>
         {featuredGames.map((game) => (
-          <View key={game.id} style={[styles.cell, isWide && styles.cellWide]}>
+          <View key={game.id} style={columnStyle}>
             <GameCard
               title={t(`gameMeta.names.${game.id}`)}
               imageSource={gameRegistry[game.id].thumbnail}
@@ -42,7 +43,7 @@ export function GamesCatalogScreen({ embedded = false, selectedGameIds, onToggle
         ))}
 
         {Array.from({ length: 2 }).map((_, index) => (
-          <View key={`future-slot-${index}`} style={[styles.cell, isWide && styles.cellWide]}>
+          <View key={`future-slot-${index}`} style={columnStyle}>
             <GameCard
               inactive
               showHelpButton={false}
@@ -144,8 +145,15 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
     cell: {
       width: '100%'
     },
-    cellWide: {
+    cellTablet: {
       width: '48%'
+    },
+    cellDesktop: {
+      width: '31.8%'
+    },
+    selectionCount: {
+      color: theme.colors.textSecondary,
+      ...textStyles.bodyStrong
     },
     overlayBackdrop: {
       flex: 1,

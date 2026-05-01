@@ -50,7 +50,11 @@ export function LobbyScreen({ displayName, scenario, onAction, notice = null }: 
       <SurfaceCard>
         <View style={styles.createHeader}>
           <View style={styles.createCopy}>
-            <Text style={styles.heroTitle}>{scenario.key === 'activeRoom' ? scenario.title : 'Crear sala'}</Text>
+            <Text style={styles.heroTitle}>
+              {scenario.key === 'activeRoom'
+                ? scenario.title
+                : actionLabels[scenario.primaryAction.id] ?? scenario.primaryAction.label}
+            </Text>
             {scenario.key === 'activeRoom' ? <Text style={styles.copy}>{scenario.subtitle}</Text> : null}
           </View>
           <Pressable
@@ -65,11 +69,13 @@ export function LobbyScreen({ displayName, scenario, onAction, notice = null }: 
 
         {scenario.key === 'guest' || scenario.key === 'noRoom' ? (
           scenario.secondaryAction ? (
-            <AppButton
-              label={actionLabels[scenario.secondaryAction.id] ?? scenario.secondaryAction.label}
-              onPress={() => onAction(scenario.secondaryAction!.id)}
-              variant={scenario.secondaryAction.variant}
-            />
+            <View style={styles.actionRow}>
+              <AppButton
+                label={actionLabels[scenario.secondaryAction.id] ?? scenario.secondaryAction.label}
+                onPress={() => onAction(scenario.secondaryAction!.id)}
+                variant={scenario.secondaryAction.variant}
+              />
+            </View>
           ) : null
         ) : (
           <View style={styles.actionRow}>

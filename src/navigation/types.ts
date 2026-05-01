@@ -28,7 +28,15 @@ export type MiniGame = {
   description: string;
 };
 
-export type GameId = 'impostor' | 'guess-who' | 'faces-gestures' | 'trivia' | 'who-said' | 'majority' | 'troll';
+export type GameId =
+  | 'impostor'
+  | 'guess-who'
+  | 'faces-gestures'
+  | 'trivia'
+  | 'who-said'
+  | 'majority'
+  | 'troll'
+  | 'whose-top';
 
 export type GameStartHandler = GameId | 'none';
 
@@ -72,6 +80,14 @@ export type MajorityCategoryId =
   | 'musica'
   | 'random'
   | 'amigos';
+
+export type WhoseTopCategoryId =
+  | 'mejores-actores'
+  | 'mejores-comidas'
+  | 'mejores-peliculas'
+  | 'mejores-videojuegos'
+  | 'mejores-cantantes'
+  | 'mejores-marcas';
 
 export type LobbyScenarioKey = 'guest' | 'noRoom' | 'activeRoom' | 'invited' | 'returning';
 
@@ -156,7 +172,16 @@ export type TrollSettings = {
   roundCount: number;
 };
 
+export type WhoseTopSettings = {
+  category: WhoseTopCategoryId;
+  topSize: 3 | 5 | 10;
+  createSeconds: number;
+  guessSeconds: number;
+};
+
 export type RoomSettings = {
+  mode: 'tournament' | 'single';
+  singleGameRoundCount: number;
   games: {
     impostor: ImpostorSettings;
     'guess-who': GuessWhoSettings;
@@ -165,6 +190,7 @@ export type RoomSettings = {
     'who-said': WhoSaidSettings;
     majority: MajoritySettings;
     troll: TrollSettings;
+    'whose-top': WhoseTopSettings;
   };
 };
 
@@ -354,6 +380,37 @@ export type TrollRoundSetup = {
   outcome: 'troll_eliminated' | 'impostor_eliminated' | 'innocent_eliminated' | 'continue';
 };
 
+export type WhoseTopGuessState = {
+  userId: string;
+  hasSubmittedTop: boolean;
+  guessedUserId: string | null;
+  isCorrect: boolean | null;
+  guessedAt: string | null;
+  isCurrentUser: boolean;
+};
+
+export type WhoseTopRoundSetup = {
+  gameId: 'whose-top';
+  roundId: string;
+  roundNumber: number;
+  category: WhoseTopCategoryId;
+  topSize: 3 | 5 | 10;
+  optionLabels: string[];
+  status: 'active' | 'finished';
+  phase: 'reveal' | 'voting' | 'result';
+  voteDeadlineAt: string | null;
+  voteDurationSeconds: number;
+  startedAt: string;
+  topCount: number;
+  submittedCount: number;
+  currentTopId: string | null;
+  currentTopItems: string[];
+  currentTopOrder: number | null;
+  currentTopAuthorUserId: string | null;
+  isCurrentTopAuthor: boolean;
+  guesses: WhoseTopGuessState[];
+};
+
 export type ActiveRoundSetup =
   | ImpostorRoundSetup
   | GuessWhoRoundSetup
@@ -361,4 +418,5 @@ export type ActiveRoundSetup =
   | TriviaRoundSetup
   | WhoSaidRoundSetup
   | MajorityRoundSetup
-  | TrollRoundSetup;
+  | TrollRoundSetup
+  | WhoseTopRoundSetup;

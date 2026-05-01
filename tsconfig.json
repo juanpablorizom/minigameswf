@@ -12,5 +12,5 @@
     "types": ["react"]
   },
   "extends": "expo/tsconfig.base",
-  "exclude": ["dist", "node_modules"]
+  "exclude": ["dist", "node_modules", "**/* 2.tsx"]
 }

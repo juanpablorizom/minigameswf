@@ -61,6 +61,9 @@ export function RoomSettingsScreen({
 
             {isExpanded ? (
               <View style={styles.settingsBody}>
+                <Text style={styles.settingsTitle}>
+                  {t('roomSettings.gameSettingsTitle', { game: t(`gameMeta.names.${gameId}`) })}
+                </Text>
                 <GameSettingsFields gameId={gameId} settings={settings} onChangeSettings={onChangeSettings} />
               </View>
             ) : null}
@@ -123,7 +126,13 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
     settingsBody: {
       borderTopWidth: 1,
       borderTopColor: theme.colors.border,
-      paddingTop: spacing.md
+      paddingTop: spacing.md,
+      gap: spacing.md
+    },
+    settingsTitle: {
+      color: theme.colors.textPrimary,
+      fontSize: typography.body,
+      fontWeight: '900'
     }
   });
 }

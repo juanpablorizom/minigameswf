@@ -56,7 +56,7 @@ export function AppFlowProvider({ children }: PropsWithChildren) {
     [selectedGameIds]
   );
 
-  const canGoBack = activeTab === 'games' && currentScreen !== 'lobby';
+  const canGoBack = screenHistory.length > 1 || activeTab !== 'games';
 
   function setScreen(nextScreen: ScreenName, mode: 'push' | 'replace' | 'reset' = 'push') {
     setScreenHistory((current) => {
@@ -158,8 +158,7 @@ export function AppFlowProvider({ children }: PropsWithChildren) {
       toggleGameSelection: (gameId) => {
         setSelectedGameIds((current) => {
           if (current.includes(gameId)) {
-            const nextGameIds = current.filter((id) => id !== gameId);
-            return nextGameIds.length ? nextGameIds : current;
+            return current.filter((id) => id !== gameId);
           }
 
           return normalizeGameIds([...current, gameId]);

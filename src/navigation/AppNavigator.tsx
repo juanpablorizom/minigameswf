@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Linking, Modal, Pressable, ScrollView, Share, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Animated, Linking, Modal, PanResponder, Platform, Pressable, ScrollView, Share, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { featuredGames, lobbyScenarios } from '../data/mockData';
@@ -29,7 +29,9 @@ import { RoomSettingsScreen } from '../ui/screens/RoomSettingsScreen';
 import { ScanRoomScreen } from '../ui/screens/ScanRoomScreen';
 import { SettingsScreen } from '../ui/screens/SettingsScreen';
 import { TriviaGameplayScreen } from '../ui/screens/TriviaGameplayScreen';
+import { TrollGameplayScreen } from '../ui/screens/TrollGameplayScreen';
 import { WelcomeScreen } from '../ui/screens/WelcomeScreen';
+import { WhoseTopGameplayScreen } from '../ui/screens/WhoseTopGameplayScreen';
 import { WhoSaidGameplayScreen } from '../ui/screens/WhoSaidGameplayScreen';
 import { AppButton } from '../ui/components/AppButton';
 import { GameSettingsModal } from '../ui/components/GameSettingsModal';
@@ -221,10 +223,17 @@ export function AppNavigator() {
     submitWhoSaidPhrase,
     submitWhoSaidGuess,
     advanceWhoSaidRound,
+    startWhoseTopRound,
+    submitWhoseTop,
+    submitWhoseTopGuess,
+    advanceWhoseTopRound,
     startMajorityRound,
     submitMajorityAnswer,
     submitMajorityPrediction,
     advanceMajorityRound,
+    startTrollRound,
+    castTrollVote,
+    advanceTrollRound,
     scoreTournamentRound,
     resetTournament,
     castImpostorVote,
@@ -282,6 +291,23 @@ export function AppNavigator() {
   const hadAccessRef = useRef(false);
   const attemptedRoomResumeRef = useRef(false);
   const screenFade = useRef(new Animated.Value(1)).current;
+  const canGoBackRef = useRef(canGoBack);
+  const goBackRef = useRef(goBack);
+  const swipeBackResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (event, gestureState) =>
+        Platform.OS !== 'web' &&
+        canGoBackRef.current &&
+        event.nativeEvent.locationX <= 28 &&
+        gestureState.dx > 20 &&
+        Math.abs(gestureState.dy) < 36,
+      onPanResponderRelease: (_, gestureState) => {
+        if (canGoBackRef.current && gestureState.dx > 80 && gestureState.vx > 0.3) {
+          goBackRef.current();
+        }
+      }
+    })
+  ).current;
   const roomFlowScreens = ['room', 'chooseGames', 'roomSettings', 'gameplay', 'results'] as const;
 
   function mapAuthNotice(error?: string | null) {
@@ -344,8 +370,16 @@ export function AppNavigator() {
     return getActiveMemberCount(room) >= 2;
   }
 
+  function canStartWhoseTopRound(room: RoomDetails | null) {
+    return getActiveMemberCount(room) >= 2;
+  }
+
   function canStartMajorityRound(room: RoomDetails | null) {
     return getActiveMemberCount(room) >= 2;
+  }
+
+  function canStartTrollRound(room: RoomDetails | null) {
+    return getActiveMemberCount(room) >= 4;
   }
 
   function getRoomSelectedGameIds(room: RoomDetails | null) {
@@ -536,6 +570,45 @@ export function AppNavigator() {
     });
   }
 
+  function runStartWhoseTopRound(onSuccess?: () => void) {
+    if (!activeRoom || activeRoom.room.status === 'finished') {
+      setRoomNotice(t('lobby.errors.noActiveRoomFallback'));
+      backToLobby();
+      return;
+    }
+
+    if (!canStartWhoseTopRound(activeRoom)) {
+      setRoomNotice(t('room.minimumPlayersRequiredWhoseTop'));
+      continueRoom();
+      return;
+    }
+
+    const whoseTopSettings = roomSettings.games['whose-top'];
+    setRoomNotice(t('room.roundStarting'));
+
+    void startWhoseTopRound(
+      whoseTopSettings.category,
+      whoseTopSettings.topSize,
+      whoseTopSettings.createSeconds,
+      whoseTopSettings.guessSeconds
+    ).then((result) => {
+      if (result.error) {
+        setRoomNotice(
+          result.error === 'ROUND_MIN_PLAYERS' ? t('room.minimumPlayersRequiredWhoseTop') : mapRoomNotice(t, result.error)
+        );
+        return;
+      }
+
+      setRoomNotice(null);
+      if (onSuccess) {
+        onSuccess();
+        return;
+      }
+
+      startGameplay();
+    });
+  }
+
   function runStartMajorityRound(onSuccess?: () => void) {
     if (!activeRoom || activeRoom.room.status === 'finished') {
       setRoomNotice(t('lobby.errors.noActiveRoomFallback'));
@@ -575,8 +648,55 @@ export function AppNavigator() {
     });
   }
 
+  function runStartTrollRound(onSuccess?: () => void) {
+    if (!activeRoom || activeRoom.room.status === 'finished') {
+      setRoomNotice(t('lobby.errors.noActiveRoomFallback'));
+      backToLobby();
+      return;
+    }
+
+    if (!canStartTrollRound(activeRoom)) {
+      setRoomNotice(t('room.minimumPlayersRequiredTroll'));
+      continueRoom();
+      return;
+    }
+
+    const trollSettings = roomSettings.games.troll;
+    setRoomNotice(t('room.roundStarting'));
+
+    void startTrollRound(
+      trollSettings.category,
+      trollSettings.discussionSeconds,
+      trollSettings.votingSeconds,
+      trollSettings.roundCount
+    ).then((result) => {
+      if (result.error) {
+        setRoomNotice(result.error === 'ROUND_MIN_PLAYERS' ? t('room.minimumPlayersRequiredTroll') : mapRoomNotice(t, result.error));
+        return;
+      }
+
+      setRoomNotice(null);
+      if (onSuccess) {
+        onSuccess();
+        return;
+      }
+
+      startGameplay();
+    });
+  }
+
   function runStartGameRound(gameId: GameId, onSuccess?: () => void) {
     const startHandler = gameRegistry[gameId]?.startHandler ?? 'none';
+
+    if (startHandler === 'troll') {
+      runStartTrollRound(onSuccess);
+      return;
+    }
+
+    if (startHandler === 'whose-top') {
+      runStartWhoseTopRound(onSuccess);
+      return;
+    }
 
     if (startHandler === 'majority') {
       runStartMajorityRound(onSuccess);
@@ -655,6 +775,36 @@ export function AppNavigator() {
       });
     });
   }
+
+  useEffect(() => {
+    canGoBackRef.current = canGoBack;
+    goBackRef.current = goBack;
+  }, [canGoBack, goBack]);
+
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof window === 'undefined') {
+      return;
+    }
+
+    const handlePopState = () => {
+      goBackRef.current();
+    };
+
+    window.history.replaceState({ screen: currentScreen, tab: activeTab }, '');
+    window.addEventListener('popstate', handlePopState);
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof window === 'undefined') {
+      return;
+    }
+
+    window.history.pushState({ screen: currentScreen, tab: activeTab }, '');
+  }, [activeTab, currentScreen]);
 
   useEffect(() => {
     if (!session && !isGuest) {
@@ -776,12 +926,19 @@ export function AppNavigator() {
       return;
     }
 
-    if (currentScreen === 'gameplay' || currentScreen === 'results') {
+    if (activeRoom.round.status === 'finished') {
+      if (currentScreen !== 'results') {
+        revealResults();
+      }
+      return;
+    }
+
+    if (currentScreen === 'gameplay') {
       return;
     }
 
     startGameplay();
-  }, [activeRoom?.round?.roundId, activeRoom?.round?.phase, activeRoom?.round?.status, currentScreen, startGameplay]);
+  }, [activeRoom?.round?.roundId, activeRoom?.round?.phase, activeRoom?.round?.status, currentScreen, revealResults, startGameplay]);
 
   useEffect(() => {
     if (!activeRoom || activeRoom.round || (currentScreen !== 'gameplay' && currentScreen !== 'results')) {
@@ -1117,8 +1274,7 @@ export function AppNavigator() {
 
   function getNextSelectedGameIds(currentGameIds: GameId[], gameId: GameId) {
     if (currentGameIds.includes(gameId)) {
-      const nextGameIds = currentGameIds.filter((selectedGameId) => selectedGameId !== gameId);
-      return nextGameIds.length ? nextGameIds : currentGameIds;
+      return currentGameIds.filter((selectedGameId) => selectedGameId !== gameId);
     }
 
     return normalizeGameIds([...currentGameIds, gameId]);
@@ -1314,7 +1470,11 @@ export function AppNavigator() {
       const selectedGameId = selectedGameIdsForRoom[0] ?? 'impostor';
       const selectedGameConfig = gameRegistry[selectedGameId];
       const canStartGame =
-        selectedGameConfig.startHandler === 'majority'
+        selectedGameConfig.startHandler === 'troll'
+          ? canStartTrollRound(activeRoom)
+          : selectedGameConfig.startHandler === 'whose-top'
+          ? canStartWhoseTopRound(activeRoom)
+          : selectedGameConfig.startHandler === 'majority'
           ? canStartMajorityRound(activeRoom)
           : selectedGameConfig.startHandler === 'who-said'
           ? canStartWhoSaidRound(activeRoom)
@@ -1349,6 +1509,10 @@ export function AppNavigator() {
                 ? t('room.minimumPlayersRequiredWhoSaid')
                 : selectedGameId === 'majority'
                 ? t('room.minimumPlayersRequiredMajority')
+                : selectedGameId === 'troll'
+                ? t('room.minimumPlayersRequiredTroll')
+                : selectedGameId === 'whose-top'
+                ? t('room.minimumPlayersRequiredWhoseTop')
                 : selectedGameId === 'faces-gestures'
                 ? t('room.minimumPlayersRequiredFacesGestures')
                 : selectedGameId === 'guess-who'
@@ -1397,7 +1561,9 @@ export function AppNavigator() {
       return (
         <ChooseGamesScreen
           selectedGameIds={selectedGameIds}
+          settings={roomSettings}
           onToggleGame={toggleGameSelection}
+          onChangeSettings={updateRoomSettings}
           onSave={() => {
             const nextGameIds = normalizeGameIds(selectedGameIds);
 
@@ -1591,6 +1757,53 @@ export function AppNavigator() {
         );
       }
 
+      if (activeRoom?.round?.gameId === 'whose-top') {
+        return (
+          <WhoseTopGameplayScreen
+            players={gameplayPlayers}
+            roundSetup={activeRoom.round}
+            canManageRoom={activeRoom.isHost}
+            isBusy={roomBusy}
+            notice={roomNotice}
+            onSubmitTop={(items) => {
+              void submitWhoseTop(items).then((result) => {
+                if (result.error) {
+                  setRoomNotice(mapRoomNotice(t, result.error));
+                  return;
+                }
+
+                setRoomNotice(t('whoseTop.ready'));
+              });
+            }}
+            onSubmitGuess={(guessedUserId) => {
+              void submitWhoseTopGuess(guessedUserId).then((result) => {
+                if (result.error) {
+                  setRoomNotice(mapRoomNotice(t, result.error));
+                  return;
+                }
+
+                setRoomNotice(result.correct ? t('whoseTop.correct') : t('whoseTop.guessed'));
+              });
+            }}
+            onAdvance={() => {
+              if (activeRoom.round?.gameId === 'whose-top' && activeRoom.round.status === 'finished') {
+                continueTournamentFromCurrentRound();
+                return;
+              }
+
+              void advanceWhoseTopRound().then((result) => {
+                if (result.error) {
+                  setRoomNotice(mapRoomNotice(t, result.error));
+                  return;
+                }
+
+                setRoomNotice(null);
+              });
+            }}
+          />
+        );
+      }
+
       if (activeRoom?.round?.gameId === 'majority') {
         return (
           <MajorityGameplayScreen
@@ -1627,6 +1840,43 @@ export function AppNavigator() {
 
               void advanceMajorityRound().then((result) => {
                 if (result.error) {
+                  setRoomNotice(mapRoomNotice(t, result.error));
+                  return;
+                }
+
+                setRoomNotice(null);
+              });
+            }}
+          />
+        );
+      }
+
+      if (activeRoom?.round?.gameId === 'troll') {
+        return (
+          <TrollGameplayScreen
+            players={gameplayPlayers}
+            roundSetup={activeRoom.round}
+            canManageRoom={activeRoom.isHost}
+            isBusy={roomBusy}
+            notice={roomNotice}
+            onCastVote={(targetUserId) => {
+              void castTrollVote(targetUserId).then((result) => {
+                if (result.error) {
+                  setRoomNotice(mapRoomNotice(t, result.error));
+                  return;
+                }
+
+                setRoomNotice(t('gameplay.voteRegistered'));
+              });
+            }}
+            onAdvance={() => {
+              if (activeRoom.round?.gameId === 'troll' && activeRoom.round.status === 'finished') {
+                continueTournamentFromCurrentRound();
+                return;
+              }
+
+              void advanceTrollRound().then((result) => {
+                if (result.error && result.error !== 'ROUND_NOT_VOTING') {
                   setRoomNotice(mapRoomNotice(t, result.error));
                   return;
                 }
@@ -1990,6 +2240,7 @@ export function AppNavigator() {
       activeRoom.round.gameId === 'impostor' ||
       activeRoom.round.gameId === 'trivia' ||
       activeRoom.round.gameId === 'who-said' ||
+      activeRoom.round.gameId === 'whose-top' ||
       activeRoom.round.gameId === 'majority' ||
       activeRoom.round.status !== 'finished'
     ) {
@@ -2064,8 +2315,12 @@ export function AppNavigator() {
         <View style={styles.topBarActions}>
           {canGoBack ? (
             <View style={styles.topBarNavActions}>
-              <Pressable onPress={handleBackPress} style={styles.topBarAction}>
-                <Text style={styles.back}>{t('common.back')}</Text>
+              <Pressable onPress={handleBackPress} style={styles.topBarAction} accessibilityRole="button" accessibilityLabel={t('common.back')}>
+                {width < 480 || Platform.OS !== 'web' ? (
+                  <MinimalIcon name="chevronLeft" size={20} color={theme.colors.textPrimary} />
+                ) : (
+                  <Text style={styles.back}>{t('common.back')}</Text>
+                )}
               </Pressable>
               <Pressable onPress={handleExitPress} style={styles.topBarAction}>
                 <Text style={styles.exit}>{t('common.exit')}</Text>
@@ -2092,7 +2347,9 @@ export function AppNavigator() {
         </View>
       </View>
 
-      <Animated.View style={[styles.content, { opacity: screenFade }]}>{renderCurrentTab()}</Animated.View>
+      <Animated.View style={[styles.content, { opacity: screenFade }]} {...swipeBackResponder.panHandlers}>
+        {renderCurrentTab()}
+      </Animated.View>
       <View style={styles.bottomNav}>
         <TabButton label="Inicio" icon="home" active={activeTab === 'games' && !isGamesCatalogOpen} onPress={handleOpenHomeTab} />
         <TabButton

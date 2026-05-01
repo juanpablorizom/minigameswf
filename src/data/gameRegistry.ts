@@ -18,6 +18,7 @@ const triviaThumbnail = require('../ui/assets/game-covers/trivia.png');
 const whoSaidThumbnail = require('../ui/assets/game-covers/who-said.png');
 const majorityThumbnail = require('../ui/assets/game-covers/majority.png');
 const trollThumbnail = require('../ui/assets/game-covers/troll.png');
+const whoseTopThumbnail = require('../ui/assets/game-covers/whose-top.png');
 
 export const gameRegistry: Record<GameId, GameRegistryEntry> = {
   impostor: {
@@ -117,6 +118,20 @@ export const gameRegistry: Record<GameId, GameRegistryEntry> = {
     minPlayers: 4,
     startHandler: 'troll',
     hasSettings: true
+  },
+  'whose-top': {
+    id: 'whose-top',
+    name: '¿De quién es este top?',
+    nameKey: 'gameMeta.names.whose-top',
+    category: 'Social Reads',
+    duration: 'Top',
+    energy: 'Social',
+    description: 'Crea tu top. La sala adivina.',
+    descriptionKey: 'gameMeta.descriptions.whose-top',
+    thumbnail: whoseTopThumbnail,
+    minPlayers: 2,
+    startHandler: 'whose-top',
+    hasSettings: true
   }
 };
 
@@ -124,9 +139,7 @@ export const gameRegistryList = Object.values(gameRegistry);
 
 export function normalizeGameIds(gameIds: Array<string | null | undefined>) {
   const selected = gameIds.filter((gameId): gameId is GameId => Boolean(gameId && gameId in gameRegistry));
-  const uniqueSelected = Array.from(new Set(selected));
-
-  return uniqueSelected.length ? uniqueSelected : (['impostor'] satisfies GameId[]);
+  return Array.from(new Set(selected));
 }
 
 export function getGamesByIds(gameIds: Array<string | null | undefined>) {

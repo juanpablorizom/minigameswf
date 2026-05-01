@@ -6,7 +6,14 @@ export type RoomMemberRole = 'host' | 'member';
 export type RoomRoundStatus = 'active' | 'finished';
 export type RoomRoundPhase = 'reveal' | 'voting' | 'result';
 export type RoomMissBehavior = 'repeat' | 'end';
-export type RoomRoundOutcome = 'impostors_caught' | 'impostors_balanced' | 'missed_impostor' | 'continue';
+export type RoomRoundOutcome =
+  | 'impostors_caught'
+  | 'impostors_balanced'
+  | 'missed_impostor'
+  | 'troll_eliminated'
+  | 'impostor_eliminated'
+  | 'innocent_eliminated'
+  | 'continue';
 
 export type Database = {
   public: {
@@ -76,6 +83,8 @@ export type Database = {
           status: RoomStatus;
           selected_game_id: string | null;
           selected_game_ids: string[];
+          mode: 'tournament' | 'single';
+          single_game_round_count: number;
           visibility: RoomVisibility;
           created_at: string;
           updated_at: string;
@@ -87,6 +96,8 @@ export type Database = {
           status?: RoomStatus;
           selected_game_id?: string | null;
           selected_game_ids?: string[];
+          mode?: 'tournament' | 'single';
+          single_game_round_count?: number;
           visibility?: RoomVisibility;
           created_at?: string;
           updated_at?: string;
@@ -98,6 +109,8 @@ export type Database = {
           status?: RoomStatus;
           selected_game_id?: string | null;
           selected_game_ids?: string[];
+          mode?: 'tournament' | 'single';
+          single_game_round_count?: number;
           visibility?: RoomVisibility;
           created_at?: string;
           updated_at?: string;
@@ -545,6 +558,81 @@ export type Database = {
         };
         Relationships: [];
       };
+      room_whose_top_submissions: {
+        Row: {
+          id: string;
+          room_id: string;
+          round_id: string;
+          author_user_id: string;
+          top_order: number | null;
+          category: string;
+          top_size: number;
+          option_labels: string[];
+          items: string[];
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          room_id: string;
+          round_id: string;
+          author_user_id: string;
+          top_order?: number | null;
+          category: string;
+          top_size: number;
+          option_labels?: string[];
+          items?: string[];
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          room_id?: string;
+          round_id?: string;
+          author_user_id?: string;
+          top_order?: number | null;
+          category?: string;
+          top_size?: number;
+          option_labels?: string[];
+          items?: string[];
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      room_whose_top_guesses: {
+        Row: {
+          id: string;
+          room_id: string;
+          round_id: string;
+          top_id: string;
+          user_id: string;
+          guessed_user_id: string;
+          is_correct: boolean;
+          guessed_at: string;
+        };
+        Insert: {
+          id?: string;
+          room_id: string;
+          round_id: string;
+          top_id: string;
+          user_id: string;
+          guessed_user_id: string;
+          is_correct?: boolean;
+          guessed_at?: string;
+        };
+        Update: {
+          id?: string;
+          room_id?: string;
+          round_id?: string;
+          top_id?: string;
+          user_id?: string;
+          guessed_user_id?: string;
+          is_correct?: boolean;
+          guessed_at?: string;
+        };
+        Relationships: [];
+      };
       room_majority_questions: {
         Row: {
           id: string;
@@ -618,6 +706,42 @@ export type Database = {
           prediction_option?: string | null;
           answered_at?: string | null;
           predicted_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      room_troll_assignments: {
+        Row: {
+          id: string;
+          room_id: string;
+          round_id: string;
+          user_id: string;
+          role: 'innocent' | 'impostor' | 'troll';
+          word: string | null;
+          is_eliminated: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          room_id: string;
+          round_id: string;
+          user_id: string;
+          role: 'innocent' | 'impostor' | 'troll';
+          word?: string | null;
+          is_eliminated?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          room_id?: string;
+          round_id?: string;
+          user_id?: string;
+          role?: 'innocent' | 'impostor' | 'troll';
+          word?: string | null;
+          is_eliminated?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -830,6 +954,66 @@ export type Database = {
           is_current_user: boolean;
         }>;
       };
+      start_whose_top_round: {
+        Args: {
+          p_room_id: string;
+          p_category?: string;
+          p_top_size?: number;
+          p_create_seconds?: number;
+          p_guess_seconds?: number;
+        };
+        Returns: Database['public']['Tables']['room_rounds']['Row'][];
+      };
+      submit_whose_top: {
+        Args: {
+          p_room_id: string;
+          p_items: string[];
+        };
+        Returns: Database['public']['Tables']['room_whose_top_submissions']['Row'][];
+      };
+      submit_whose_top_guess: {
+        Args: {
+          p_room_id: string;
+          p_guessed_user_id: string;
+        };
+        Returns: Database['public']['Tables']['room_whose_top_guesses']['Row'][];
+      };
+      advance_whose_top_round: {
+        Args: {
+          p_room_id: string;
+        };
+        Returns: Database['public']['Tables']['room_rounds']['Row'][];
+      };
+      get_whose_top_round_state: {
+        Args: {
+          p_room_id: string;
+        };
+        Returns: Array<{
+          round_id: string;
+          round_number: number;
+          category: string;
+          top_size: number;
+          option_labels: string[];
+          round_status: RoomRoundStatus;
+          round_phase: 'reveal' | 'voting' | 'result';
+          vote_deadline_at: string | null;
+          vote_duration_seconds: number;
+          started_at: string;
+          top_count: number;
+          submitted_count: number;
+          current_top_id: string | null;
+          current_top_items: string[];
+          current_top_order: number | null;
+          current_top_author_user_id: string | null;
+          is_current_top_author: boolean;
+          user_id: string;
+          has_submitted_top: boolean;
+          guessed_user_id: string | null;
+          is_correct: boolean | null;
+          guessed_at: string | null;
+          is_current_user: boolean;
+        }>;
+      };
       start_majority_round: {
         Args: {
           p_room_id: string;
@@ -885,6 +1069,56 @@ export type Database = {
           answered_at: string | null;
           predicted_at: string | null;
           is_prediction_correct: boolean | null;
+          is_current_user: boolean;
+        }>;
+      };
+      start_troll_round: {
+        Args: {
+          p_room_id: string;
+          p_category?: string;
+          p_discussion_seconds?: number;
+          p_voting_seconds?: number;
+          p_round_count?: number;
+        };
+        Returns: Database['public']['Tables']['room_rounds']['Row'][];
+      };
+      cast_troll_vote: {
+        Args: {
+          p_room_id: string;
+          p_target_user_id: string;
+        };
+        Returns: Database['public']['Tables']['room_round_votes']['Row'][];
+      };
+      advance_troll_round: {
+        Args: {
+          p_room_id: string;
+        };
+        Returns: Database['public']['Tables']['room_rounds']['Row'][];
+      };
+      get_troll_round_state: {
+        Args: {
+          p_room_id: string;
+        };
+        Returns: Array<{
+          round_id: string;
+          round_number: number;
+          round_count: number;
+          category_id: string;
+          real_word: string | null;
+          troll_word: string | null;
+          round_status: RoomRoundStatus;
+          round_phase: RoomRoundPhase;
+          vote_deadline_at: string | null;
+          vote_duration_seconds: number;
+          discussion_duration_seconds: number;
+          started_at: string;
+          outcome: RoomRoundOutcome;
+          expelled_user_id: string | null;
+          eliminated_user_ids: string[];
+          user_id: string;
+          role: 'innocent' | 'impostor' | 'troll' | null;
+          word: string | null;
+          is_eliminated: boolean;
           is_current_user: boolean;
         }>;
       };

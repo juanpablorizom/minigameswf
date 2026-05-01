@@ -2,6 +2,8 @@ import Svg, { Circle, Line, Path, Rect } from 'react-native-svg';
 
 export type MinimalIconName =
   | 'arrowRight'
+  | 'check'
+  | 'chevronLeft'
   | 'chevronRight'
   | 'games'
   | 'home'
@@ -36,6 +38,10 @@ export function MinimalIcon({ name, size = 24, color, strokeWidth = 2 }: Minimal
       ) : null}
 
       {name === 'chevronRight' ? <Path d="M9 6l6 6-6 6" {...common} /> : null}
+
+      {name === 'chevronLeft' ? <Path d="M15 6l-6 6 6 6" {...common} /> : null}
+
+      {name === 'check' ? <Path d="M5 12.5l4.2 4.2L19 7" {...common} /> : null}
 
       {name === 'games' ? (
         <>

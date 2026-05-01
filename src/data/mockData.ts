@@ -58,9 +58,20 @@ export const lobbyScenarios: Record<LobbyScenarioKey, LobbyScenario> = {
   }
 };
 
-export const initialSelectedGameIds: GameId[] = ['impostor', 'guess-who', 'faces-gestures', 'trivia', 'who-said', 'majority', 'troll'];
+export const initialSelectedGameIds: GameId[] = [
+  'impostor',
+  'guess-who',
+  'faces-gestures',
+  'trivia',
+  'who-said',
+  'majority',
+  'troll',
+  'whose-top'
+];
 
 export const initialRoomSettings: RoomSettings = {
+  mode: 'tournament',
+  singleGameRoundCount: 3,
   games: {
     impostor: {
       turnSeconds: 45,
@@ -96,6 +107,12 @@ export const initialRoomSettings: RoomSettings = {
       discussionSeconds: 45,
       votingSeconds: 30,
       roundCount: 1
+    },
+    'whose-top': {
+      category: 'mejores-comidas',
+      topSize: 5,
+      createSeconds: 60,
+      guessSeconds: 25
     }
   }
 };

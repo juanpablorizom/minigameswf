@@ -30,12 +30,16 @@ create table if not exists public.rooms (
   status text not null default 'waiting' check (status in ('waiting', 'active', 'finished')),
   selected_game_id text,
   selected_game_ids text[] not null default array['impostor']::text[],
+  mode text not null default 'tournament' check (mode in ('tournament', 'single')),
+  single_game_round_count integer not null default 3 check (single_game_round_count between 1 and 10),
   visibility text not null default 'private' check (visibility in ('private')),
   created_at timestamptz not null default timezone('utc', now()),
   updated_at timestamptz not null default timezone('utc', now())
 );
 
 alter table public.rooms add column if not exists selected_game_ids text[] not null default array['impostor']::text[];
+alter table public.rooms add column if not exists mode text not null default 'tournament';
+alter table public.rooms add column if not exists single_game_round_count integer not null default 3;
 
 update public.rooms
 set selected_game_ids = case
@@ -81,6 +85,7 @@ create table if not exists public.room_rounds (
       'movies-series',
       'trivia',
       'who-said',
+      'whose-top',
       'majority',
       'youtubers',
       'basketball',
@@ -125,6 +130,7 @@ add constraint room_rounds_theme_category_check check (
     'movies-series',
     'trivia',
     'who-said',
+    'whose-top',
     'majority',
     'troll',
     'youtubers',
@@ -320,6 +326,63 @@ on public.room_who_said_guesses (room_id);
 create index if not exists room_who_said_guesses_round_id_idx
 on public.room_who_said_guesses (round_id);
 
+create table if not exists public.room_whose_top_options (
+  id uuid primary key default gen_random_uuid(),
+  room_id uuid not null references public.rooms (id) on delete cascade,
+  round_id uuid not null references public.room_rounds (id) on delete cascade,
+  category text not null,
+  top_size integer not null default 5,
+  option_labels text[] not null default '{}'::text[],
+  created_at timestamptz not null default timezone('utc', now()),
+  unique (round_id)
+);
+
+create index if not exists room_whose_top_options_room_id_idx
+on public.room_whose_top_options (room_id);
+
+create table if not exists public.room_whose_top_submissions (
+  id uuid primary key default gen_random_uuid(),
+  room_id uuid not null references public.rooms (id) on delete cascade,
+  round_id uuid not null references public.room_rounds (id) on delete cascade,
+  author_user_id uuid not null references auth.users (id) on delete cascade,
+  top_order integer,
+  category text not null,
+  top_size integer not null,
+  option_labels text[] not null default '{}'::text[],
+  items text[] not null default '{}'::text[],
+  created_at timestamptz not null default timezone('utc', now()),
+  updated_at timestamptz not null default timezone('utc', now()),
+  unique (round_id, author_user_id)
+);
+
+create unique index if not exists room_whose_top_submissions_round_order_idx
+on public.room_whose_top_submissions (round_id, top_order)
+where top_order is not null;
+
+create index if not exists room_whose_top_submissions_room_id_idx
+on public.room_whose_top_submissions (room_id);
+
+create index if not exists room_whose_top_submissions_round_id_idx
+on public.room_whose_top_submissions (round_id);
+
+create table if not exists public.room_whose_top_guesses (
+  id uuid primary key default gen_random_uuid(),
+  room_id uuid not null references public.rooms (id) on delete cascade,
+  round_id uuid not null references public.room_rounds (id) on delete cascade,
+  top_id uuid not null references public.room_whose_top_submissions (id) on delete cascade,
+  user_id uuid not null references auth.users (id) on delete cascade,
+  guessed_user_id uuid not null references auth.users (id) on delete cascade,
+  is_correct boolean not null default false,
+  guessed_at timestamptz not null default timezone('utc', now()),
+  unique (top_id, user_id)
+);
+
+create index if not exists room_whose_top_guesses_room_id_idx
+on public.room_whose_top_guesses (room_id);
+
+create index if not exists room_whose_top_guesses_round_id_idx
+on public.room_whose_top_guesses (round_id);
+
 create table if not exists public.room_majority_questions (
   id uuid primary key default gen_random_uuid(),
   room_id uuid not null references public.rooms (id) on delete cascade,
@@ -360,6 +423,25 @@ on public.room_majority_responses (room_id);
 create index if not exists room_majority_responses_round_id_idx
 on public.room_majority_responses (round_id);
 
+create table if not exists public.room_troll_assignments (
+  id uuid primary key default gen_random_uuid(),
+  room_id uuid not null references public.rooms (id) on delete cascade,
+  round_id uuid not null references public.room_rounds (id) on delete cascade,
+  user_id uuid not null references auth.users (id) on delete cascade,
+  role text not null check (role in ('innocent', 'impostor', 'troll')),
+  word text,
+  is_eliminated boolean not null default false,
+  created_at timestamptz not null default timezone('utc', now()),
+  updated_at timestamptz not null default timezone('utc', now()),
+  unique (round_id, user_id)
+);
+
+create index if not exists room_troll_assignments_room_id_idx
+on public.room_troll_assignments (room_id);
+
+create index if not exists room_troll_assignments_round_id_idx
+on public.room_troll_assignments (round_id);
+
 alter table public.profiles enable row level security;
 alter table public.user_settings enable row level security;
 alter table public.rooms enable row level security;
@@ -375,8 +457,12 @@ alter table public.room_trivia_questions enable row level security;
 alter table public.room_trivia_answers enable row level security;
 alter table public.room_who_said_phrases enable row level security;
 alter table public.room_who_said_guesses enable row level security;
+alter table public.room_whose_top_options enable row level security;
+alter table public.room_whose_top_submissions enable row level security;
+alter table public.room_whose_top_guesses enable row level security;
 alter table public.room_majority_questions enable row level security;
 alter table public.room_majority_responses enable row level security;
+alter table public.room_troll_assignments enable row level security;
 
 create or replace function public.set_updated_at()
 returns trigger
@@ -482,9 +568,21 @@ before update on public.room_who_said_phrases
 for each row
 execute function public.set_updated_at();
 
+drop trigger if exists set_room_whose_top_submissions_updated_at on public.room_whose_top_submissions;
+create trigger set_room_whose_top_submissions_updated_at
+before update on public.room_whose_top_submissions
+for each row
+execute function public.set_updated_at();
+
 drop trigger if exists set_room_majority_responses_updated_at on public.room_majority_responses;
 create trigger set_room_majority_responses_updated_at
 before update on public.room_majority_responses
+for each row
+execute function public.set_updated_at();
+
+drop trigger if exists set_room_troll_assignments_updated_at on public.room_troll_assignments;
+create trigger set_room_troll_assignments_updated_at
+before update on public.room_troll_assignments
 for each row
 execute function public.set_updated_at();
 
@@ -529,7 +627,7 @@ begin
     from (
       select selected_game_id as game_id, min(selected_order) as first_order
       from unnest(safe_game_ids) with ordinality as selected(selected_game_id, selected_order)
-      where selected_game_id in ('impostor', 'guess-who', 'faces-gestures', 'trivia', 'who-said', 'majority')
+      where selected_game_id in ('impostor', 'guess-who', 'faces-gestures', 'trivia', 'who-said', 'majority', 'troll', 'whose-top')
       group by selected_game_id
     ) selected
   );
@@ -2694,6 +2792,620 @@ begin
 end;
 $$;
 
+create or replace function public.start_whose_top_round(
+  p_room_id uuid,
+  p_category text default 'mejores-comidas',
+  p_top_size integer default 5,
+  p_create_seconds integer default 60,
+  p_guess_seconds integer default 25
+)
+returns public.room_rounds
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  current_user_id uuid := auth.uid();
+  target_room public.rooms;
+  active_member_count integer := 0;
+  safe_category text := coalesce(p_category, 'mejores-comidas');
+  safe_top_size integer := case when p_top_size in (3, 5, 10) then p_top_size else 5 end;
+  option_labels text[];
+  next_round public.room_rounds;
+begin
+  if current_user_id is null then
+    raise exception 'AUTH_REQUIRED';
+  end if;
+
+  select *
+  into target_room
+  from public.rooms
+  where id = p_room_id
+  limit 1;
+
+  if target_room.id is null then
+    raise exception 'ROOM_NOT_FOUND';
+  end if;
+
+  if target_room.host_user_id <> current_user_id then
+    raise exception 'ROUND_HOST_ONLY';
+  end if;
+
+  select count(*)
+  into active_member_count
+  from public.room_members
+  where room_id = p_room_id
+    and is_active = true;
+
+  if active_member_count < 2 then
+    raise exception 'ROUND_MIN_PLAYERS';
+  end if;
+
+  option_labels := case safe_category
+    when 'mejores-actores' then array['Leonardo DiCaprio','Denzel Washington','Meryl Streep','Tom Hanks','Robert Downey Jr.','Margot Robbie','Emma Stone','Ryan Gosling','Keanu Reeves','Zendaya','Pedro Pascal','Jenna Ortega','Christian Bale','Natalie Portman','Scarlett Johansson','Morgan Freeman','Viola Davis','Florence Pugh','Al Pacino','Robert De Niro','Samuel L. Jackson','Anne Hathaway','Hugh Jackman','Brad Pitt','Angelina Jolie','Cate Blanchett','Timothee Chalamet','Ana de Armas','Will Smith','Jackie Chan']
+    when 'mejores-comidas' then array['Tacos','Pizza','Sushi','Hamburguesa','Ramen','Pasta','Asado','Ceviche','Pozole','Chilaquiles','Enchiladas','Quesadillas','Paella','Lasagna','Curry','Burrito','Hot dog','Alitas','Falafel','Arepas','Empanadas','Croissant','Dim sum','Pho','Pad Thai','Tamales','Torta','Mole','Poke','Gelato']
+    when 'mejores-peliculas' then array['Titanic','Avatar','Interstellar','Inception','The Batman','Avengers: Endgame','Spider-Man: No Way Home','Harry Potter','Star Wars','Jurassic Park','The Matrix','Toy Story','Shrek','Coco','Up','El Rey Leon','Back to the Future','Forrest Gump','The Godfather','Pulp Fiction','La La Land','Parasite','Whiplash','Gladiator','The Dark Knight','Finding Nemo','WALL-E','Ratatouille','Black Panther','Oppenheimer']
+    when 'mejores-videojuegos' then array['Minecraft','Fortnite','GTA V','Mario Kart','Super Mario Odyssey','Zelda: Breath of the Wild','Zelda: Tears of the Kingdom','The Last of Us','God of War','FIFA','EA Sports FC','Call of Duty','Halo','Roblox','Among Us','Fall Guys','Rocket League','Valorant','League of Legends','Overwatch','Pokemon','Animal Crossing','Red Dead Redemption 2','Elden Ring','Resident Evil 4','Mortal Kombat','Street Fighter','The Sims','Clash Royale','Mario Party']
+    when 'mejores-cantantes' then array['Taylor Swift','Bad Bunny','Shakira','Juan Gabriel','Luis Miguel','Michael Jackson','Beyonce','Rihanna','Ariana Grande','Billie Eilish','Dua Lipa','The Weeknd','Drake','Karol G','Feid','Rosalia','Bruno Mars','Ed Sheeran','Justin Bieber','Olivia Rodrigo','Miley Cyrus','Selena Gomez','Katy Perry','SZA','Adele','Lady Gaga','Harry Styles','Peso Pluma','Natanael Cano','Rauw Alejandro']
+    when 'mejores-marcas' then array['Apple','Nike','Adidas','Coca-Cola','Pepsi','McDonalds','Starbucks','Netflix','Disney','Google','Amazon','Tesla','Samsung','Sony','Nintendo','PlayStation','Xbox','Spotify','YouTube','Instagram','TikTok','WhatsApp','Uber','Airbnb','Zara','H&M','Gucci','Louis Vuitton','Rolex','Red Bull']
+    else null
+  end;
+
+  if option_labels is null or array_length(option_labels, 1) < safe_top_size then
+    safe_category := 'mejores-comidas';
+    option_labels := array['Tacos','Pizza','Sushi','Hamburguesa','Ramen','Pasta','Asado','Ceviche','Pozole','Chilaquiles','Enchiladas','Quesadillas','Paella','Lasagna','Curry','Burrito','Hot dog','Alitas','Falafel','Arepas','Empanadas','Croissant','Dim sum','Pho','Pad Thai','Tamales','Torta','Mole','Poke','Gelato'];
+  end if;
+
+  delete from public.room_rounds
+  where room_id = p_room_id;
+
+  insert into public.room_rounds (
+    room_id,
+    round_number,
+    game_id,
+    theme_category,
+    secret_word,
+    impostor_ids,
+    phase,
+    vote_deadline_at,
+    vote_duration_seconds,
+    answer_duration_seconds,
+    started_by_user_id
+  )
+  values (
+    p_room_id,
+    0,
+    'whose-top',
+    'whose-top',
+    safe_category,
+    '{}'::uuid[],
+    'reveal',
+    timezone('utc', now()) + make_interval(secs => greatest(coalesce(p_create_seconds, 60), 10)),
+    greatest(coalesce(p_guess_seconds, 25), 5),
+    greatest(coalesce(p_create_seconds, 60), 10),
+    current_user_id
+  )
+  returning * into next_round;
+
+  insert into public.room_whose_top_options (room_id, round_id, category, top_size, option_labels)
+  values (p_room_id, next_round.id, safe_category, safe_top_size, option_labels);
+
+  update public.rooms
+  set status = 'active',
+      selected_game_id = 'whose-top',
+      updated_at = timezone('utc', now())
+  where id = p_room_id;
+
+  insert into public.room_activity (room_id, actor_user_id, type, payload)
+  values (
+    p_room_id,
+    current_user_id,
+    'whose_top_round_started',
+    jsonb_build_object('category', safe_category, 'top_size', safe_top_size)
+  );
+
+  return next_round;
+end;
+$$;
+
+create or replace function public.submit_whose_top(
+  p_room_id uuid,
+  p_items text[]
+)
+returns public.room_whose_top_submissions
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  current_user_id uuid := auth.uid();
+  target_round public.room_rounds;
+  top_config public.room_whose_top_options;
+  clean_items text[];
+  next_top public.room_whose_top_submissions;
+begin
+  if current_user_id is null then
+    raise exception 'AUTH_REQUIRED';
+  end if;
+
+  if not private.is_room_member(p_room_id) then
+    raise exception 'ROOM_NOT_FOUND';
+  end if;
+
+  select *
+  into target_round
+  from public.room_rounds
+  where room_id = p_room_id
+    and game_id = 'whose-top'
+  limit 1;
+
+  if target_round.id is null then
+    raise exception 'ROUND_NOT_FOUND';
+  end if;
+
+  if target_round.status <> 'active' or target_round.phase <> 'reveal' then
+    raise exception 'ROUND_NOT_ACTIVE';
+  end if;
+
+  select *
+  into top_config
+  from public.room_whose_top_options
+  where round_id = target_round.id
+  limit 1;
+
+  clean_items := (
+    select coalesce(array_agg(distinct btrim(item)), '{}'::text[])
+    from unnest(coalesce(p_items, '{}'::text[])) as item
+    where btrim(item) <> ''
+      and btrim(item) = any(top_config.option_labels)
+  );
+
+  if array_length(clean_items, 1) <> top_config.top_size then
+    raise exception 'TOP_REQUIRED';
+  end if;
+
+  insert into public.room_whose_top_submissions (
+    room_id,
+    round_id,
+    author_user_id,
+    category,
+    top_size,
+    option_labels,
+    items
+  )
+  values (
+    p_room_id,
+    target_round.id,
+    current_user_id,
+    top_config.category,
+    top_config.top_size,
+    top_config.option_labels,
+    clean_items
+  )
+  on conflict (round_id, author_user_id) do update
+  set items = excluded.items,
+      updated_at = timezone('utc', now())
+  returning * into next_top;
+
+  update public.room_rounds
+  set updated_at = timezone('utc', now())
+  where id = target_round.id;
+
+  return next_top;
+end;
+$$;
+
+create or replace function public.get_whose_top_round_state(p_room_id uuid)
+returns table (
+  round_id uuid,
+  round_number integer,
+  category text,
+  top_size integer,
+  option_labels text[],
+  round_status text,
+  round_phase text,
+  vote_deadline_at timestamptz,
+  vote_duration_seconds integer,
+  started_at timestamptz,
+  top_count integer,
+  submitted_count integer,
+  current_top_id uuid,
+  current_top_items text[],
+  current_top_order integer,
+  current_top_author_user_id uuid,
+  is_current_top_author boolean,
+  user_id uuid,
+  has_submitted_top boolean,
+  guessed_user_id uuid,
+  is_correct boolean,
+  guessed_at timestamptz,
+  is_current_user boolean
+)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  current_user_id uuid := auth.uid();
+  target_round public.room_rounds;
+  top_config public.room_whose_top_options;
+  current_top public.room_whose_top_submissions;
+  total_tops integer := 0;
+  total_submitted integer := 0;
+begin
+  if current_user_id is null then
+    raise exception 'AUTH_REQUIRED';
+  end if;
+
+  if not private.is_room_member(p_room_id) then
+    raise exception 'ROOM_NOT_FOUND';
+  end if;
+
+  select *
+  into target_round
+  from public.room_rounds
+  where room_id = p_room_id
+    and game_id = 'whose-top'
+  limit 1;
+
+  if target_round.id is null then
+    raise exception 'ROUND_NOT_FOUND';
+  end if;
+
+  select *
+  into top_config
+  from public.room_whose_top_options
+  where round_id = target_round.id
+  limit 1;
+
+  select count(*), count(*) filter (where array_length(items, 1) = top_config.top_size)
+  into total_tops, total_submitted
+  from public.room_whose_top_submissions
+  where round_id = target_round.id;
+
+  if target_round.round_number > 0 then
+    select *
+    into current_top
+    from public.room_whose_top_submissions
+    where round_id = target_round.id
+      and top_order = target_round.round_number
+    limit 1;
+  end if;
+
+  return query
+  select
+    target_round.id,
+    target_round.round_number,
+    top_config.category,
+    top_config.top_size,
+    top_config.option_labels,
+    target_round.status,
+    target_round.phase,
+    target_round.vote_deadline_at,
+    target_round.vote_duration_seconds,
+    target_round.created_at,
+    total_tops,
+    total_submitted,
+    current_top.id,
+    coalesce(current_top.items, '{}'::text[]),
+    current_top.top_order,
+    case
+      when current_top.author_user_id = current_user_id
+        or target_round.phase = 'result'
+        or target_round.status = 'finished'
+      then current_top.author_user_id
+      else null
+    end,
+    current_top.author_user_id = current_user_id,
+    members.user_id,
+    exists (
+      select 1
+      from public.room_whose_top_submissions submitted_top
+      where submitted_top.round_id = target_round.id
+        and submitted_top.author_user_id = members.user_id
+    ),
+    guesses.guessed_user_id,
+    guesses.is_correct,
+    guesses.guessed_at,
+    members.user_id = current_user_id
+  from public.room_members members
+  left join public.room_whose_top_guesses guesses
+    on guesses.top_id = current_top.id
+    and guesses.user_id = members.user_id
+  where members.room_id = p_room_id
+    and members.is_active = true
+  order by members.joined_at asc;
+end;
+$$;
+
+create or replace function public.submit_whose_top_guess(
+  p_room_id uuid,
+  p_guessed_user_id uuid
+)
+returns public.room_whose_top_guesses
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  current_user_id uuid := auth.uid();
+  target_round public.room_rounds;
+  current_top public.room_whose_top_submissions;
+  existing_guess public.room_whose_top_guesses;
+  next_guess public.room_whose_top_guesses;
+  eligible_guessers integer := 0;
+  guessed_count integer := 0;
+begin
+  if current_user_id is null then
+    raise exception 'AUTH_REQUIRED';
+  end if;
+
+  if not private.is_room_member(p_room_id) then
+    raise exception 'ROOM_NOT_FOUND';
+  end if;
+
+  select *
+  into target_round
+  from public.room_rounds
+  where room_id = p_room_id
+    and game_id = 'whose-top'
+  limit 1;
+
+  if target_round.id is null then
+    raise exception 'ROUND_NOT_FOUND';
+  end if;
+
+  if target_round.status <> 'active' or target_round.phase <> 'voting' then
+    raise exception 'ROUND_NOT_ACTIVE';
+  end if;
+
+  select *
+  into current_top
+  from public.room_whose_top_submissions
+  where round_id = target_round.id
+    and top_order = target_round.round_number
+  limit 1;
+
+  if current_top.id is null then
+    raise exception 'ROUND_NOT_FOUND';
+  end if;
+
+  if current_top.author_user_id = current_user_id then
+    raise exception 'AUTHOR_CANNOT_GUESS';
+  end if;
+
+  if p_guessed_user_id = current_user_id then
+    raise exception 'ROUND_TARGET_NOT_FOUND';
+  end if;
+
+  if not exists (
+    select 1
+    from public.room_members
+    where room_id = p_room_id
+      and user_id = p_guessed_user_id
+      and is_active = true
+  ) then
+    raise exception 'ROUND_TARGET_NOT_FOUND';
+  end if;
+
+  select *
+  into existing_guess
+  from public.room_whose_top_guesses
+  where top_id = current_top.id
+    and user_id = current_user_id
+  limit 1;
+
+  if existing_guess.id is not null then
+    return existing_guess;
+  end if;
+
+  insert into public.room_whose_top_guesses (
+    room_id,
+    round_id,
+    top_id,
+    user_id,
+    guessed_user_id,
+    is_correct
+  )
+  values (
+    p_room_id,
+    target_round.id,
+    current_top.id,
+    current_user_id,
+    p_guessed_user_id,
+    p_guessed_user_id = current_top.author_user_id
+  )
+  returning * into next_guess;
+
+  eligible_guessers := (
+    select count(*)
+    from public.room_members
+    where room_id = p_room_id
+      and is_active = true
+      and user_id <> current_top.author_user_id
+  );
+
+  guessed_count := (
+    select count(*)
+    from public.room_whose_top_guesses
+    where top_id = current_top.id
+  );
+
+  if eligible_guessers > 0 and guessed_count >= eligible_guessers then
+    update public.room_rounds
+    set phase = 'result',
+        vote_deadline_at = null,
+        updated_at = timezone('utc', now())
+    where id = target_round.id;
+  else
+    update public.room_rounds
+    set updated_at = timezone('utc', now())
+    where id = target_round.id;
+  end if;
+
+  return next_guess;
+end;
+$$;
+
+create or replace function public.advance_whose_top_round(p_room_id uuid)
+returns public.room_rounds
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  current_user_id uuid := auth.uid();
+  target_room public.rooms;
+  target_round public.room_rounds;
+  current_top public.room_whose_top_submissions;
+  active_member_count integer := 0;
+  submitted_count integer := 0;
+  guessed_count integer := 0;
+  eligible_guessers integer := 0;
+  next_order integer;
+begin
+  if current_user_id is null then
+    raise exception 'AUTH_REQUIRED';
+  end if;
+
+  select *
+  into target_room
+  from public.rooms
+  where id = p_room_id
+  limit 1;
+
+  if target_room.id is null then
+    raise exception 'ROOM_NOT_FOUND';
+  end if;
+
+  select *
+  into target_round
+  from public.room_rounds
+  where room_id = p_room_id
+    and game_id = 'whose-top'
+  limit 1;
+
+  if target_round.id is null then
+    raise exception 'ROUND_NOT_FOUND';
+  end if;
+
+  if target_round.status <> 'active' then
+    return target_round;
+  end if;
+
+  active_member_count := (
+    select count(*)
+    from public.room_members
+    where room_id = p_room_id
+      and is_active = true
+  );
+
+  if target_round.phase = 'reveal' then
+    submitted_count := (
+      select count(*)
+      from public.room_whose_top_submissions
+      where round_id = target_round.id
+    );
+
+    if target_room.host_user_id <> current_user_id
+      and (target_round.vote_deadline_at is null or target_round.vote_deadline_at > timezone('utc', now()))
+      and submitted_count < active_member_count then
+      raise exception 'ROUND_HOST_ONLY';
+    end if;
+
+    if submitted_count < 2 then
+      raise exception 'ROUND_MIN_PLAYERS';
+    end if;
+
+    with ordered as (
+      select
+        submissions.id,
+        row_number() over (order by random()) as top_order
+      from public.room_whose_top_submissions submissions
+      where submissions.round_id = target_round.id
+    )
+    update public.room_whose_top_submissions submissions
+    set top_order = ordered.top_order
+    from ordered
+    where submissions.id = ordered.id;
+
+    update public.room_rounds
+    set round_number = 1,
+        phase = 'voting',
+        vote_deadline_at = timezone('utc', now()) + make_interval(secs => greatest(coalesce(target_round.vote_duration_seconds, 25), 5)),
+        updated_at = timezone('utc', now())
+    where id = target_round.id
+    returning * into target_round;
+
+    return target_round;
+  end if;
+
+  select *
+  into current_top
+  from public.room_whose_top_submissions
+  where round_id = target_round.id
+    and top_order = target_round.round_number
+  limit 1;
+
+  if current_top.id is null then
+    raise exception 'ROUND_NOT_FOUND';
+  end if;
+
+  if target_round.phase = 'voting' then
+    eligible_guessers := greatest(active_member_count - 1, 0);
+
+    guessed_count := (
+      select count(*)
+      from public.room_whose_top_guesses
+      where top_id = current_top.id
+    );
+
+    if target_room.host_user_id <> current_user_id
+      and (target_round.vote_deadline_at is null or target_round.vote_deadline_at > timezone('utc', now()))
+      and guessed_count < eligible_guessers then
+      raise exception 'ROUND_HOST_ONLY';
+    end if;
+
+    update public.room_rounds
+    set phase = 'result',
+        vote_deadline_at = null,
+        updated_at = timezone('utc', now())
+    where id = target_round.id
+    returning * into target_round;
+
+    return target_round;
+  end if;
+
+  if target_round.phase = 'result' then
+    select min(top_order)
+    into next_order
+    from public.room_whose_top_submissions
+    where round_id = target_round.id
+      and top_order > target_round.round_number;
+
+    if next_order is null then
+      update public.room_rounds
+      set status = 'finished',
+          phase = 'result',
+          outcome = 'continue',
+          updated_at = timezone('utc', now())
+      where id = target_round.id
+      returning * into target_round;
+    else
+      update public.room_rounds
+      set round_number = next_order,
+          phase = 'voting',
+          vote_deadline_at = timezone('utc', now()) + make_interval(secs => greatest(coalesce(target_round.vote_duration_seconds, 25), 5)),
+          updated_at = timezone('utc', now())
+      where id = target_round.id
+      returning * into target_round;
+    end if;
+  end if;
+
+  return target_round;
+end;
+$$;
+
 create or replace function public.start_majority_round(
   p_room_id uuid,
   p_category text default 'comida',
@@ -3571,6 +4283,35 @@ begin
     on conflict (room_id, user_id) do update
     set points = public.room_tournament_scores.points + excluded.points,
         updated_at = timezone('utc', now());
+  elsif target_round.game_id = 'troll' then
+    if target_round.outcome = 'troll_eliminated' then
+      insert into public.room_tournament_scores (room_id, user_id, points)
+      select p_room_id, assignments.user_id, 1
+      from public.room_troll_assignments assignments
+      where assignments.round_id = target_round.id
+      on conflict (room_id, user_id) do update
+      set points = public.room_tournament_scores.points + excluded.points,
+          updated_at = timezone('utc', now());
+    elsif target_round.outcome = 'impostor_eliminated' then
+      insert into public.room_tournament_scores (room_id, user_id, points)
+      select
+        p_room_id,
+        assignments.user_id,
+        case
+          when assignments.role = 'troll' and assignments.is_eliminated = false then 4
+          when assignments.role = 'innocent' and assignments.is_eliminated = false then 1
+          else 0
+        end
+      from public.room_troll_assignments assignments
+      where assignments.round_id = target_round.id
+        and (
+          (assignments.role = 'troll' and assignments.is_eliminated = false)
+          or (assignments.role = 'innocent' and assignments.is_eliminated = false)
+        )
+      on conflict (room_id, user_id) do update
+      set points = public.room_tournament_scores.points + excluded.points,
+          updated_at = timezone('utc', now());
+    end if;
   end if;
 
   insert into public.room_tournament_completed_games (room_id, game_id, game_order)
@@ -3636,6 +4377,484 @@ begin
   returning * into target_room;
 
   return target_room;
+end;
+$$;
+
+create or replace function public.start_troll_round(
+  p_room_id uuid,
+  p_category text default 'animals',
+  p_discussion_seconds integer default 45,
+  p_voting_seconds integer default 30,
+  p_round_count integer default 1
+)
+returns public.room_rounds
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  current_user_id uuid := auth.uid();
+  target_room public.rooms;
+  member_count integer := 0;
+  theme_words text[];
+  real_word text;
+  troll_word text;
+  next_round public.room_rounds;
+begin
+  if current_user_id is null then
+    raise exception 'AUTH_REQUIRED';
+  end if;
+
+  select *
+  into target_room
+  from public.rooms
+  where id = p_room_id
+  limit 1;
+
+  if target_room.id is null then
+    raise exception 'ROOM_NOT_FOUND';
+  end if;
+
+  if target_room.host_user_id <> current_user_id then
+    raise exception 'ROUND_HOST_ONLY';
+  end if;
+
+  member_count := (
+    select count(*)
+    from public.room_members
+    where room_id = p_room_id
+      and is_active = true
+  );
+
+  if member_count < 4 then
+    raise exception 'ROUND_MIN_PLAYERS';
+  end if;
+
+  theme_words := case p_category
+    when 'animals' then array['Leon', 'Tigre', 'Elefante', 'Delfin', 'Lobo', 'Zorro']
+    when 'countries' then array['Mexico', 'Japon', 'Italia', 'Brasil', 'Canada', 'Argentina']
+    when 'objects' then array['Brujula', 'Lampara', 'Martillo', 'Mochila', 'Reloj', 'Camara']
+    when 'faces-gestures' then array['Sonrisa', 'Carcajada', 'Cara seria', 'Sorpresa', 'Enojo', 'Duda']
+    when 'famous-people' then array['Zendaya', 'Tom Holland', 'Keanu Reeves', 'Emma Stone', 'Pedro Pascal', 'Shakira']
+    when 'football-players' then array['Lionel Messi', 'Cristiano Ronaldo', 'Kylian Mbappe', 'Neymar', 'Ronaldinho', 'Vinicius Jr.']
+    when 'movies-series' then array['Breaking Bad', 'Stranger Things', 'Harry Potter', 'Star Wars', 'Shrek', 'Toy Story']
+    when 'youtubers' then array['MrBeast', 'Ibai', 'AuronPlay', 'Rubius', 'Luisito Comunica', 'Dross']
+    when 'basketball' then array['Michael Jordan', 'LeBron James', 'Stephen Curry', 'Kobe Bryant', 'Shaquille O''Neal', 'Kevin Durant']
+    when 'f1' then array['Max Verstappen', 'Lewis Hamilton', 'Fernando Alonso', 'Charles Leclerc', 'Lando Norris', 'Sergio Perez']
+    when 'singers' then array['Taylor Swift', 'Bad Bunny', 'Billie Eilish', 'Karol G', 'Drake', 'Dua Lipa']
+    when 'cartoons-fictional' then array['Mickey Mouse', 'Goku', 'Naruto', 'Batman', 'Spider-Man', 'Pikachu']
+    when 'world-foods' then array['Tacos', 'Pizza', 'Sushi', 'Ramen', 'Paella', 'Hamburguesa']
+    else null
+  end;
+
+  if theme_words is null or array_length(theme_words, 1) < 2 then
+    raise exception 'ROUND_THEME_NOT_FOUND';
+  end if;
+
+  real_word := theme_words[1 + floor(random() * array_length(theme_words, 1))::integer];
+
+  loop
+    troll_word := theme_words[1 + floor(random() * array_length(theme_words, 1))::integer];
+    exit when troll_word <> real_word;
+  end loop;
+
+  delete from public.room_rounds
+  where room_id = p_room_id;
+
+  insert into public.room_rounds (
+    room_id,
+    round_number,
+    round_total,
+    game_id,
+    theme_category,
+    secret_word,
+    impostor_ids,
+    eliminated_user_ids,
+    expelled_user_id,
+    phase,
+    vote_deadline_at,
+    vote_duration_seconds,
+    answer_duration_seconds,
+    outcome,
+    started_by_user_id,
+    status
+  )
+  values (
+    p_room_id,
+    1,
+    greatest(coalesce(p_round_count, 1), 1),
+    'troll',
+    p_category,
+    real_word,
+    '{}'::uuid[],
+    '{}'::uuid[],
+    null,
+    'reveal',
+    timezone('utc', now()) + make_interval(secs => greatest(coalesce(p_discussion_seconds, 45), 10)),
+    greatest(coalesce(p_voting_seconds, 30), 10),
+    greatest(coalesce(p_discussion_seconds, 45), 10),
+    'continue',
+    current_user_id,
+    'active'
+  )
+  returning * into next_round;
+
+  with shuffled_members as (
+    select
+      room_members.user_id,
+      row_number() over (order by random()) as role_order
+    from public.room_members
+    where room_members.room_id = p_room_id
+      and room_members.is_active = true
+  ),
+  role_rows as (
+    select
+      user_id,
+      case
+        when role_order = 1 then 'impostor'
+        when role_order = 2 then 'troll'
+        else 'innocent'
+      end as role
+    from shuffled_members
+  )
+  insert into public.room_troll_assignments (room_id, round_id, user_id, role, word)
+  select
+    p_room_id,
+    next_round.id,
+    role_rows.user_id,
+    role_rows.role,
+    case
+      when role_rows.role = 'impostor' then null
+      when role_rows.role = 'troll' then troll_word
+      else real_word
+    end
+  from role_rows;
+
+  update public.room_rounds
+  set impostor_ids = (
+    select array_agg(assignments.user_id)
+    from public.room_troll_assignments assignments
+    where assignments.round_id = next_round.id
+      and assignments.role = 'impostor'
+  )
+  where id = next_round.id
+  returning * into next_round;
+
+  update public.rooms
+  set status = 'active',
+      selected_game_id = 'troll',
+      updated_at = timezone('utc', now())
+  where id = p_room_id;
+
+  insert into public.room_activity (room_id, actor_user_id, type, payload)
+  values (
+    p_room_id,
+    current_user_id,
+    'round_started',
+    jsonb_build_object('game_id', 'troll', 'round_id', next_round.id)
+  );
+
+  return next_round;
+end;
+$$;
+
+create or replace function public.get_troll_round_state(p_room_id uuid)
+returns table (
+  round_id uuid,
+  round_number integer,
+  round_count integer,
+  category_id text,
+  real_word text,
+  troll_word text,
+  round_status text,
+  round_phase text,
+  vote_deadline_at timestamptz,
+  vote_duration_seconds integer,
+  discussion_duration_seconds integer,
+  started_at timestamptz,
+  outcome text,
+  expelled_user_id uuid,
+  eliminated_user_ids uuid[],
+  user_id uuid,
+  role text,
+  word text,
+  is_eliminated boolean,
+  is_current_user boolean
+)
+language sql
+security definer
+set search_path = public
+as $$
+  select
+    rounds.id as round_id,
+    rounds.round_number,
+    rounds.round_total as round_count,
+    rounds.theme_category as category_id,
+    case when rounds.phase = 'result' or rounds.status = 'finished' then rounds.secret_word else null end as real_word,
+    case
+      when rounds.phase = 'result' or rounds.status = 'finished' then (
+        select troll_assignment.word
+        from public.room_troll_assignments troll_assignment
+        where troll_assignment.round_id = rounds.id
+          and troll_assignment.role = 'troll'
+        limit 1
+      )
+      else null
+    end as troll_word,
+    rounds.status as round_status,
+    rounds.phase as round_phase,
+    rounds.vote_deadline_at,
+    rounds.vote_duration_seconds,
+    rounds.answer_duration_seconds as discussion_duration_seconds,
+    rounds.created_at as started_at,
+    rounds.outcome,
+    rounds.expelled_user_id,
+    rounds.eliminated_user_ids,
+    assignments.user_id,
+    case
+      when assignments.user_id = auth.uid() or rounds.phase = 'result' or rounds.status = 'finished' then assignments.role
+      else null
+    end as role,
+    case
+      when assignments.user_id = auth.uid() or rounds.phase = 'result' or rounds.status = 'finished' then assignments.word
+      else null
+    end as word,
+    assignments.is_eliminated,
+    assignments.user_id = auth.uid() as is_current_user
+  from public.room_rounds rounds
+  join public.room_troll_assignments assignments
+    on assignments.round_id = rounds.id
+  where rounds.room_id = p_room_id
+    and rounds.game_id = 'troll'
+    and private.is_room_member(p_room_id)
+  order by assignments.created_at asc;
+$$;
+
+create or replace function public.cast_troll_vote(
+  p_room_id uuid,
+  p_target_user_id uuid
+)
+returns public.room_round_votes
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  current_user_id uuid := auth.uid();
+  target_round public.room_rounds;
+  current_assignment public.room_troll_assignments;
+  target_assignment public.room_troll_assignments;
+  next_vote public.room_round_votes;
+begin
+  if current_user_id is null then
+    raise exception 'AUTH_REQUIRED';
+  end if;
+
+  if not private.is_room_member(p_room_id) then
+    raise exception 'AUTH_REQUIRED';
+  end if;
+
+  select *
+  into target_round
+  from public.room_rounds
+  where room_id = p_room_id
+    and game_id = 'troll'
+  limit 1;
+
+  if target_round.id is null then
+    raise exception 'ROUND_NOT_FOUND';
+  end if;
+
+  if target_round.status <> 'active' or target_round.phase <> 'voting' then
+    raise exception 'ROUND_NOT_VOTING';
+  end if;
+
+  select *
+  into current_assignment
+  from public.room_troll_assignments
+  where round_id = target_round.id
+    and user_id = current_user_id
+  limit 1;
+
+  if current_assignment.id is null or current_assignment.is_eliminated then
+    raise exception 'ROUND_NOT_ACTIVE';
+  end if;
+
+  select *
+  into target_assignment
+  from public.room_troll_assignments
+  where round_id = target_round.id
+    and user_id = p_target_user_id
+  limit 1;
+
+  if target_assignment.id is null then
+    raise exception 'ROUND_TARGET_NOT_FOUND';
+  end if;
+
+  if target_assignment.is_eliminated then
+    raise exception 'ROUND_TARGET_ELIMINATED';
+  end if;
+
+  insert into public.room_round_votes (room_id, round_id, voter_user_id, target_user_id)
+  values (p_room_id, target_round.id, current_user_id, p_target_user_id)
+  on conflict (round_id, voter_user_id) do update
+  set target_user_id = excluded.target_user_id,
+      created_at = timezone('utc', now())
+  returning * into next_vote;
+
+  return next_vote;
+end;
+$$;
+
+create or replace function public.advance_troll_round(p_room_id uuid)
+returns public.room_rounds
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  current_user_id uuid := auth.uid();
+  target_round public.room_rounds;
+  winning_target_id uuid;
+  winning_role text;
+  next_eliminated_ids uuid[];
+  next_outcome text := 'continue';
+begin
+  if current_user_id is null then
+    raise exception 'AUTH_REQUIRED';
+  end if;
+
+  if not private.is_room_member(p_room_id) then
+    raise exception 'AUTH_REQUIRED';
+  end if;
+
+  select *
+  into target_round
+  from public.room_rounds
+  where room_id = p_room_id
+    and game_id = 'troll'
+  limit 1;
+
+  if target_round.id is null then
+    raise exception 'ROUND_NOT_FOUND';
+  end if;
+
+  if target_round.status <> 'active' then
+    raise exception 'ROUND_NOT_ACTIVE';
+  end if;
+
+  if target_round.phase = 'reveal' then
+    update public.room_rounds
+    set phase = 'voting',
+        vote_deadline_at = timezone('utc', now()) + make_interval(secs => greatest(coalesce(vote_duration_seconds, 30), 10)),
+        updated_at = timezone('utc', now())
+    where id = target_round.id
+    returning * into target_round;
+
+    delete from public.room_round_votes
+    where round_id = target_round.id;
+
+    return target_round;
+  end if;
+
+  if target_round.phase = 'result' and target_round.outcome = 'continue' then
+    if target_round.round_number >= target_round.round_total then
+      update public.room_rounds
+      set status = 'finished',
+          updated_at = timezone('utc', now())
+      where id = target_round.id
+      returning * into target_round;
+
+      return target_round;
+    end if;
+
+    update public.room_rounds
+    set round_number = target_round.round_number + 1,
+        phase = 'reveal',
+        vote_deadline_at = timezone('utc', now()) + make_interval(secs => greatest(coalesce(answer_duration_seconds, 45), 10)),
+        expelled_user_id = null,
+        updated_at = timezone('utc', now())
+    where id = target_round.id
+    returning * into target_round;
+
+    delete from public.room_round_votes
+    where round_id = target_round.id;
+
+    return target_round;
+  end if;
+
+  if target_round.phase <> 'voting' then
+    raise exception 'ROUND_NOT_VOTING';
+  end if;
+
+  select vote_row.target_user_id
+  into winning_target_id
+  from public.room_round_votes vote_row
+  join public.room_troll_assignments assignments
+    on assignments.round_id = vote_row.round_id
+    and assignments.user_id = vote_row.target_user_id
+    and assignments.is_eliminated = false
+  where vote_row.round_id = target_round.id
+  group by vote_row.target_user_id
+  order by count(*) desc, min(vote_row.created_at) asc
+  limit 1;
+
+  next_eliminated_ids := coalesce(target_round.eliminated_user_ids, '{}'::uuid[]);
+
+  if winning_target_id is not null then
+    select role
+    into winning_role
+    from public.room_troll_assignments
+    where round_id = target_round.id
+      and user_id = winning_target_id
+    limit 1;
+
+    next_eliminated_ids := (
+      select array_agg(distinct value_item)
+      from unnest(array_append(next_eliminated_ids, winning_target_id)) as value_item
+    );
+
+    update public.room_troll_assignments
+    set is_eliminated = true
+    where round_id = target_round.id
+      and user_id = winning_target_id;
+
+    next_outcome := case
+      when winning_role = 'troll' then 'troll_eliminated'
+      when winning_role = 'impostor' then 'impostor_eliminated'
+      else 'innocent_eliminated'
+    end;
+  end if;
+
+  update public.room_rounds
+  set phase = 'result',
+      vote_deadline_at = null,
+      expelled_user_id = winning_target_id,
+      eliminated_user_ids = coalesce(next_eliminated_ids, '{}'::uuid[]),
+      outcome = next_outcome,
+      status = case
+        when next_outcome in ('troll_eliminated', 'impostor_eliminated') then 'finished'
+        when round_number >= round_total then 'finished'
+        else 'active'
+      end,
+      updated_at = timezone('utc', now())
+  where id = target_round.id
+  returning * into target_round;
+
+  insert into public.room_activity (room_id, actor_user_id, type, payload)
+  values (
+    p_room_id,
+    current_user_id,
+    'vote_resolved',
+    jsonb_build_object(
+      'game_id', 'troll',
+      'round_id', target_round.id,
+      'expelled_user_id', winning_target_id,
+      'outcome', target_round.outcome
+    )
+  );
+
+  return target_round;
 end;
 $$;
 
@@ -4134,3 +5353,11 @@ drop policy if exists "Members can read who said guesses" on public.room_who_sai
 drop policy if exists "Members can read majority questions" on public.room_majority_questions;
 
 drop policy if exists "Members can read majority responses" on public.room_majority_responses;
+
+drop policy if exists "Members can read troll assignments" on public.room_troll_assignments;
+create policy "Members can read troll assignments"
+on public.room_troll_assignments
+for select
+using (
+  private.is_room_member(room_id)
+);

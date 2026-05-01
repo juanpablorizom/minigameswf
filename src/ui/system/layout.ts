@@ -1,3 +1,5 @@
+import { useWindowDimensions } from 'react-native';
+
 export const spacing = {
   xxs: 4,
   xs: 8,
@@ -7,6 +9,33 @@ export const spacing = {
   xl: 32,
   xxl: 40
 } as const;
+
+export const breakpoints = {
+  sm: 480,
+  md: 768,
+  lg: 1024,
+  xl: 1280
+} as const;
+
+export function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
+}
+
+export function useResponsive() {
+  const { width } = useWindowDimensions();
+  const isPhone = width < breakpoints.md;
+  const isTablet = width >= breakpoints.md && width < breakpoints.lg;
+  const isDesktop = width >= breakpoints.lg;
+
+  return {
+    width,
+    isPhone,
+    isTablet,
+    isDesktop,
+    scale: clamp(width / 414, 0.72, 1),
+    screenPaddingX: isPhone ? spacing.md : isTablet ? spacing.lg : spacing.xl
+  };
+}
 
 export const radius = {
   sm: 12,

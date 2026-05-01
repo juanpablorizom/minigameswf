@@ -4,6 +4,7 @@ import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { controls, layout, radius, spacing } from '../system/layout';
 import { textStyles } from '../system/typography';
 import { useTheme } from '../theme';
+import { MinimalIcon } from './MinimalIcon';
 
 type GameCardProps = {
   title?: string;
@@ -57,6 +58,12 @@ export function GameCard({
         <View style={styles.placeholderTopGap} />
       )}
 
+      {selected && !inactive ? (
+        <View style={styles.selectedMark}>
+          <MinimalIcon name="check" size={18} color={theme.colors.background} strokeWidth={3} />
+        </View>
+      ) : null}
+
       <View style={styles.mediaWrap}>
         {imageSource ? (
           <Image source={imageSource} resizeMode="contain" style={styles.image} />
@@ -84,10 +91,13 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
       backgroundColor: theme.mode === 'dark' ? theme.colors.surfaceMuted : theme.colors.surface,
       padding: layout.cardPadding,
       gap: layout.groupGap,
-      justifyContent: 'space-between'
+      justifyContent: 'space-between',
+      position: 'relative'
     },
     cardSelected: {
-      borderColor: theme.colors.primary
+      borderColor: theme.colors.primary,
+      borderWidth: 2,
+      backgroundColor: theme.colors.badgeAccentBackground
     },
     cardInactive: {
       borderColor: theme.colors.border,
@@ -114,6 +124,17 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
     },
     helpButtonPressed: {
       opacity: 0.9
+    },
+    selectedMark: {
+      position: 'absolute',
+      top: spacing.md,
+      left: spacing.md,
+      width: 34,
+      height: 34,
+      borderRadius: radius.pill,
+      backgroundColor: theme.colors.primary,
+      alignItems: 'center',
+      justifyContent: 'center'
     },
     helpLabel: {
       color: theme.colors.textSecondary,

@@ -1,7 +1,7 @@
 import type { PropsWithChildren, ReactNode } from 'react';
 import { SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { layout } from '../system/layout';
+import { layout, useResponsive } from '../system/layout';
 import { textStyles, typography } from '../system/typography';
 import { useTheme } from '../theme';
 
@@ -13,11 +13,21 @@ type AppScreenProps = PropsWithChildren<{
 
 export function AppScreen({ children, title, subtitle, footer }: AppScreenProps) {
   const theme = useTheme();
+  const responsive = useResponsive();
   const styles = createStyles(theme);
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={[
+          styles.content,
+          {
+            maxWidth: responsive.isDesktop ? layout.compactWidth : '100%',
+            paddingHorizontal: responsive.screenPaddingX
+          }
+        ]}
+        showsVerticalScrollIndicator={false}
+      >
         {title ? (
           <View style={styles.header}>
             <Text style={styles.title}>{title}</Text>

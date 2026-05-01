@@ -6,6 +6,7 @@ import { majorityCategoryOptions } from '../../data/majority';
 import { impostorThemeOptions } from '../../data/themes';
 import { triviaTopicOptions } from '../../data/trivia';
 import { whoSaidTopicOptions } from '../../data/whoSaid';
+import { whoseTopCategoryOptions } from '../../data/whoseTop';
 import type { GameId, RoomSettings } from '../../navigation/types';
 import { radius, spacing, typography, useTheme } from '../theme';
 
@@ -27,6 +28,9 @@ const majorityPredictionOptions = [10, 15, 20, 30];
 const trollRoundOptions = [1, 2, 3];
 const trollDiscussionOptions = [30, 45, 60, 90];
 const trollVotingOptions = [15, 30, 45, 60];
+const whoseTopSizeOptions = [3, 5, 10] as const;
+const whoseTopCreateOptions = [45, 60, 90, 120];
+const whoseTopGuessOptions = [15, 25, 30, 45];
 const missBehaviorOptions: RoomSettings['games']['impostor']['missBehavior'][] = ['repeat', 'end'];
 
 export function GameSettingsFields({ gameId, settings, onChangeSettings }: GameSettingsFieldsProps) {
@@ -399,6 +403,94 @@ export function GameSettingsFields({ gameId, settings, onChangeSettings }: GameS
                   games: {
                     ...settings.games,
                     troll: { ...trollSettings, votingSeconds }
+                  }
+                })
+              }
+            />
+          ))}
+        </View>
+      </View>
+    );
+  }
+
+  if (gameId === 'whose-top') {
+    const whoseTopSettings = settings.games['whose-top'];
+
+    return (
+      <View style={styles.block}>
+        <Text style={styles.sectionTitle}>{t('roomSettings.whoseTopCategory')}</Text>
+        <View style={styles.optionColumn}>
+          {whoseTopCategoryOptions.map((category) => (
+            <OptionChip
+              key={category}
+              label={t(`roomSettings.whoseTopCategoryOptions.${category}`)}
+              active={whoseTopSettings.category === category}
+              onPress={() =>
+                onChangeSettings({
+                  ...settings,
+                  games: {
+                    ...settings.games,
+                    'whose-top': { ...whoseTopSettings, category }
+                  }
+                })
+              }
+            />
+          ))}
+        </View>
+
+        <Text style={styles.sectionTitle}>{t('roomSettings.whoseTopSize')}</Text>
+        <View style={styles.optionRow}>
+          {whoseTopSizeOptions.map((topSize) => (
+            <OptionChip
+              key={topSize}
+              label={String(topSize)}
+              active={whoseTopSettings.topSize === topSize}
+              onPress={() =>
+                onChangeSettings({
+                  ...settings,
+                  games: {
+                    ...settings.games,
+                    'whose-top': { ...whoseTopSettings, topSize }
+                  }
+                })
+              }
+            />
+          ))}
+        </View>
+
+        <Text style={styles.sectionTitle}>{t('roomSettings.whoseTopCreateTime')}</Text>
+        <View style={styles.optionRow}>
+          {whoseTopCreateOptions.map((createSeconds) => (
+            <OptionChip
+              key={createSeconds}
+              label={`${createSeconds}s`}
+              active={whoseTopSettings.createSeconds === createSeconds}
+              onPress={() =>
+                onChangeSettings({
+                  ...settings,
+                  games: {
+                    ...settings.games,
+                    'whose-top': { ...whoseTopSettings, createSeconds }
+                  }
+                })
+              }
+            />
+          ))}
+        </View>
+
+        <Text style={styles.sectionTitle}>{t('roomSettings.whoseTopGuessTime')}</Text>
+        <View style={styles.optionRow}>
+          {whoseTopGuessOptions.map((guessSeconds) => (
+            <OptionChip
+              key={guessSeconds}
+              label={`${guessSeconds}s`}
+              active={whoseTopSettings.guessSeconds === guessSeconds}
+              onPress={() =>
+                onChangeSettings({
+                  ...settings,
+                  games: {
+                    ...settings.games,
+                    'whose-top': { ...whoseTopSettings, guessSeconds }
                   }
                 })
               }

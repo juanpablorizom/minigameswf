@@ -91,6 +91,10 @@ export function PrivateRoomScreen({
     return t(`roomSettings.majorityCategoryOptions.${value}`);
   }
 
+  function whoseTopCategoryLabel(value: RoomSettings['games']['whose-top']['category']) {
+    return t(`roomSettings.whoseTopCategoryOptions.${value}`);
+  }
+
   function turnTimerValue(value: number) {
     if (value === 0) {
       return t('roomSettings.turnTimerOptions.none');
@@ -156,6 +160,17 @@ export function PrivateRoomScreen({
           <Text style={styles.itemSubtitle}>{t('room.roundsLine', { value: settings.games.troll.roundCount })}</Text>
           <Text style={styles.itemSubtitle}>{t('room.trollDiscussionLine', { value: turnTimerValue(settings.games.troll.discussionSeconds) })}</Text>
           <Text style={styles.itemSubtitle}>{t('room.trollVotingLine', { value: turnTimerValue(settings.games.troll.votingSeconds) })}</Text>
+        </>
+      );
+    }
+
+    if (game.id === 'whose-top') {
+      return (
+        <>
+          <Text style={styles.itemSubtitle}>{t('room.whoseTopCategoryLine', { value: whoseTopCategoryLabel(settings.games['whose-top'].category) })}</Text>
+          <Text style={styles.itemSubtitle}>{t('room.whoseTopSizeLine', { value: settings.games['whose-top'].topSize })}</Text>
+          <Text style={styles.itemSubtitle}>{t('room.whoseTopCreateLine', { value: turnTimerValue(settings.games['whose-top'].createSeconds) })}</Text>
+          <Text style={styles.itemSubtitle}>{t('room.whoseTopGuessLine', { value: turnTimerValue(settings.games['whose-top'].guessSeconds) })}</Text>
         </>
       );
     }
