@@ -9,7 +9,7 @@ import { getRoomIdleRemainingMs, ROOM_IDLE_WARNING_MS, type RoomDetails } from '
 import { buildRoomJoinUrl, extractRoomCodeFromValue, normalizeRoomCode } from '../lib/roomLinks';
 import { haptic, playSound } from '../lib/feedback';
 import { clearStoredRoomResume, loadStoredMotionBackground, loadStoredRoomResume, storeMotionBackground, storeRoomResume } from '../lib/storage';
-import type { GameId, LobbyActionId, LobbyScenario, Player } from './types';
+import type { AppTab, GameId, LobbyActionId, LobbyScenario, Player, ScreenName } from './types';
 import { useAppFlow } from '../state/AppFlowContext';
 import { useAuth } from '../state/AuthContext';
 import { useFriends } from '../state/FriendsContext';
@@ -2584,7 +2584,12 @@ function mapFriendNotice(translate: (key: string, options?: Record<string, unkno
 
   return (
     <View style={styles.container}>
-      <AmbientBackground motionEnabled={isMotionBackgroundEnabled} />
+      <AmbientBackground
+        activeTab={activeTab}
+        currentScreen={currentScreen}
+        isGamesCatalogOpen={isGamesCatalogOpen}
+        motionEnabled={isMotionBackgroundEnabled}
+      />
       <View style={[styles.topBar, isLobbyShell && styles.topBarLobby]}>
         {!isLobbyShell ? (
           <View style={styles.headerIdentity}>
@@ -2791,7 +2796,7 @@ function mapFriendNotice(translate: (key: string, options?: Record<string, unkno
                   notice={settingsNotice}
                   onSave={(avatarId, frameId) => {
                     void changeAppearance(avatarId, frameId).then((result) => {
-                      setSettingsNotice(result.error ?? t('profile.avatarSaved'));
+                      setSettingsNotice(result.error ?? null);
                       if (!result.error) {
                         setIsAvatarPickerOpen(false);
                       }
@@ -2881,17 +2886,30 @@ function mapFriendNotice(translate: (key: string, options?: Record<string, unkno
 }
 
 const DECORATION_LAYOUT = [
-  { id: 'devil', top: -20, left: -30, size: 120, rotate: '-8deg' },
-  { id: 'joker', top: 80, right: -40, size: 110, rotate: '12deg' },
+  { id: 'devil', top: 80, left: -30, size: 120, rotate: '-8deg' },
+  { id: 'joker', top: 160, right: -40, size: 110, rotate: '12deg' },
   { id: 'ghost', bottom: 140, left: -40, size: 130, rotate: '-6deg' },
   { id: 'vampire', bottom: -20, right: -20, size: 140, rotate: '9deg' },
   { id: 'mask', top: '40%', left: -60, size: 100, rotate: '18deg' }
 ] as const;
 
-function AmbientBackground({ motionEnabled }: { motionEnabled: boolean }) {
+const DECORATION_ALLOWED_SCREENS: ScreenName[] = ['lobby'];
+
+function AmbientBackground({
+  activeTab,
+  currentScreen,
+  isGamesCatalogOpen,
+  motionEnabled
+}: {
+  activeTab: AppTab;
+  currentScreen: ScreenName;
+  isGamesCatalogOpen: boolean;
+  motionEnabled: boolean;
+}) {
   const theme = useTheme();
-  const { width } = useWindowDimensions();
-  const visibleDecorations = width < 540 ? DECORATION_LAYOUT.slice(2, 4) : DECORATION_LAYOUT;
+  const showDecorations = (activeTab === 'games' && DECORATION_ALLOWED_SCREENS.includes(currentScreen)) || isGamesCatalogOpen;
+  const availableAvatarIds = new Set(AVATAR_CATALOG.map((avatar) => avatar.id));
+  const visibleDecorations = DECORATION_LAYOUT.filter((decoration) => availableAvatarIds.has(decoration.id));
   const drift1 = useRef(new Animated.Value(0)).current;
   const drift2 = useRef(new Animated.Value(0)).current;
   const decorationBobs = useRef(DECORATION_LAYOUT.map(() => new Animated.Value(0))).current;
@@ -2976,7 +2994,7 @@ function AmbientBackground({ motionEnabled }: { motionEnabled: boolean }) {
         ]}
       />
       <View style={[ambientStyles.paperFiber, { borderColor: theme.colors.border }]} />
-      {visibleDecorations.map((decoration) => {
+      {showDecorations ? visibleDecorations.map((decoration) => {
         const source = AVATAR_CATALOG.find((avatar) => avatar.id === decoration.id)?.source ?? AVATAR_CATALOG[0].source;
         const sourceIndex = DECORATION_LAYOUT.findIndex((item) => item.id === decoration.id);
         const bobValue = decorationBobs[sourceIndex] ?? decorationBobs[0];
@@ -3002,7 +3020,7 @@ function AmbientBackground({ motionEnabled }: { motionEnabled: boolean }) {
             ]}
           />
         );
-      })}
+      }) : null}
     </View>
   );
 }
@@ -3291,7 +3309,7 @@ function createStyles(theme: ReturnType<typeof useTheme>, isCompactScreen: boole
   bottomNav: {
     flexDirection: 'row',
     alignItems: 'stretch',
-    borderTopWidth: 1,
+    borderTopWidth: 0,
     borderTopColor: theme.colors.border,
     backgroundColor: theme.colors.background,
     paddingHorizontal: isCompactScreen ? spacing.md : spacing.xl,
