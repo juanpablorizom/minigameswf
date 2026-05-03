@@ -58,16 +58,7 @@ export const lobbyScenarios: Record<LobbyScenarioKey, LobbyScenario> = {
   }
 };
 
-export const initialSelectedGameIds: GameId[] = [
-  'impostor',
-  'guess-who',
-  'faces-gestures',
-  'trivia',
-  'who-said',
-  'majority',
-  'troll',
-  'whose-top'
-];
+export const initialSelectedGameIds: GameId[] = [];
 
 export const initialRoomSettings: RoomSettings = {
   mode: 'tournament',

@@ -119,6 +119,7 @@ export type Database = {
           mode: 'tournament' | 'single';
           single_game_round_count: number;
           visibility: RoomVisibility;
+          last_active_at: string;
           created_at: string;
           updated_at: string;
         };
@@ -132,6 +133,7 @@ export type Database = {
           mode?: 'tournament' | 'single';
           single_game_round_count?: number;
           visibility?: RoomVisibility;
+          last_active_at?: string;
           created_at?: string;
           updated_at?: string;
         };
@@ -145,6 +147,7 @@ export type Database = {
           mode?: 'tournament' | 'single';
           single_game_round_count?: number;
           visibility?: RoomVisibility;
+          last_active_at?: string;
           created_at?: string;
           updated_at?: string;
         };
@@ -1201,6 +1204,16 @@ export type Database = {
           p_room_id: string;
         };
         Returns: Database['public']['Tables']['rooms']['Row'][];
+      };
+      ping_room_activity: {
+        Args: {
+          p_room_id: string;
+        };
+        Returns: Database['public']['Tables']['rooms']['Row'][];
+      };
+      close_idle_rooms: {
+        Args: Record<PropertyKey, never>;
+        Returns: number;
       };
       start_impostor_round: {
         Args: {

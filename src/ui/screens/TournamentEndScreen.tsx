@@ -12,21 +12,23 @@ import { SurfaceCard } from '../components/SurfaceCard';
 import { spacing, typography, useTheme } from '../theme';
 import { textStyles } from '../system/typography';
 
-type ResultsScreenProps = {
+type TournamentEndScreenProps = {
   members?: RoomMemberView[];
   scores?: TournamentScore[];
   canManageRoom?: boolean;
-  onPlayAgain: () => void;
+  onRestartTournament: () => void;
   onBackToRoom: () => void;
+  onCloseRoom: () => void;
 };
 
-export function ResultsScreen({
+export function TournamentEndScreen({
   members = [],
   scores = [],
   canManageRoom = false,
-  onPlayAgain,
-  onBackToRoom
-}: ResultsScreenProps) {
+  onRestartTournament,
+  onBackToRoom,
+  onCloseRoom
+}: TournamentEndScreenProps) {
   const { t } = useTranslation();
   const theme = useTheme();
   const styles = createStyles(theme);
@@ -43,14 +45,14 @@ export function ResultsScreen({
   const podium = rows.slice(0, 3);
 
   return (
-    <AppScreen title={t('tournament.title')} subtitle={t('tournament.subtitle')}>
+    <AppScreen title={t('tournament.endTitle')} subtitle={t('tournament.endSubtitle')}>
       <CelebrationBurst />
       <SurfaceCard>
         <View style={styles.podiumRow}>
           {podium.map((entry, index) => (
             <View key={entry.id} style={[styles.podiumCard, index === 0 && styles.winnerCard]}>
               <Badge label={t(`tournament.place.${index + 1}`)} tone={index === 0 ? 'accent' : 'neutral'} />
-              <AvatarSilhouette size={58} avatarId={entry.avatarId} frameId={entry.frameId} />
+              <AvatarSilhouette size={index === 0 ? 76 : 62} avatarId={entry.avatarId} frameId={entry.frameId} />
               <Text style={styles.podiumName}>{entry.name}</Text>
               <Text style={styles.podiumPoints}>{t('tournament.points', { count: entry.points })}</Text>
             </View>
@@ -63,18 +65,16 @@ export function ResultsScreen({
         {rows.map((entry, index) => (
           <View key={entry.id} style={styles.scoreRow}>
             <Text style={styles.rank}>#{index + 1}</Text>
-            <View style={styles.scoreMeta}>
-              <Text style={styles.scoreName}>{entry.name}</Text>
-              <Text style={styles.scoreBadge}>{t('tournament.points', { count: entry.points })}</Text>
-            </View>
-            {index === 0 ? <Badge label={t('tournament.winner')} tone="success" /> : null}
+            <Text style={styles.scoreName}>{entry.name}</Text>
+            <Badge label={t('tournament.points', { count: entry.points })} tone={index === 0 ? 'success' : 'neutral'} />
           </View>
         ))}
       </SurfaceCard>
 
       <View style={styles.actions}>
         <AppButton label={t('tournament.backToRoom')} onPress={onBackToRoom} variant="secondary" />
-        {canManageRoom ? <AppButton label={t('tournament.playAgain')} onPress={onPlayAgain} /> : null}
+        {canManageRoom ? <AppButton label={t('tournament.restartTournament')} onPress={onRestartTournament} /> : null}
+        {canManageRoom ? <AppButton label={t('tournament.closeRoom')} onPress={onCloseRoom} variant="ghost" /> : null}
       </View>
     </AppScreen>
   );
@@ -89,7 +89,7 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
     },
     podiumCard: {
       flex: 1,
-      minHeight: 170,
+      minHeight: 190,
       borderRadius: 28,
       borderWidth: 1,
       borderColor: theme.colors.border,
@@ -129,19 +129,11 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
       fontSize: typography.body,
       fontWeight: '900'
     },
-    scoreMeta: {
-      flex: 1,
-      minWidth: 0,
-      gap: 2
-    },
     scoreName: {
+      flex: 1,
       color: theme.colors.textPrimary,
       fontSize: typography.body,
       fontWeight: '800'
-    },
-    scoreBadge: {
-      color: theme.colors.textSecondary,
-      fontSize: typography.caption
     },
     actions: {
       gap: spacing.sm

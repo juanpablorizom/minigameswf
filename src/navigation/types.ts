@@ -8,7 +8,8 @@ export type ScreenName =
   | 'chooseGames'
   | 'roomSettings'
   | 'gameplay'
-  | 'results';
+  | 'results'
+  | 'tournamentEnd';
 
 export type Player = {
   id: string;
@@ -45,7 +46,6 @@ export type ImpostorCategoryId =
   | 'animals'
   | 'countries'
   | 'objects'
-  | 'faces-gestures'
   | 'famous-people'
   | 'football-players'
   | 'movies-series'

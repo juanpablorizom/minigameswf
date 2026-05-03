@@ -114,13 +114,19 @@ export const resources = {
         avatarSaved: 'Avatar actualizado.'
       },
       avatars: {
-        default: 'Silueta',
         devil: 'Diablito',
+        moreSoon: 'Más personajes próximamente.',
         joker: 'Joker',
-        masked: 'Enmascarado',
-        innocent: 'Inocente',
-        star: 'Estrella',
-        spark: 'Chispa'
+        mask: 'Máscara',
+        ghost: 'Fantasma',
+        vampire: 'Vampiro',
+        knight: 'Caballero',
+        wizard: 'Mago',
+        princess: 'Princesa',
+        robot: 'Robot',
+        alien: 'Alien',
+        ninja: 'Ninja',
+        pirate: 'Pirata'
       },
       frames: {
         plain: 'Sin marco',
@@ -174,41 +180,19 @@ export const resources = {
         themeHint: 'La selección queda guardada desde ahora.',
         logout: 'Cerrar sesión',
         appearanceSection: 'Diseño visual',
-        appearanceHint: 'Neutro claro y neutro oscuro son la base nueva. Legacy conserva el estilo anterior solo como opción secundaria.',
         appearanceCardHint: 'Elige un estilo visual completo para toda la interfaz. La selección vive dentro de un panel dedicado.',
         openAppearance: 'Abrir apariencia',
         activeAppearance: 'Activa',
         motionBackground: 'Fondo en movimiento',
         motionBackgroundHint: 'Activa un movimiento sutil en el fondo de la app.',
         themeChoices: {
-          'neutral-light': {
-            label: 'Neutro claro',
-            description: 'Base limpia, luminosa y editorial con contraste suave y blancos más calmados.'
-          },
-          'neutral-dark': {
-            label: 'Neutro oscuro',
-            description: 'Versión oscura del sistema nuevo, con contraste sobrio y superficies profundas.'
-          },
-          green: {
-            label: 'Verde',
-            description: 'Versión profunda con acentos verdes suaves para una mesa social más fresca.'
-          },
-          gold: {
-            label: 'Dorado',
-            description: 'Acentos cálidos y sobrios que empujan una lectura premium sin recargar la interfaz.'
-          },
-          'light-blue': {
-            label: 'Azul claro',
-            description: 'Interfaz clara con base azul grisácea, luminosa pero menos agresiva a la vista.'
-          },
-          'dark-green': {
-            label: 'Verde oscuro',
-            description: 'Variante oscura de tono bosque con contraste controlado y acento vegetal.'
-          },
-          'legacy-dark': {
-            label: 'Legacy',
-            description: 'Recupera el estilo cálido anterior sin mezclarlo con la nueva dirección visual.'
-          }
+          'neutral-light': { label: 'Neutro claro' },
+          'neutral-dark': { label: 'Neutro oscuro' },
+          green: { label: 'Verde' },
+          gold: { label: 'Dorado' },
+          'light-blue': { label: 'Azul claro' },
+          'dark-green': { label: 'Verde oscuro' },
+          'legacy-dark': { label: 'Legacy' }
         },
         sessionSection: 'Sesión',
         savingTheme: 'Guardando tema...'
@@ -221,7 +205,6 @@ export const resources = {
       },
       lobby: {
         home: 'Inicio',
-        headerGreeting: 'Hola, {{name}}',
         guestHeaderStatus: 'Estás en modo invitado',
         createRoom: 'Crear sala',
         joinByCode: 'Entrar por código',
@@ -240,6 +223,10 @@ export const resources = {
         activeSubtitleMember: 'Tu sala sigue abierta. Vuelve a entrar y espera a que el host continúe.',
         continueRoom: 'Continuar sala',
         shareCode: 'Compartir código',
+        leaveStoredRoom: 'Salir de la sala',
+        leaveStoredRoomConfirmTitle: '¿Salir de la sala?',
+        leaveStoredRoomConfirmMember: 'La sala seguirá abierta. Puedes volver a entrar con el código.',
+        leaveStoredRoomConfirmHost: 'Eres el host. Si sales, la sala se cerrará y todos los jugadores serán expulsados.',
         roomLinkInvalid: 'Ese enlace de sala no es válido.',
         openingRoom: 'Abriendo sala {{code}}...',
         switchingRoom: 'Saliendo de la sala {{from}} y abriendo {{to}}...',
@@ -318,6 +305,7 @@ export const resources = {
       },
       gamesCatalog: {
         title: 'Juegos',
+        catalogTitle: 'Catálogo de juegos',
         subtitle: 'Elige los minijuegos para tu grupo.',
         selectedCount: '{{count}} juegos seleccionados',
         futureSlot: 'Próximamente',
@@ -370,6 +358,12 @@ export const resources = {
       roomSettings: {
         title: 'Configuración del juego',
         subtitle: 'Ajusta el modo seleccionado. Por ahora la sala usa Impostor y aquí defines sus reglas antes de iniciar la ronda.',
+        modeTitle: 'Modo de partida',
+        modeTournament: 'Torneo',
+        modeSingle: 'Juego único',
+        singleRoundCount: 'Número de rondas',
+        modeTournamentHint: 'Varios juegos seguidos con marcador acumulado.',
+        modeSingleHint: 'Un solo juego repetido varias rondas.',
         modalTitle: 'Configuración - {{game}}',
         modalSubtitle: 'Cambia las reglas de la partida actual sin salir de la sala.',
         profileTitle: 'Perfil de la sala de hoy',
@@ -475,7 +469,6 @@ export const resources = {
           animals: 'Animales',
           countries: 'Países y capitales',
           objects: 'Objetos',
-          'faces-gestures': 'Caras y gestos',
           'famous-people': 'Actores famosos',
           'football-players': 'Jugadores de fútbol',
           'movies-series': 'Películas y series',
@@ -510,8 +503,6 @@ export const resources = {
       },
       room: {
         title: 'Sala privada',
-        subtitleHost: 'Tú estás hosteando esta sala. Mantén al grupo en movimiento y deja cerrado el flujo antes de empezar.',
-        subtitleMember: 'El host controla la configuración. Tú puedes seguir quién está dentro y esperar el siguiente paso.',
         roomCode: 'Código de sala',
         statusActive: 'En partida',
         statusFinished: 'Terminada',
@@ -565,6 +556,8 @@ export const resources = {
         leaveConfirmHostAction: 'Cerrar sala',
         roomLeftNotice: 'Saliste de la sala.',
         roomClosedNotice: 'La sala se cerró correctamente.',
+        roomExpired: 'La sala anterior caducó por inactividad.',
+        idleWarning: 'La sala se cerrará en 1 minuto si no hay actividad. Toca cualquier botón para mantenerla activa.',
         privacyLine: 'Privacidad: {{value}}',
         maxPlayersLine: 'Máximo de jugadores: {{value}}',
         roundsLine: 'Rondas: {{value}}',
@@ -722,11 +715,15 @@ export const resources = {
       tournament: {
         title: 'Resultados',
         subtitle: 'Puntaje final del torneo.',
+        endTitle: '¡Torneo completado!',
+        endSubtitle: 'Marcador final del torneo.',
         scoreboard: 'Marcador',
         winner: 'Ganador',
         points: '{{count}} pts',
         backToRoom: 'Volver a la sala',
         playAgain: 'Jugar otra vez',
+        restartTournament: 'Nuevo torneo',
+        closeRoom: 'Cerrar sala',
         nextGame: 'Siguiente juego',
         modeTournament: 'Torneo',
         modeSingle: 'Juego único',
@@ -962,13 +959,19 @@ export const resources = {
         avatarSaved: 'Avatar updated.'
       },
       avatars: {
-        default: 'Silhouette',
         devil: 'Devil',
+        moreSoon: 'More characters coming soon.',
         joker: 'Joker',
-        masked: 'Masked',
-        innocent: 'Innocent',
-        star: 'Star',
-        spark: 'Spark'
+        mask: 'Mask',
+        ghost: 'Ghost',
+        vampire: 'Vampire',
+        knight: 'Knight',
+        wizard: 'Wizard',
+        princess: 'Princess',
+        robot: 'Robot',
+        alien: 'Alien',
+        ninja: 'Ninja',
+        pirate: 'Pirate'
       },
       frames: {
         plain: 'No frame',
@@ -1022,41 +1025,19 @@ export const resources = {
         themeHint: 'The choice is already saved.',
         logout: 'Log out',
         appearanceSection: 'Visual design',
-        appearanceHint: 'Neutral light and neutral dark are the new base. Legacy keeps the previous style as a secondary option.',
         appearanceCardHint: 'Choose a complete visual style for the whole interface. Selection lives inside a dedicated panel.',
         openAppearance: 'Open appearance',
         activeAppearance: 'Active',
         motionBackground: 'Motion background',
         motionBackgroundHint: 'Enable subtle background movement across the app.',
         themeChoices: {
-          'neutral-light': {
-            label: 'Neutral light',
-            description: 'Clean, bright, editorial base with softer contrast and calmer whites.'
-          },
-          'neutral-dark': {
-            label: 'Neutral dark',
-            description: 'Dark version of the new system, with restrained contrast and deep surfaces.'
-          },
-          green: {
-            label: 'Green',
-            description: 'Deep version with soft green accents for a fresher social table feel.'
-          },
-          gold: {
-            label: 'Gold',
-            description: 'Warm restrained accents that push a premium feel without overloading the interface.'
-          },
-          'light-blue': {
-            label: 'Light blue',
-            description: 'Light interface with a blue-gray base, airy but easier on the eyes.'
-          },
-          'dark-green': {
-            label: 'Dark green',
-            description: 'Forest-toned dark variant with controlled contrast and botanical accents.'
-          },
-          'legacy-dark': {
-            label: 'Legacy',
-            description: 'Brings back the previous warm style without mixing it into the new direction.'
-          }
+          'neutral-light': { label: 'Neutral light' },
+          'neutral-dark': { label: 'Neutral dark' },
+          green: { label: 'Green' },
+          gold: { label: 'Gold' },
+          'light-blue': { label: 'Light blue' },
+          'dark-green': { label: 'Dark green' },
+          'legacy-dark': { label: 'Legacy' }
         },
         sessionSection: 'Session',
         savingTheme: 'Saving theme...'
@@ -1069,7 +1050,6 @@ export const resources = {
       },
       lobby: {
         home: 'Home',
-        headerGreeting: 'Hi, {{name}}',
         guestHeaderStatus: 'You are in guest mode',
         createRoom: 'Create room',
         joinByCode: 'Join by code',
@@ -1088,6 +1068,10 @@ export const resources = {
         activeSubtitleMember: 'Your room is still open. Jump back in and wait for the host to continue.',
         continueRoom: 'Continue room',
         shareCode: 'Share code',
+        leaveStoredRoom: 'Leave room',
+        leaveStoredRoomConfirmTitle: 'Leave room?',
+        leaveStoredRoomConfirmMember: 'The room will stay open. You can join again with the code.',
+        leaveStoredRoomConfirmHost: 'You are the host. Leaving closes the room and removes every player.',
         roomLinkInvalid: 'That room link is not valid.',
         openingRoom: 'Opening room {{code}}...',
         switchingRoom: 'Leaving room {{from}} and opening {{to}}...',
@@ -1165,6 +1149,7 @@ export const resources = {
       },
       gamesCatalog: {
         title: 'Games',
+        catalogTitle: 'Game catalog',
         subtitle: 'Choose minigames for your group.',
         selectedCount: '{{count}} games selected',
         futureSlot: 'Coming soon',
@@ -1217,6 +1202,12 @@ export const resources = {
       roomSettings: {
         title: 'Game settings',
         subtitle: 'Adjust the selected mode. For now the room runs Impostor and this is where you define its rules before the round starts.',
+        modeTitle: 'Match mode',
+        modeTournament: 'Tournament',
+        modeSingle: 'Single game',
+        singleRoundCount: 'Round count',
+        modeTournamentHint: 'Several games in sequence with a cumulative score.',
+        modeSingleHint: 'One selected game repeated for several rounds.',
         modalTitle: 'Settings - {{game}}',
         modalSubtitle: 'Change the current match rules without leaving the room.',
         profileTitle: "Tonight's room profile",
@@ -1322,7 +1313,6 @@ export const resources = {
           animals: 'Animals',
           countries: 'Countries and capitals',
           objects: 'Objects',
-          'faces-gestures': 'Faces and gestures',
           'famous-people': 'Famous actors',
           'football-players': 'Football players',
           'movies-series': 'Movies and series',
@@ -1357,8 +1347,6 @@ export const resources = {
       },
       room: {
         title: 'Party room',
-        subtitleHost: 'You are hosting this room. Keep members moving and lock the flow before the first round starts.',
-        subtitleMember: 'The host controls setup. You can follow who is in and wait for the next step.',
         roomCode: 'Room code',
         statusActive: 'In session',
         statusFinished: 'Finished',
@@ -1412,6 +1400,8 @@ export const resources = {
         leaveConfirmHostAction: 'Close room',
         roomLeftNotice: 'You left the room.',
         roomClosedNotice: 'The room was closed successfully.',
+        roomExpired: 'The previous room expired due to inactivity.',
+        idleWarning: 'The room will close in 1 minute without activity. Tap any button to keep it alive.',
         privacyLine: 'Privacy: {{value}}',
         maxPlayersLine: 'Max players: {{value}}',
         roundsLine: 'Rounds: {{value}}',
@@ -1568,11 +1558,15 @@ export const resources = {
       tournament: {
         title: 'Results',
         subtitle: 'Final tournament score.',
+        endTitle: 'Tournament complete!',
+        endSubtitle: 'Final tournament scoreboard.',
         scoreboard: 'Scoreboard',
         winner: 'Winner',
         points: '{{count}} pts',
         backToRoom: 'Back to room',
         playAgain: 'Play again',
+        restartTournament: 'New tournament',
+        closeRoom: 'Close room',
         nextGame: 'Next game',
         modeTournament: 'Tournament',
         modeSingle: 'Single game',

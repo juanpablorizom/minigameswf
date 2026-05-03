@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { DEFAULT_AVATAR_ID } from './avatarCatalog';
 import type { Database, RoomMemberRole, RoomStatus } from '../lib/supabase.types';
 import { gameRegistry, normalizeGameIds } from './gameRegistry';
 import type {
@@ -28,6 +29,7 @@ import type {
   WhoSaidRoundSetup,
   WhoSaidTopicId
 } from '../navigation/types';
+import type { RoomSettings } from '../navigation/types';
 
 export type RoomRow = Database['public']['Tables']['rooms']['Row'];
 export type RoomMemberRow = Database['public']['Tables']['room_members']['Row'];
@@ -74,6 +76,8 @@ export type RoomDetails = {
 };
 
 export type RoomRealtimeState = 'idle' | 'connecting' | 'live' | 'error';
+export const ROOM_IDLE_TIMEOUT_MS = 5 * 60 * 1000;
+export const ROOM_IDLE_WARNING_MS = 4 * 60 * 1000;
 
 type SubscribeToRoomRealtimeOptions = {
   roomId: string;
@@ -414,7 +418,7 @@ export async function joinPrivateRoomByCode(code: string) {
 export async function getActiveRoomIdForUser(userId: string) {
   const { data, error } = await supabase
     .from('room_members')
-    .select('room_id, joined_at, rooms!inner(id, status)')
+    .select('room_id, joined_at, rooms!inner(id, status, last_active_at)')
     .eq('user_id', userId)
     .eq('is_active', true)
     .order('joined_at', { ascending: false })
@@ -425,11 +429,27 @@ export async function getActiveRoomIdForUser(userId: string) {
   }
 
   const activeMember = (data ?? []).find((entry) => {
-    const status = (entry as { rooms?: { status?: RoomStatus } }).rooms?.status;
-    return status === 'waiting' || status === 'active';
+    const room = (entry as { rooms?: { status?: RoomStatus; last_active_at?: string } }).rooms;
+    return (room?.status === 'waiting' || room?.status === 'active') && !isRoomIdleExpired(room.last_active_at);
   }) as { room_id: string } | undefined;
 
   return activeMember?.room_id ?? null;
+}
+
+export function isRoomIdleExpired(lastActiveAt: string | null | undefined, nowMs = Date.now()) {
+  if (!lastActiveAt) {
+    return false;
+  }
+
+  return nowMs - new Date(lastActiveAt).getTime() > ROOM_IDLE_TIMEOUT_MS;
+}
+
+export function getRoomIdleRemainingMs(lastActiveAt: string | null | undefined, nowMs = Date.now()) {
+  if (!lastActiveAt) {
+    return ROOM_IDLE_TIMEOUT_MS;
+  }
+
+  return Math.max(0, ROOM_IDLE_TIMEOUT_MS - (nowMs - new Date(lastActiveAt).getTime()));
 }
 
 async function getRoom(roomId: string) {
@@ -964,7 +984,7 @@ export async function getRoomDetails(roomId: string, currentUserId: string): Pro
       displayName: profile?.display_name ?? profile?.username ?? 'Player',
       username: profile?.username ?? `user-${member.user_id.slice(0, 6)}`,
       avatarUrl: profile?.avatar_url ?? null,
-      avatarId: profile?.avatar_id ?? 'default',
+      avatarId: profile?.avatar_id === 'default' ? DEFAULT_AVATAR_ID : profile?.avatar_id ?? DEFAULT_AVATAR_ID,
       frameId: profile?.frame_id ?? 'plain',
       role: member.role,
       joinedAt: member.joined_at,
@@ -1032,6 +1052,23 @@ export async function updateRoomSelectedGames(roomId: string, hostUserId: string
   }
 }
 
+export async function updateRoomModeSettings(
+  roomId: string,
+  hostUserId: string,
+  mode: RoomSettings['mode'],
+  singleGameRoundCount: number
+) {
+  const { error } = await supabase
+    .from('rooms')
+    .update({ mode, single_game_round_count: singleGameRoundCount })
+    .eq('id', roomId)
+    .eq('host_user_id', hostUserId);
+
+  if (error) {
+    throw new Error(buildRoomErrorMessage(error.message));
+  }
+}
+
 export async function updateRoomStatus(roomId: string, hostUserId: string, status: RoomStatus) {
   const { error } = await supabase
     .from('rooms')
@@ -1054,6 +1091,18 @@ export async function updateRoomMemberPresence(roomId: string, userId: string, i
   if (error) {
     throw error;
   }
+}
+
+export async function pingRoomActivity(roomId: string) {
+  const { data, error } = await supabase.rpc('ping_room_activity', {
+    p_room_id: roomId
+  });
+
+  if (error) {
+    throw new Error(buildRoomErrorMessage(error.message));
+  }
+
+  return normalizeResult(data as RoomRow | RoomRow[] | null);
 }
 
 export async function leaveCurrentRoom(roomId: string, userId: string) {

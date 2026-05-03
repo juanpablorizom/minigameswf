@@ -18,10 +18,11 @@ type LobbyScreenProps = {
   scenario: LobbyScenario;
   friends: FriendView[];
   onAction: (actionId: LobbyActionId) => void;
+  onLeaveStoredRoom?: () => void;
   notice?: string | null;
 };
 
-export function LobbyScreen({ displayName, scenario, friends, onAction, notice = null }: LobbyScreenProps) {
+export function LobbyScreen({ displayName, scenario, friends, onAction, onLeaveStoredRoom, notice = null }: LobbyScreenProps) {
   const { t } = useTranslation();
   const theme = useTheme();
   const styles = createStyles(theme);
@@ -86,6 +87,9 @@ export function LobbyScreen({ displayName, scenario, friends, onAction, notice =
                 onPress={() => onAction(scenario.secondaryAction!.id)}
                 variant={scenario.secondaryAction.variant}
               />
+            ) : null}
+            {scenario.key === 'activeRoom' && onLeaveStoredRoom ? (
+              <AppButton label={t('lobby.leaveStoredRoom')} onPress={onLeaveStoredRoom} variant="ghost" />
             ) : null}
           </View>
         )}

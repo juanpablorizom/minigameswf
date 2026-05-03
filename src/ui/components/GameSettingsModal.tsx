@@ -21,7 +21,7 @@ type GameSettingsModalProps = {
 export function GameSettingsModal({
   visible,
   gameLabel,
-  selectedGameIds = ['impostor'],
+  selectedGameIds = [],
   settings,
   onChangeSettings,
   onCancel,

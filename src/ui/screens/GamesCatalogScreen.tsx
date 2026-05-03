@@ -13,6 +13,7 @@ import { useTheme } from '../theme';
 
 type GamesCatalogScreenProps = {
   embedded?: boolean;
+  readOnly?: boolean;
   selectedGameIds: GameId[];
   onToggleGame: (gameId: GameId) => void;
 };
@@ -28,7 +29,7 @@ const HOW_TO_PLAY_PREFIX: Record<GameId, string> = {
   'whose-top': 'gamesCatalog.whoseTopHowToPlay'
 };
 
-export function GamesCatalogScreen({ embedded = false, selectedGameIds, onToggleGame }: GamesCatalogScreenProps) {
+export function GamesCatalogScreen({ embedded = false, readOnly = false, selectedGameIds, onToggleGame }: GamesCatalogScreenProps) {
   const { t } = useTranslation();
   const theme = useTheme();
   const styles = createStyles(theme);
@@ -51,15 +52,22 @@ export function GamesCatalogScreen({ embedded = false, selectedGameIds, onToggle
 
   const content = (
     <View style={styles.catalogShell}>
-      <Text style={styles.selectionCount}>{t('gamesCatalog.selectedCount', { count: selectedGameIds.length })}</Text>
+      {!readOnly ? <Text style={styles.selectionCount}>{t('gamesCatalog.selectedCount', { count: selectedGameIds.length })}</Text> : null}
       <View style={[styles.grid, !responsive.isPhone && styles.gridWide]}>
         {featuredGames.map((game) => (
           <View key={game.id} style={columnStyle}>
             <GameCard
               title={t(`gameMeta.names.${game.id}`)}
               imageSource={gameRegistry[game.id].thumbnail}
-              selected={selectedGameIds.includes(game.id)}
-              onPress={() => onToggleGame(game.id)}
+              selected={!readOnly && selectedGameIds.includes(game.id)}
+              onPress={() => {
+                if (readOnly) {
+                  setHelpGameId(game.id);
+                  return;
+                }
+
+                onToggleGame(game.id);
+              }}
               onHelpPress={() => setHelpGameId(game.id)}
             />
           </View>
@@ -90,7 +98,7 @@ export function GamesCatalogScreen({ embedded = false, selectedGameIds, onToggle
   }
 
   return (
-    <AppScreen title={t('gamesCatalog.title')} subtitle={t('gamesCatalog.subtitle')}>
+    <AppScreen title={readOnly ? t('gamesCatalog.catalogTitle') : t('gamesCatalog.title')} subtitle={readOnly ? undefined : t('gamesCatalog.subtitle')}>
       {content}
       <HowToPlayModal gameId={helpGameId} onClose={() => setHelpGameId(null)} />
     </AppScreen>

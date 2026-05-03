@@ -6,7 +6,7 @@ create table if not exists public.profiles (
   username text not null unique,
   display_name text,
   avatar_url text,
-  avatar_id text not null default 'default',
+  avatar_id text not null default 'devil',
   frame_id text not null default 'plain',
   preferred_language text not null default 'es' check (preferred_language in ('es', 'en')),
   created_at timestamptz not null default timezone('utc', now()),
@@ -42,8 +42,11 @@ on public.user_friendships (requester_id, status);
 alter table public.user_settings
 add column if not exists theme_preference text not null default 'default';
 
-alter table public.profiles add column if not exists avatar_id text not null default 'default';
+alter table public.profiles add column if not exists avatar_id text not null default 'devil';
 alter table public.profiles add column if not exists frame_id text not null default 'plain';
+update public.profiles
+set avatar_id = 'devil'
+where avatar_id = 'default';
 
 create table if not exists public.rooms (
   id uuid primary key default gen_random_uuid(),
@@ -51,22 +54,26 @@ create table if not exists public.rooms (
   host_user_id uuid not null references auth.users (id) on delete cascade,
   status text not null default 'waiting' check (status in ('waiting', 'active', 'finished')),
   selected_game_id text,
-  selected_game_ids text[] not null default array['impostor']::text[],
+  selected_game_ids text[] not null default array[]::text[],
   mode text not null default 'tournament' check (mode in ('tournament', 'single')),
   single_game_round_count integer not null default 3 check (single_game_round_count between 1 and 10),
   visibility text not null default 'private' check (visibility in ('private')),
+  last_active_at timestamptz not null default timezone('utc', now()),
   created_at timestamptz not null default timezone('utc', now()),
   updated_at timestamptz not null default timezone('utc', now())
 );
 
-alter table public.rooms add column if not exists selected_game_ids text[] not null default array['impostor']::text[];
+alter table public.rooms add column if not exists selected_game_ids text[] not null default array[]::text[];
 alter table public.rooms add column if not exists mode text not null default 'tournament';
 alter table public.rooms add column if not exists single_game_round_count integer not null default 3;
+alter table public.rooms add column if not exists last_active_at timestamptz not null default timezone('utc', now());
+create index if not exists rooms_last_active_idx
+on public.rooms (last_active_at, status);
 
 update public.rooms
 set selected_game_ids = case
   when selected_game_id is not null then array[selected_game_id]
-  else array['impostor']::text[]
+  else array[]::text[]
 end
 where selected_game_ids is null or array_length(selected_game_ids, 1) is null;
 
@@ -100,7 +107,6 @@ create table if not exists public.room_rounds (
       'animals',
       'countries',
       'objects',
-      'faces-gestures',
       'famous-people',
       'football-players',
       'popular',
@@ -139,13 +145,19 @@ create table if not exists public.room_rounds (
 alter table public.room_rounds
 drop constraint if exists room_rounds_theme_category_check;
 
+update public.room_rounds
+set theme_category = case
+  when game_id = 'faces-gestures' then 'objects'
+  else 'animals'
+end
+where theme_category = 'faces-gestures';
+
 alter table public.room_rounds
 add constraint room_rounds_theme_category_check check (
   theme_category in (
     'animals',
     'countries',
     'objects',
-    'faces-gestures',
     'famous-people',
     'football-players',
     'popular',
@@ -609,6 +621,179 @@ before update on public.room_troll_assignments
 for each row
 execute function public.set_updated_at();
 
+create or replace function public.touch_room_activity()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  target_room_id uuid;
+begin
+  target_room_id := coalesce(new.room_id, old.room_id);
+
+  if target_room_id is not null then
+    update public.rooms
+    set last_active_at = timezone('utc', now())
+    where id = target_room_id;
+  end if;
+
+  return coalesce(new, old);
+end;
+$$;
+
+drop trigger if exists touch_room_on_member_change on public.room_members;
+create trigger touch_room_on_member_change
+after insert or update or delete on public.room_members
+for each row
+execute function public.touch_room_activity();
+
+drop trigger if exists touch_room_on_round_change on public.room_rounds;
+create trigger touch_room_on_round_change
+after insert or update or delete on public.room_rounds
+for each row
+execute function public.touch_room_activity();
+
+drop trigger if exists touch_room_on_vote on public.room_round_votes;
+create trigger touch_room_on_vote
+after insert on public.room_round_votes
+for each row
+execute function public.touch_room_activity();
+
+drop trigger if exists touch_room_on_guess_who_change on public.room_guess_who_assignments;
+create trigger touch_room_on_guess_who_change
+after insert or update on public.room_guess_who_assignments
+for each row
+execute function public.touch_room_activity();
+
+drop trigger if exists touch_room_on_faces_gestures_change on public.room_faces_gestures_answers;
+create trigger touch_room_on_faces_gestures_change
+after insert or update on public.room_faces_gestures_answers
+for each row
+execute function public.touch_room_activity();
+
+drop trigger if exists touch_room_on_trivia_change on public.room_trivia_answers;
+create trigger touch_room_on_trivia_change
+after insert or update on public.room_trivia_answers
+for each row
+execute function public.touch_room_activity();
+
+drop trigger if exists touch_room_on_who_said_phrase_change on public.room_who_said_phrases;
+create trigger touch_room_on_who_said_phrase_change
+after insert or update on public.room_who_said_phrases
+for each row
+execute function public.touch_room_activity();
+
+drop trigger if exists touch_room_on_who_said_guess_change on public.room_who_said_guesses;
+create trigger touch_room_on_who_said_guess_change
+after insert or update on public.room_who_said_guesses
+for each row
+execute function public.touch_room_activity();
+
+drop trigger if exists touch_room_on_whose_top_submission_change on public.room_whose_top_submissions;
+create trigger touch_room_on_whose_top_submission_change
+after insert or update on public.room_whose_top_submissions
+for each row
+execute function public.touch_room_activity();
+
+drop trigger if exists touch_room_on_whose_top_guess_change on public.room_whose_top_guesses;
+create trigger touch_room_on_whose_top_guess_change
+after insert or update on public.room_whose_top_guesses
+for each row
+execute function public.touch_room_activity();
+
+drop trigger if exists touch_room_on_majority_change on public.room_majority_responses;
+create trigger touch_room_on_majority_change
+after insert or update on public.room_majority_responses
+for each row
+execute function public.touch_room_activity();
+
+drop trigger if exists touch_room_on_troll_change on public.room_troll_assignments;
+create trigger touch_room_on_troll_change
+after insert or update on public.room_troll_assignments
+for each row
+execute function public.touch_room_activity();
+
+create or replace function public.ping_room_activity(p_room_id uuid)
+returns public.rooms
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  current_user_id uuid := auth.uid();
+  target_room public.rooms;
+begin
+  if current_user_id is null then
+    raise exception 'AUTH_REQUIRED';
+  end if;
+
+  if not exists (
+    select 1
+    from public.room_members
+    where room_id = p_room_id
+      and user_id = current_user_id
+      and is_active = true
+  ) then
+    raise exception 'ROOM_MEMBER_NOT_FOUND';
+  end if;
+
+  update public.rooms
+  set last_active_at = timezone('utc', now())
+  where id = p_room_id
+    and status in ('waiting', 'active')
+  returning * into target_room;
+
+  if target_room.id is null then
+    raise exception 'ROOM_NOT_FOUND';
+  end if;
+
+  return target_room;
+end;
+$$;
+
+create or replace function public.close_idle_rooms()
+returns integer
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  closed_count integer;
+begin
+  update public.rooms
+  set status = 'finished',
+      updated_at = timezone('utc', now())
+  where status in ('waiting', 'active')
+    and last_active_at < timezone('utc', now()) - interval '5 minutes';
+
+  get diagnostics closed_count = row_count;
+  return closed_count;
+end;
+$$;
+
+do $$
+begin
+  begin
+    create extension if not exists pg_cron with schema extensions;
+  exception
+    when others then
+      null;
+  end;
+
+  if exists (select 1 from pg_extension where extname = 'pg_cron') then
+    begin
+      execute $cron$select cron.unschedule('close-idle-rooms')$cron$;
+    exception
+      when others then
+        null;
+    end;
+
+    execute $cron$select cron.schedule('close-idle-rooms', '* * * * *', 'select public.close_idle_rooms();')$cron$;
+  end if;
+end;
+$$;
+
 create or replace function public.generate_room_code()
 returns text
 language plpgsql
@@ -628,7 +813,7 @@ $$;
 
 drop function if exists public.create_private_room(text);
 
-create or replace function public.create_private_room(p_selected_game_ids text[] default array['impostor']::text[])
+create or replace function public.create_private_room(p_selected_game_ids text[] default array[]::text[])
 returns public.rooms
 language plpgsql
 security definer
@@ -638,7 +823,7 @@ declare
   current_user_id uuid := auth.uid();
   next_room public.rooms;
   next_code text;
-  safe_game_ids text[] := coalesce(p_selected_game_ids, array['impostor']::text[]);
+  safe_game_ids text[] := coalesce(p_selected_game_ids, array[]::text[]);
   first_game_id text;
 begin
   if current_user_id is null then
@@ -646,7 +831,7 @@ begin
   end if;
 
   safe_game_ids := (
-    select coalesce(array_agg(game_id order by first_order), array['impostor']::text[])
+    select coalesce(array_agg(game_id order by first_order), array[]::text[])
     from (
       select selected_game_id as game_id, min(selected_order) as first_order
       from unnest(safe_game_ids) with ordinality as selected(selected_game_id, selected_order)
@@ -654,10 +839,6 @@ begin
       group by selected_game_id
     ) selected
   );
-
-  if array_length(safe_game_ids, 1) is null then
-    safe_game_ids := array['impostor']::text[];
-  end if;
 
   first_game_id := safe_game_ids[1];
 
@@ -883,7 +1064,6 @@ begin
     when 'animals' then array['Leon', 'Tigre', 'Elefante', 'Jirafa', 'Delfin', 'Lobo', 'Pinguino', 'Cebra', 'Koala', 'Zorro', 'Rinoceronte', 'Hipopotamo']
     when 'countries' then array['Mexico', 'Ciudad de Mexico', 'Japon', 'Tokio', 'Italia', 'Roma', 'Brasil', 'Brasilia', 'Canada', 'Ottawa', 'Argentina', 'Buenos Aires', 'Francia', 'Paris', 'India', 'Nueva Delhi', 'Egipto', 'El Cairo', 'Australia', 'Canberra', 'Portugal', 'Lisboa', 'Colombia', 'Bogota', 'España', 'Madrid', 'Alemania', 'Berlin', 'Reino Unido', 'Londres', 'Estados Unidos', 'Washington D. C.', 'China', 'Pekin', 'Rusia', 'Moscu', 'Corea del Sur', 'Seul', 'Indonesia', 'Yakarta', 'Tailandia', 'Bangkok', 'Chile', 'Santiago', 'Peru', 'Lima', 'Marruecos', 'Rabat']
     when 'objects' then array['Brujula', 'Lampara', 'Martillo', 'Mochila', 'Reloj', 'Camara', 'Paraguas', 'Llave', 'Telefono', 'Binoculares', 'Microfono', 'Guitarra']
-    when 'faces-gestures' then array['Sonrisa', 'Carcajada', 'Guino', 'Cara seria', 'Cara de sorpresa', 'Cara de enojo', 'Cara triste', 'Cara confundida', 'Cara de miedo', 'Cara de sueño', 'Cara de asco', 'Cara de culpa', 'Cara de poker', 'Risa nerviosa', 'Risa malvada', 'Llanto falso', 'Mirada sospechosa', 'Ceja levantada', 'Ojos cerrados', 'Silencio', 'Pensando', 'Pulgar arriba', 'Pulgar abajo', 'Aplauso', 'Mano saludando', 'Cara de orgullo', 'Beso', 'Lengua afuera', 'Susto', 'Verguenza', 'Duda', 'Desprecio']
     when 'famous-people' then array['Zendaya', 'Margot Robbie', 'Tom Holland', 'Keanu Reeves', 'Emma Stone', 'Ryan Gosling', 'Jenna Ortega', 'Pedro Pascal', 'Timothee Chalamet', 'Ana de Armas', 'Robert Downey Jr.', 'Scarlett Johansson', 'Leonardo DiCaprio', 'Natalie Portman', 'Denzel Washington', 'Meryl Streep', 'Jennifer Lawrence', 'Christian Bale', 'Angelina Jolie', 'Chris Hemsworth', 'Florence Pugh']
     when 'football-players' then array['Lionel Messi', 'Cristiano Ronaldo', 'Kylian Mbappe', 'Neymar', 'Erling Haaland', 'Kevin De Bruyne', 'Luka Modric', 'Jude Bellingham', 'Antoine Griezmann', 'Vinicius Jr.', 'Rodri', 'Harry Kane', 'Mohamed Salah', 'Robert Lewandowski', 'Sergio Ramos', 'Ronaldinho', 'Zinedine Zidane', 'Andres Iniesta', 'Xavi', 'Thierry Henry']
     when 'movies-series' then array['Breaking Bad', 'Stranger Things', 'Game of Thrones', 'Friends', 'The Office', 'Harry Potter', 'Star Wars', 'Avengers', 'Spider-Man', 'The Batman', 'Titanic', 'Avatar', 'Interstellar', 'The Simpsons', 'Narcos', 'Wednesday', 'Dark', 'The Last of Us', 'Shrek', 'Toy Story']
@@ -1496,7 +1676,7 @@ begin
   values (
     p_room_id,
     previous_round_number + 1,
-    'faces-gestures',
+    'objects',
     'faces-gestures',
     selected_character,
     '{}'::uuid[],
@@ -4394,7 +4574,7 @@ begin
 
   update public.rooms
   set status = 'waiting',
-      selected_game_id = coalesce(selected_game_ids[1], selected_game_id, 'impostor'),
+      selected_game_id = selected_game_ids[1],
       updated_at = timezone('utc', now())
   where id = p_room_id
   returning * into target_room;
@@ -4457,7 +4637,6 @@ begin
     when 'animals' then array['Leon', 'Tigre', 'Elefante', 'Delfin', 'Lobo', 'Zorro']
     when 'countries' then array['Mexico', 'Japon', 'Italia', 'Brasil', 'Canada', 'Argentina']
     when 'objects' then array['Brujula', 'Lampara', 'Martillo', 'Mochila', 'Reloj', 'Camara']
-    when 'faces-gestures' then array['Sonrisa', 'Carcajada', 'Cara seria', 'Sorpresa', 'Enojo', 'Duda']
     when 'famous-people' then array['Zendaya', 'Tom Holland', 'Keanu Reeves', 'Emma Stone', 'Pedro Pascal', 'Shakira']
     when 'football-players' then array['Lionel Messi', 'Cristiano Ronaldo', 'Kylian Mbappe', 'Neymar', 'Ronaldinho', 'Vinicius Jr.']
     when 'movies-series' then array['Breaking Bad', 'Stranger Things', 'Harry Potter', 'Star Wars', 'Shrek', 'Toy Story']
@@ -5235,7 +5414,7 @@ begin
   end if;
 
   update public.profiles
-  set avatar_id = coalesce(nullif(p_avatar_id, ''), 'default'),
+  set avatar_id = coalesce(nullif(p_avatar_id, ''), 'devil'),
       frame_id = coalesce(nullif(p_frame_id, ''), 'plain'),
       updated_at = timezone('utc', now())
   where id = current_user_id

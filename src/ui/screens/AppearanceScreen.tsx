@@ -29,9 +29,7 @@ export function AppearanceScreen({
   const styles = createStyles(theme);
 
   return (
-    <AppScreen title={embedded ? undefined : t('settings.appearanceSection')} subtitle={embedded ? undefined : t('settings.appearanceHint')}>
-      <Text style={styles.introCopy}>{t('settings.appearanceHint')}</Text>
-
+    <AppScreen title={embedded ? undefined : t('settings.appearanceSection')}>
       <View style={styles.paletteGrid}>
         {themeOptions.map((themeOption) => {
           const isActive = themePreference === themeOption.id;
@@ -49,7 +47,7 @@ export function AppearanceScreen({
               accessibilityRole="button"
               accessibilityLabel={t(`settings.themeChoices.${themeOption.id}.label`)}
             >
-              <PaletteDisc colors={themeOption.preview} active={isActive} />
+              <PaletteDisc colors={themeOption.paletteSwatch} active={isActive} />
               <Text style={styles.themeTitle}>{t(`settings.themeChoices.${themeOption.id}.label`)}</Text>
               {isActive ? <Text style={styles.activeLabel}>{t('settings.activeAppearance')}</Text> : null}
             </Pressable>
@@ -77,20 +75,21 @@ export function AppearanceScreen({
   );
 }
 
-function PaletteDisc({ colors, active }: { colors: readonly [string, string, string]; active: boolean }) {
+function PaletteDisc({ colors, active }: { colors: readonly [string, string, string, string]; active: boolean }) {
   const theme = useTheme();
 
   return (
     <View>
-      <Svg width={82} height={82} viewBox="0 0 82 82">
-        <Path d="M41 41 L41 1 A40 40 0 0 1 75.64 61 Z" fill={colors[0]} />
-        <Path d="M41 41 L75.64 61 A40 40 0 0 1 6.36 61 Z" fill={colors[1]} />
-        <Path d="M41 41 L6.36 61 A40 40 0 0 1 41 1 Z" fill={colors[2]} />
-        <Circle cx="41" cy="41" r="39" fill="none" stroke={active ? theme.colors.primary : theme.colors.borderStrong} strokeWidth={active ? 4 : 1.5} />
+      <Svg width={96} height={96} viewBox="0 0 96 96">
+        <Path d="M48 48 L48 2 A46 46 0 0 1 94 48 Z" fill={colors[0]} />
+        <Path d="M48 48 L94 48 A46 46 0 0 1 48 94 Z" fill={colors[1]} />
+        <Path d="M48 48 L48 94 A46 46 0 0 1 2 48 Z" fill={colors[2]} />
+        <Path d="M48 48 L2 48 A46 46 0 0 1 48 2 Z" fill={colors[3]} />
+        <Circle cx="48" cy="48" r="45" fill="none" stroke={active ? theme.colors.primary : theme.colors.borderStrong} strokeWidth={active ? 4 : 1.5} />
       </Svg>
       {active ? (
         <View style={stylesStatic.checkBadge}>
-          <MinimalIcon name="check" size={14} color={theme.colors.primaryText} strokeWidth={3} />
+          <MinimalIcon name="check" size={14} color={theme.colors.primary} strokeWidth={3} />
         </View>
       ) : null}
     </View>
@@ -100,23 +99,19 @@ function PaletteDisc({ colors, active }: { colors: readonly [string, string, str
 const stylesStatic = StyleSheet.create({
   checkBadge: {
     position: 'absolute',
-    right: -2,
-    top: -2,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    left: 32,
+    top: 32,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#C4622A'
+    backgroundColor: '#FFFFFF'
   }
 });
 
 function createStyles(theme: ReturnType<typeof useTheme>) {
   return StyleSheet.create({
-    introCopy: {
-      color: theme.colors.textSecondary,
-      ...textStyles.body
-    },
     paletteGrid: {
       flexDirection: 'row',
       flexWrap: 'wrap',
@@ -124,8 +119,8 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
       gap: spacing.md
     },
     paletteItem: {
-      width: 132,
-      minHeight: 132,
+      width: 148,
+      minHeight: 148,
       borderRadius: radius.lg,
       borderWidth: 1,
       borderColor: 'transparent',

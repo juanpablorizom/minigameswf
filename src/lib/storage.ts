@@ -141,6 +141,10 @@ export async function storeRoomResume(shouldResume: boolean) {
   await appStorage.removeItem(ROOM_RESUME_STORAGE_KEY);
 }
 
+export async function clearStoredRoomResume() {
+  await appStorage.removeItem(ROOM_RESUME_STORAGE_KEY);
+}
+
 export async function loadStoredMotionBackground() {
   const value = await appStorage.getItem(MOTION_BACKGROUND_STORAGE_KEY);
   return value !== '0';

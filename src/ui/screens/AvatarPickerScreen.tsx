@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
-import { AVATAR_CATALOG, FRAME_CATALOG } from '../../data/avatarCatalog';
+import { AVATAR_CATALOG, DEFAULT_AVATAR_ID, FRAME_CATALOG } from '../../data/avatarCatalog';
 import { AppButton } from '../components/AppButton';
 import { AppScreen } from '../components/AppScreen';
 import { Avatar } from '../components/Avatar';
@@ -23,7 +23,7 @@ type AvatarPickerScreenProps = {
 
 export function AvatarPickerScreen({
   embedded = false,
-  avatarId = 'default',
+  avatarId = DEFAULT_AVATAR_ID,
   frameId = 'plain',
   isBusy = false,
   notice = null,
@@ -32,9 +32,9 @@ export function AvatarPickerScreen({
   const { t } = useTranslation();
   const theme = useTheme();
   const styles = createStyles(theme);
-  const [selectedAvatarId, setSelectedAvatarId] = useState(avatarId ?? 'default');
+  const [selectedAvatarId, setSelectedAvatarId] = useState(avatarId ?? DEFAULT_AVATAR_ID);
   const [selectedFrameId, setSelectedFrameId] = useState(frameId ?? 'plain');
-  const hasChanges = selectedAvatarId !== (avatarId ?? 'default') || selectedFrameId !== (frameId ?? 'plain');
+  const hasChanges = selectedAvatarId !== (avatarId ?? DEFAULT_AVATAR_ID) || selectedFrameId !== (frameId ?? 'plain');
 
   const content = useMemo(
     () => (
@@ -65,7 +65,7 @@ export function AvatarPickerScreen({
                     pressed && styles.optionPressed
                   ]}
                   accessibilityRole="button"
-                  accessibilityLabel={t(`avatars.${avatar.id}`, { defaultValue: avatar.label })}
+                  accessibilityLabel={t(avatar.labelKey)}
                 >
                   <Avatar avatarId={avatar.id} frameId={selectedFrameId} size={62} />
                   {isActive ? (
@@ -73,11 +73,12 @@ export function AvatarPickerScreen({
                       <MinimalIcon name="check" size={14} color={theme.colors.primaryText} strokeWidth={3} />
                     </View>
                   ) : null}
-                  <Text style={styles.optionLabel}>{t(`avatars.${avatar.id}`, { defaultValue: avatar.label })}</Text>
+                  <Text style={styles.optionLabel}>{t(avatar.labelKey)}</Text>
                 </Pressable>
               );
             })}
           </View>
+          {AVATAR_CATALOG.length === 1 ? <Text style={styles.helper}>{t('avatars.moreSoon')}</Text> : null}
         </View>
 
         <View style={styles.section}>

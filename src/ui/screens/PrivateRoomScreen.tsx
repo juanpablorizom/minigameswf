@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 
 import type { RoomMemberView, RoomRealtimeState } from '../../data/rooms';
 import { gameRegistry } from '../../data/gameRegistry';
-import type { MiniGame, RoomSettings } from '../../navigation/types';
+import type { MiniGame, RoomSettings, TournamentScore } from '../../navigation/types';
 import { AppButton } from '../components/AppButton';
 import { AppScreen } from '../components/AppScreen';
 import { AvatarSilhouette } from '../components/AvatarSilhouette';
@@ -19,6 +19,8 @@ type PrivateRoomScreenProps = {
   roomStatus: 'waiting' | 'active' | 'finished';
   members: RoomMemberView[];
   selectedGames: MiniGame[];
+  scores?: TournamentScore[];
+  completedGameIds?: string[];
   settings: RoomSettings;
   canManageRoom: boolean;
   canStartGame: boolean;
@@ -40,6 +42,8 @@ export function PrivateRoomScreen({
   roomStatus,
   members,
   selectedGames,
+  scores = [],
+  completedGameIds = [],
   settings,
   canManageRoom,
   canStartGame,
@@ -59,18 +63,16 @@ export function PrivateRoomScreen({
   const styles = createStyles(theme);
   const [copied, setCopied] = useState(false);
   const activeMembers = members.filter((member) => member.isActive);
+  const scoreRows = activeMembers
+    .map((member) => ({
+      userId: member.userId,
+      name: member.displayName,
+      points: scores.find((score) => score.userId === member.userId)?.points ?? 0
+    }))
+    .sort((a, b) => b.points - a.points || a.name.localeCompare(b.name));
   const host = members.find((member) => member.role === 'host') ?? null;
   const roomStatusLabel =
     roomStatus === 'active' ? t('room.statusActive') : roomStatus === 'finished' ? t('room.statusFinished') : t('room.statusWaiting');
-  const syncStatusLabel =
-    syncState === 'live'
-      ? t('room.syncLive')
-      : syncState === 'connecting'
-        ? t('room.syncConnecting')
-        : syncState === 'error'
-          ? t('room.syncReconnect')
-          : t('room.syncIdle');
-
   function gameName(id: string) {
     return t(`gameMeta.names.${id}`);
   }
@@ -206,7 +208,7 @@ export function PrivateRoomScreen({
   }
 
   return (
-    <AppScreen title={t('room.title')} subtitle={canManageRoom ? t('room.subtitleHost') : t('room.subtitleMember')}>
+    <AppScreen title={t('room.title')}>
       <SurfaceCard>
         <View style={styles.roomTop}>
           <View style={styles.codeBlock}>
@@ -227,12 +229,9 @@ export function PrivateRoomScreen({
           </View>
           <View style={styles.statusStack}>
             <Badge label={roomStatusLabel} tone={roomStatus === 'active' ? 'success' : 'accent'} />
-            <Badge
-              label={syncStatusLabel}
-              tone={syncState === 'error' ? 'accent' : syncState === 'live' ? 'success' : 'neutral'}
-            />
           </View>
         </View>
+        {syncState === 'error' ? <Text style={styles.notice}>{t('room.syncReconnect')}</Text> : null}
         <Text style={styles.sectionCopy}>
           {host
             ? t('room.hostLine', { host: host.displayName, count: activeMembers.length })
@@ -288,6 +287,19 @@ export function PrivateRoomScreen({
         ))}
       </SurfaceCard>
 
+      {completedGameIds.length ? (
+        <SurfaceCard>
+          <Text style={styles.sectionTitle}>{t('tournament.scoreboard')}</Text>
+          {scoreRows.map((row, index) => (
+            <View key={row.userId} style={styles.scoreRow}>
+              <Text style={styles.rank}>#{index + 1}</Text>
+              <Text style={styles.scoreName}>{row.name}</Text>
+              <Badge label={t('tournament.points', { count: row.points })} tone={index === 0 ? 'success' : 'neutral'} />
+            </View>
+          ))}
+        </SurfaceCard>
+      ) : null}
+
       <SurfaceCard>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>{t('room.gameModes')}</Text>
@@ -304,7 +316,10 @@ export function PrivateRoomScreen({
             </View>
           ))
         ) : (
-          <Text style={styles.itemSubtitle}>{canManageRoom ? t('room.noModeHost') : t('room.noModeMember')}</Text>
+          <View style={styles.emptyGamesCta}>
+            <Text style={styles.itemSubtitle}>{canManageRoom ? t('room.noModeHost') : t('room.noModeMember')}</Text>
+            {canManageRoom ? <AppButton label={t('room.chooseGame')} onPress={onChooseGames} /> : null}
+          </View>
         )}
       </SurfaceCard>
 
@@ -504,6 +519,27 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
     color: theme.colors.textMuted,
     fontSize: typography.caption,
     lineHeight: 18
+  },
+  emptyGamesCta: {
+    gap: spacing.md,
+    alignItems: 'flex-start'
+  },
+  scoreRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md
+  },
+  rank: {
+    width: 44,
+    color: theme.colors.highlight,
+    fontSize: typography.body,
+    fontWeight: '900'
+  },
+  scoreName: {
+    flex: 1,
+    color: theme.colors.textPrimary,
+    fontSize: typography.body,
+    fontWeight: '800'
   }
   });
 }

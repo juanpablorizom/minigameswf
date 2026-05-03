@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Easing, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import type { ImpostorRoundSetup, MiniGame, Player, RoomSettings } from '../../navigation/types';
@@ -7,6 +7,8 @@ import { AppButton } from '../components/AppButton';
 import { AppScreen } from '../components/AppScreen';
 import { Badge } from '../components/Badge';
 import { SurfaceCard } from '../components/SurfaceCard';
+import { Toast } from '../components/Toast';
+import { haptic, playSound } from '../../lib/feedback';
 import { radius, spacing, typography, useTheme } from '../theme';
 
 type GameplayScreenProps = {
@@ -49,12 +51,58 @@ export function GameplayScreen({
   const [isVoteModalVisible, setIsVoteModalVisible] = useState(false);
   const [pendingVoteTargetId, setPendingVoteTargetId] = useState<string | null>(null);
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
   const autoResolvedVoteRef = useRef<string | null>(null);
+  const activePlayerPulse = useRef(new Animated.Value(0)).current;
+  const phaseFade = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(activePlayerPulse, {
+          toValue: 1,
+          duration: 750,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true
+        }),
+        Animated.timing(activePlayerPulse, {
+          toValue: 0,
+          duration: 750,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true
+        })
+      ])
+    );
+
+    loop.start();
+
+    return () => {
+      loop.stop();
+    };
+  }, [activePlayerPulse]);
 
   useEffect(() => {
     setIsVoteModalVisible(false);
     setPendingVoteTargetId(null);
   }, [roundSetup?.roundId, roundSetup?.phase, roundSetup?.expelledUserId]);
+
+  useEffect(() => {
+    phaseFade.setValue(0);
+    Animated.timing(phaseFade, {
+      toValue: 1,
+      duration: 220,
+      useNativeDriver: true
+    }).start();
+  }, [phaseFade, roundSetup?.phase]);
+
+  useEffect(() => {
+    if (!toastMessage) {
+      return;
+    }
+
+    const timeout = setTimeout(() => setToastMessage(null), 2200);
+    return () => clearTimeout(timeout);
+  }, [toastMessage]);
 
   useEffect(() => {
     if (!roundSetup?.voteDeadlineAt || roundSetup.phase !== 'voting') {
@@ -121,6 +169,18 @@ export function GameplayScreen({
 
   const pendingVoteTarget = availableVoteTargets.find((player) => player.id === pendingVoteTargetId) ?? null;
   const canVoteNow = roundSetup.phase === 'voting';
+
+  useEffect(() => {
+    if (!expelledPlayer || roundSetup.phase !== 'result') {
+      return;
+    }
+
+    const success = roundSetup.impostorIds.includes(expelledPlayer.id);
+    haptic(success ? 'success' : 'warning');
+    void playSound(success ? 'correct' : 'wrong');
+    setToastMessage(success ? t('gameplay.voteSuccessTitle') : t('gameplay.voteFailTitle'));
+  }, [expelledPlayer?.id, roundSetup.phase, roundSetup.impostorIds, t]);
+
   function openVoteFlow() {
     if (canVoteNow) {
       setIsVoteModalVisible(true);
@@ -148,24 +208,27 @@ export function GameplayScreen({
 
   return (
     <AppScreen title={t('gameplay.impostorTitle')} subtitle={t('gameplay.impostorSubtitle')}>
+      <Toast message={toastMessage} tone="success" />
       <SurfaceCard>
-        <View style={styles.headerRow}>
-          <Badge label={t(`roomSettings.themeOptions.${roundSetup.categoryId}`)} tone="accent" />
-          <Badge label={t('gameplay.roundSimple', { current: roundSetup.roundNumber })} tone="neutral" />
-        </View>
-        <View style={styles.revealCard}>
-          <Text style={styles.revealEyebrow}>
-            {isCurrentPlayerImpostor ? t('gameplay.impostorTag') : t('gameplay.secretWordTag')}
-          </Text>
-          <Text style={styles.revealValue}>
-            {isCurrentPlayerImpostor ? t('gameplay.impostorWord') : roundSetup.secretWord}
-          </Text>
-          <Text style={styles.revealCopy}>
-            {isCurrentPlayerImpostor
-              ? t('gameplay.impostorHelper')
-              : t('gameplay.civilianHelper', { word: roundSetup.secretWord })}
-          </Text>
-        </View>
+        <Animated.View style={{ opacity: phaseFade }}>
+          <View style={styles.headerRow}>
+            <Badge label={t(`roomSettings.themeOptions.${roundSetup.categoryId}`)} tone="accent" />
+            <Badge label={t('gameplay.roundSimple', { current: roundSetup.roundNumber })} tone="neutral" />
+          </View>
+          <View style={styles.revealCard}>
+            <Text style={styles.revealEyebrow}>
+              {isCurrentPlayerImpostor ? t('gameplay.impostorTag') : t('gameplay.secretWordTag')}
+            </Text>
+            <Text style={styles.revealValue}>
+              {isCurrentPlayerImpostor ? t('gameplay.impostorWord') : roundSetup.secretWord}
+            </Text>
+            <Text style={styles.revealCopy}>
+              {isCurrentPlayerImpostor
+                ? t('gameplay.impostorHelper')
+                : t('gameplay.civilianHelper', { word: roundSetup.secretWord })}
+            </Text>
+          </View>
+        </Animated.View>
       </SurfaceCard>
 
       <SurfaceCard>
@@ -213,7 +276,19 @@ export function GameplayScreen({
           const receivedVotes = voteSummary.get(player.id) ?? 0;
 
           return (
-            <View key={player.id} style={styles.playerRow}>
+            <Animated.View
+              key={player.id}
+              style={[
+                styles.playerRow,
+                player.isCurrentUser && {
+                  transform: [
+                    {
+                      scale: activePlayerPulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.05] })
+                    }
+                  ]
+                }
+              ]}
+            >
               <View style={styles.playerMeta}>
                 <Text style={styles.playerName}>{player.name}</Text>
                 <Text style={styles.playerStatus}>
@@ -232,7 +307,7 @@ export function GameplayScreen({
                 ) : null}
                 {roundSetup.expelledUserId === player.id ? <Badge label={t('gameplay.eliminated')} tone="accent" /> : null}
               </View>
-            </View>
+            </Animated.View>
           );
         })}
       </SurfaceCard>
@@ -271,6 +346,9 @@ export function GameplayScreen({
                     return;
                   }
 
+                  haptic('medium');
+                  void playSound('vote');
+                  setToastMessage(t('gameplay.voteRegisteredFor', { player: pendingVoteTarget.name }));
                   onCastVote(pendingVoteTarget.id);
                   setIsVoteModalVisible(false);
                 }}

@@ -34,6 +34,7 @@ type AppFlowValue = {
   saveRoomSettings: () => void;
   startGameplay: () => void;
   revealResults: () => void;
+  revealTournamentEnd: () => void;
   playAgain: () => void;
   backToLobby: () => void;
   resetToLobby: () => void;
@@ -178,6 +179,10 @@ export function AppFlowProvider({ children }: PropsWithChildren) {
       revealResults: () => {
         setActiveTab('games');
         setScreen('results');
+      },
+      revealTournamentEnd: () => {
+        setActiveTab('games');
+        setScreen('tournamentEnd');
       },
       playAgain: () => {
         setActiveTab('games');

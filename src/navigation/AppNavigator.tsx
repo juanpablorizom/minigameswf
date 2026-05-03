@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, Linking, Modal, PanResponder, Platform, Pressable, ScrollView, Share, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Animated, Easing, Image, Linking, Modal, PanResponder, Platform, Pressable, ScrollView, Share, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { featuredGames, lobbyScenarios } from '../data/mockData';
 import { gameRegistry, getGamesByIds, normalizeGameIds } from '../data/gameRegistry';
 import { impostorThemeWords } from '../data/themes';
-import type { RoomDetails } from '../data/rooms';
+import { getRoomIdleRemainingMs, ROOM_IDLE_WARNING_MS, type RoomDetails } from '../data/rooms';
 import { buildRoomJoinUrl, extractRoomCodeFromValue, normalizeRoomCode } from '../lib/roomLinks';
-import { loadStoredMotionBackground, loadStoredRoomResume, storeMotionBackground, storeRoomResume } from '../lib/storage';
+import { haptic, playSound } from '../lib/feedback';
+import { clearStoredRoomResume, loadStoredMotionBackground, loadStoredRoomResume, storeMotionBackground, storeRoomResume } from '../lib/storage';
 import type { GameId, LobbyActionId, LobbyScenario, Player } from './types';
 import { useAppFlow } from '../state/AppFlowContext';
 import { useAuth } from '../state/AuthContext';
@@ -33,13 +34,16 @@ import { ScanRoomScreen } from '../ui/screens/ScanRoomScreen';
 import { SettingsScreen } from '../ui/screens/SettingsScreen';
 import { TriviaGameplayScreen } from '../ui/screens/TriviaGameplayScreen';
 import { TrollGameplayScreen } from '../ui/screens/TrollGameplayScreen';
+import { TournamentEndScreen } from '../ui/screens/TournamentEndScreen';
 import { WelcomeScreen } from '../ui/screens/WelcomeScreen';
 import { WhoseTopGameplayScreen } from '../ui/screens/WhoseTopGameplayScreen';
 import { WhoSaidGameplayScreen } from '../ui/screens/WhoSaidGameplayScreen';
 import { AppButton } from '../ui/components/AppButton';
+import { Avatar } from '../ui/components/Avatar';
 import { GameSettingsModal } from '../ui/components/GameSettingsModal';
 import { MinimalIcon, type MinimalIconName } from '../ui/components/MinimalIcon';
 import { radius, spacing, typography, useTheme } from '../ui/theme';
+import { AVATAR_CATALOG, DEFAULT_AVATAR_ID } from '../data/avatarCatalog';
 
 function mapRoomNotice(translate: (key: string, options?: Record<string, unknown>) => string, error?: string | null) {
   if (error === 'ROOM_NOT_FOUND') {
@@ -116,6 +120,10 @@ function mapRoomNotice(translate: (key: string, options?: Record<string, unknown
 
   if (error === 'ROUND_THEME_NOT_FOUND') {
     return translate('room.themeUnavailable');
+  }
+
+  if (error === 'ROOM_EXPIRED') {
+    return translate('room.roomExpired');
   }
 
   if (error === 'ROUND_NOT_FOUND') {
@@ -254,6 +262,8 @@ export function AppNavigator() {
     resolveImpostorVote,
     returnRoomToLobby,
     saveSelectedGames,
+    saveRoomModeSettings,
+    pingRoomActivity,
     setRoomScreenActive
   } = useRoom();
   const {
@@ -281,6 +291,7 @@ export function AppNavigator() {
     saveRoomSettings,
     startGameplay,
     revealResults,
+    revealTournamentEnd,
     playAgain,
     backToLobby,
     resetToLobby
@@ -302,12 +313,14 @@ export function AppNavigator() {
   const [isLeaveRoomConfirmOpen, setIsLeaveRoomConfirmOpen] = useState(false);
   const [isGameSettingsOpen, setIsGameSettingsOpen] = useState(false);
   const [isMotionBackgroundEnabled, setIsMotionBackgroundEnabled] = useState(true);
+  const [idleWarning, setIdleWarning] = useState<string | null>(null);
   const [draftRoomSettings, setDraftRoomSettings] = useState(roomSettings);
   const [resumeRoomReady, setResumeRoomReady] = useState(false);
   const [shouldResumeRoom, setShouldResumeRoom] = useState(false);
   const autoCloseSinglePlayerRoomRef = useRef<string | null>(null);
   const hadAccessRef = useRef(false);
   const attemptedRoomResumeRef = useRef(false);
+  const lastRoomPingAtRef = useRef(0);
   const screenFade = useRef(new Animated.Value(1)).current;
   const canGoBackRef = useRef(canGoBack);
   const goBackRef = useRef(goBack);
@@ -326,7 +339,7 @@ export function AppNavigator() {
       }
     })
   ).current;
-  const roomFlowScreens = ['room', 'chooseGames', 'roomSettings', 'gameplay', 'results'] as const;
+  const roomFlowScreens = ['room', 'chooseGames', 'roomSettings', 'gameplay', 'results', 'tournamentEnd'] as const;
 
   function mapAuthNotice(error?: string | null) {
     if (!error) {
@@ -428,8 +441,48 @@ function mapFriendNotice(translate: (key: string, options?: Record<string, unkno
     return room ? room.selectedGameIds : selectedGameIds;
   }
 
-  function getSelectedGameId(room: RoomDetails | null): GameId {
-    return getRoomSelectedGameIds(room)[0] ?? 'impostor';
+  function getSelectedGameId(room: RoomDetails | null): GameId | null {
+    return getRoomSelectedGameIds(room)[0] ?? null;
+  }
+
+  function touchRoomActivity() {
+    if (!activeRoom) {
+      return;
+    }
+
+    const now = Date.now();
+
+    if (now - lastRoomPingAtRef.current < 10000) {
+      return;
+    }
+
+    lastRoomPingAtRef.current = now;
+    void pingRoomActivity().then((result) => {
+      if (result.error && result.error !== 'AUTH_REQUIRED') {
+        setRoomNotice(mapRoomNotice(t, result.error));
+      }
+    });
+  }
+
+  function signalAnswerFeedback(correct: boolean | undefined) {
+    if (correct === true) {
+      haptic('success');
+      void playSound('correct');
+      return;
+    }
+
+    if (correct === false) {
+      haptic('warning');
+      void playSound('wrong');
+    }
+  }
+
+  function getRoundSequenceNumber(round: RoomDetails['round']) {
+    if (!round) {
+      return 0;
+    }
+
+    return 'roundNumber' in round ? round.roundNumber : round.questionOrder;
   }
 
   function runStartImpostorRound(onSuccess?: () => void) {
@@ -774,7 +827,14 @@ function mapFriendNotice(translate: (key: string, options?: Record<string, unkno
   }
 
   function runStartSelectedRound(onSuccess?: () => void) {
-    runStartGameRound(getSelectedGameId(activeRoom), onSuccess);
+    const selectedGameId = getSelectedGameId(activeRoom);
+
+    if (!selectedGameId) {
+      setRoomNotice(t('chooseGames.selectAtLeastOne'));
+      return;
+    }
+
+    runStartGameRound(selectedGameId, onSuccess);
   }
 
   function continueTournamentFromCurrentRound() {
@@ -785,7 +845,14 @@ function mapFriendNotice(translate: (key: string, options?: Record<string, unkno
     const currentGameId = activeRoom.round.gameId;
     const roomGameIds = getRoomSelectedGameIds(activeRoom);
     const currentIndex = roomGameIds.indexOf(currentGameId);
-    const nextGameId = currentIndex >= 0 ? roomGameIds[currentIndex + 1] : null;
+    const nextGameId =
+      activeRoom.room.mode === 'single'
+        ? getRoundSequenceNumber(activeRoom.round) < activeRoom.room.single_game_round_count
+          ? currentGameId
+          : null
+        : currentIndex >= 0
+          ? roomGameIds[currentIndex + 1]
+          : null;
 
     void scoreTournamentRound().then((result) => {
       if (result.error) {
@@ -801,7 +868,7 @@ function mapFriendNotice(translate: (key: string, options?: Record<string, unkno
       }
 
       setRoomNotice(null);
-      revealResults();
+      revealTournamentEnd();
     });
   }
 
@@ -932,6 +999,37 @@ function mapFriendNotice(translate: (key: string, options?: Record<string, unkno
   }, [activeRoom, continueRoom, currentScreen, resumeRoomReady, roomBusy, shouldResumeRoom]);
 
   useEffect(() => {
+    if (!activeRoom || activeRoom.room.status === 'finished') {
+      setIdleWarning(null);
+      return;
+    }
+
+    const lastActiveAt = activeRoom.room.last_active_at;
+
+    function updateWarning() {
+      const remainingMs = getRoomIdleRemainingMs(lastActiveAt);
+
+      if (remainingMs <= 0) {
+        setIdleWarning(t('room.roomExpired'));
+        void clearStoredRoomResume();
+        setShouldResumeRoom(false);
+        attemptedRoomResumeRef.current = false;
+        backToLobby();
+        return;
+      }
+
+      setIdleWarning(remainingMs <= ROOM_IDLE_WARNING_MS ? t('room.idleWarning') : null);
+    }
+
+    updateWarning();
+    const interval = setInterval(updateWarning, 15000);
+
+    return () => {
+      clearInterval(interval);
+    };
+  }, [activeRoom?.room.id, activeRoom?.room.last_active_at, activeRoom?.room.status, backToLobby, t]);
+
+  useEffect(() => {
     if (!roomsReady || activeRoom || !roomFlowScreens.includes(currentScreen as (typeof roomFlowScreens)[number])) {
       return;
     }
@@ -960,8 +1058,20 @@ function mapFriendNotice(translate: (key: string, options?: Record<string, unkno
   useEffect(() => {
     if (activeRoom) {
       hydrateSelectedGames(activeRoom.selectedGameIds);
+      updateRoomSettings({
+        ...roomSettings,
+        mode: activeRoom.room.mode,
+        singleGameRoundCount: activeRoom.room.single_game_round_count
+      });
     }
-  }, [activeRoom?.room.id, activeRoom?.room.selected_game_id, activeRoom?.room.selected_game_ids, hydrateSelectedGames]);
+  }, [
+    activeRoom?.room.id,
+    activeRoom?.room.mode,
+    activeRoom?.room.selected_game_id,
+    activeRoom?.room.selected_game_ids,
+    activeRoom?.room.single_game_round_count,
+    hydrateSelectedGames
+  ]);
 
   useEffect(() => {
     if (!isGameSettingsOpen) {
@@ -987,6 +1097,37 @@ function mapFriendNotice(translate: (key: string, options?: Record<string, unkno
 
     startGameplay();
   }, [activeRoom?.round?.roundId, activeRoom?.round?.phase, activeRoom?.round?.status, currentScreen, revealResults, startGameplay]);
+
+  useEffect(() => {
+    if (!activeRoom || currentScreen === 'tournamentEnd') {
+      return;
+    }
+
+    const selectedIds = getRoomSelectedGameIds(activeRoom);
+
+    if (!selectedIds.length || !activeRoom.round || activeRoom.round.status !== 'finished') {
+      return;
+    }
+
+    const completedIds = activeRoom.tournament.completedGameIds;
+    const tournamentComplete =
+      activeRoom.room.mode === 'single'
+        ? completedIds.includes(activeRoom.round.gameId) && getRoundSequenceNumber(activeRoom.round) >= activeRoom.room.single_game_round_count
+        : selectedIds.every((gameId) => completedIds.includes(gameId));
+
+    if (tournamentComplete && (currentScreen === 'gameplay' || currentScreen === 'results')) {
+      revealTournamentEnd();
+    }
+  }, [
+    activeRoom?.room.mode,
+    activeRoom?.room.single_game_round_count,
+    activeRoom?.round?.gameId,
+    activeRoom?.round?.roundId,
+    activeRoom?.round?.status,
+    activeRoom?.tournament.completedGameIds,
+    currentScreen,
+    revealTournamentEnd
+  ]);
 
   useEffect(() => {
     if (!activeRoom || activeRoom.round || (currentScreen !== 'gameplay' && currentScreen !== 'results')) {
@@ -1238,6 +1379,7 @@ function mapFriendNotice(translate: (key: string, options?: Record<string, unkno
       return;
     }
 
+    touchRoomActivity();
     const roomUrl = buildRoomJoinUrl(activeRoom.room.code);
     const shareMessage = `Join my MiniGamesWF room with code ${activeRoom.room.code}\n${roomUrl}`;
 
@@ -1287,6 +1429,7 @@ function mapFriendNotice(translate: (key: string, options?: Record<string, unkno
         break;
       case 'inviteFriends':
         if (activeRoom) {
+          touchRoomActivity();
           void shareRoomCode();
           return;
         }
@@ -1338,6 +1481,7 @@ function mapFriendNotice(translate: (key: string, options?: Record<string, unkno
     const nextGameIds = getNextSelectedGameIds(getRoomSelectedGameIds(activeRoom), gameId);
 
     if (activeRoom) {
+      touchRoomActivity();
       void saveSelectedGames(nextGameIds).then((result) => {
         if (result.error) {
           setRoomNotice(mapRoomNotice(t, result.error));
@@ -1366,7 +1510,7 @@ function mapFriendNotice(translate: (key: string, options?: Record<string, unkno
   }
 
   function requestLeaveRoom() {
-    if (!activeRoom || !roomFlowScreens.includes(currentScreen as (typeof roomFlowScreens)[number])) {
+    if (!activeRoom) {
       backToLobby();
       return;
     }
@@ -1384,7 +1528,7 @@ function mapFriendNotice(translate: (key: string, options?: Record<string, unkno
     setIsAccountPanelOpen(false);
     setIsSettingsPanelOpen(false);
     setRoomNotice(null);
-    void storeRoomResume(false);
+    void clearStoredRoomResume();
     backToLobby();
 
     void leaveRoom().then((result) => {
@@ -1413,6 +1557,7 @@ function mapFriendNotice(translate: (key: string, options?: Record<string, unkno
           scenario={buildLobbyScenario(null, isGuest, t)}
           friends={friends}
           onAction={handleLobbyAction}
+          onLeaveStoredRoom={requestLeaveRoom}
           notice={roomNotice ?? t('room.roomClosedNotice', { defaultValue: 'La sala se cerró correctamente.' })}
         />
       );
@@ -1430,6 +1575,7 @@ function mapFriendNotice(translate: (key: string, options?: Record<string, unkno
           scenario={resolvedLobbyScenario}
           friends={friends}
           onAction={handleLobbyAction}
+          onLeaveStoredRoom={requestLeaveRoom}
           notice={roomNotice ?? t('lobby.errors.noActiveRoomFallback')}
         />
       );
@@ -1442,6 +1588,7 @@ function mapFriendNotice(translate: (key: string, options?: Record<string, unkno
           scenario={resolvedLobbyScenario}
           friends={friends}
           onAction={handleLobbyAction}
+          onLeaveStoredRoom={requestLeaveRoom}
           notice={roomNotice}
         />
       );
@@ -1524,10 +1671,12 @@ function mapFriendNotice(translate: (key: string, options?: Record<string, unkno
     if (resolvedScreen === 'room' && activeRoom) {
       const selectedGameIdsForRoom = getRoomSelectedGameIds(activeRoom);
       const selectedGamesForRoom = getGamesByIds(selectedGameIdsForRoom);
-      const selectedGameId = selectedGameIdsForRoom[0] ?? 'impostor';
-      const selectedGameConfig = gameRegistry[selectedGameId];
+      const selectedGameId = selectedGameIdsForRoom[0] ?? null;
+      const selectedGameConfig = selectedGameId ? gameRegistry[selectedGameId] : null;
       const canStartGame =
-        selectedGameConfig.startHandler === 'troll'
+        !selectedGameConfig
+          ? false
+          : selectedGameConfig.startHandler === 'troll'
           ? canStartTrollRound(activeRoom)
           : selectedGameConfig.startHandler === 'whose-top'
           ? canStartWhoseTopRound(activeRoom)
@@ -1552,12 +1701,16 @@ function mapFriendNotice(translate: (key: string, options?: Record<string, unkno
           roomStatus={activeRoom.room.status}
           members={activeRoom.members}
           selectedGames={selectedGamesForRoom}
+          scores={activeRoom.tournament.scores}
+          completedGameIds={activeRoom.tournament.completedGameIds}
           settings={roomSettings}
           canManageRoom={activeRoom.isHost}
           canStartGame={canStartGame}
           startDisabledReason={
             canStartGame
               ? null
+              : !selectedGameConfig
+                ? t('chooseGames.selectAtLeastOne')
               : selectedGameConfig.startHandler === 'none'
                 ? t('room.gameUnavailable')
                 : selectedGameId === 'trivia'
@@ -1577,15 +1730,17 @@ function mapFriendNotice(translate: (key: string, options?: Record<string, unkno
                 : t('room.minimumPlayersRequired')
           }
           isBusy={roomBusy}
-          notice={roomNotice ?? syncNotice}
+          notice={roomNotice ?? idleWarning ?? mapRoomNotice(t, syncNotice) ?? syncNotice}
           syncState={syncState}
           onShareCode={() => {
             void shareRoomCode();
           }}
           onChooseGames={() => {
+            touchRoomActivity();
             setIsGamesCatalogOpen(true);
           }}
           onOpenSettings={() => {
+            touchRoomActivity();
             setDraftRoomSettings(roomSettings);
             setIsGameSettingsOpen(true);
           }}
@@ -1595,6 +1750,7 @@ function mapFriendNotice(translate: (key: string, options?: Record<string, unkno
               return;
             }
 
+            touchRoomActivity();
             runStartSelectedRound();
           }}
           onRemoveMember={(memberUserId) => {
@@ -1636,6 +1792,7 @@ function mapFriendNotice(translate: (key: string, options?: Record<string, unkno
               }
 
               setRoomNotice(null);
+              touchRoomActivity();
               saveGames();
             });
           }}
@@ -1649,7 +1806,23 @@ function mapFriendNotice(translate: (key: string, options?: Record<string, unkno
           settings={roomSettings}
           selectedGameIds={getRoomSelectedGameIds(activeRoom)}
           onChangeSettings={updateRoomSettings}
-          onSave={saveRoomSettings}
+          onSave={() => {
+            if (!activeRoom) {
+              saveRoomSettings();
+              return;
+            }
+
+            void saveRoomModeSettings(roomSettings).then((result) => {
+              if (result.error) {
+                setRoomNotice(mapRoomNotice(t, result.error));
+                return;
+              }
+
+              setRoomNotice(null);
+              touchRoomActivity();
+              saveRoomSettings();
+            });
+          }}
         />
       );
     }
@@ -1681,6 +1854,7 @@ function mapFriendNotice(translate: (key: string, options?: Record<string, unkno
                   return;
                 }
 
+                signalAnswerFeedback(result.correct);
                 setRoomNotice(result.correct ? t('guessWho.correct') : t('guessWho.tryAgain'));
               });
             }}
@@ -1713,6 +1887,7 @@ function mapFriendNotice(translate: (key: string, options?: Record<string, unkno
                   return;
                 }
 
+                signalAnswerFeedback(result.correct);
                 setRoomNotice(result.correct ? null : t('facesGestures.tryAgain'));
               });
             }}
@@ -1745,6 +1920,7 @@ function mapFriendNotice(translate: (key: string, options?: Record<string, unkno
                   return;
                 }
 
+                signalAnswerFeedback(result.correct);
                 setRoomNotice(result.correct ? t('trivia.correct') : t('trivia.wrong'));
               });
             }}
@@ -1792,6 +1968,7 @@ function mapFriendNotice(translate: (key: string, options?: Record<string, unkno
                   return;
                 }
 
+                signalAnswerFeedback(result.correct);
                 setRoomNotice(result.correct ? t('whoSaid.correct') : t('whoSaid.guessed'));
               });
             }}
@@ -1839,6 +2016,7 @@ function mapFriendNotice(translate: (key: string, options?: Record<string, unkno
                   return;
                 }
 
+                signalAnswerFeedback(result.correct);
                 setRoomNotice(result.correct ? t('whoseTop.correct') : t('whoseTop.guessed'));
               });
             }}
@@ -1886,6 +2064,7 @@ function mapFriendNotice(translate: (key: string, options?: Record<string, unkno
                   return;
                 }
 
+                signalAnswerFeedback(result.correct);
                 setRoomNotice(result.correct ? t('majority.correct') : t('majority.ready'));
               });
             }}
@@ -1917,6 +2096,8 @@ function mapFriendNotice(translate: (key: string, options?: Record<string, unkno
             isBusy={roomBusy}
             notice={roomNotice}
             onCastVote={(targetUserId) => {
+              haptic('medium');
+              void playSound('vote');
               void castTrollVote(targetUserId).then((result) => {
                 if (result.error) {
                   setRoomNotice(mapRoomNotice(t, result.error));
@@ -1955,6 +2136,8 @@ function mapFriendNotice(translate: (key: string, options?: Record<string, unkno
           isBusy={roomBusy}
           notice={roomNotice}
           onCastVote={(targetUserId) => {
+            haptic('medium');
+            void playSound('vote');
             void castImpostorVote(targetUserId).then((result) => {
               if (result.error) {
                 setRoomNotice(mapRoomNotice(t, result.error));
@@ -2002,6 +2185,30 @@ function mapFriendNotice(translate: (key: string, options?: Record<string, unkno
             });
           }}
           onRevealResults={revealResults}
+        />
+      );
+    }
+
+    if (resolvedScreen === 'tournamentEnd') {
+      return (
+        <TournamentEndScreen
+          members={activeRoom?.members}
+          scores={activeRoom?.tournament.scores}
+          canManageRoom={activeRoom?.isHost ?? false}
+          onRestartTournament={() => {
+            if (!activeRoom?.isHost) {
+              setRoomNotice(t('room.hostOnlyContinue'));
+              return;
+            }
+
+            replayTournament();
+          }}
+          onBackToRoom={() => {
+            continueRoom();
+          }}
+          onCloseRoom={() => {
+            requestLeaveRoom();
+          }}
         />
       );
     }
@@ -2097,6 +2304,7 @@ function mapFriendNotice(translate: (key: string, options?: Record<string, unkno
     if (activeTab === 'settings') {
       return (
         <GamesCatalogScreen
+          readOnly
           selectedGameIds={selectedGameIds}
           onToggleGame={selectCatalogGame}
         />
@@ -2209,6 +2417,7 @@ function mapFriendNotice(translate: (key: string, options?: Record<string, unkno
     return (
       <GamesCatalogScreen
         embedded
+        readOnly={!activeRoom}
         selectedGameIds={getRoomSelectedGameIds(activeRoom)}
         onToggleGame={selectCatalogGame}
       />
@@ -2225,8 +2434,11 @@ function mapFriendNotice(translate: (key: string, options?: Record<string, unkno
     const expelledWasImpostor = expelledPlayer ? round.impostorIds.includes(expelledPlayer.userId) : false;
     const remainingImpostorIds = round.impostorIds.filter((playerId) => !round.eliminatedUserIds.includes(playerId));
     const roomGameIds = getRoomSelectedGameIds(activeRoom);
-    const isTournament = roomGameIds.length > 1;
-    const hasNextTournamentGame = roomGameIds.indexOf(round.gameId) >= 0 && roomGameIds.indexOf(round.gameId) < roomGameIds.length - 1;
+    const isTournament = activeRoom.room.mode === 'single' || roomGameIds.length > 1;
+    const hasNextTournamentGame =
+      activeRoom.room.mode === 'single'
+        ? getRoundSequenceNumber(round) < activeRoom.room.single_game_round_count
+        : roomGameIds.indexOf(round.gameId) >= 0 && roomGameIds.indexOf(round.gameId) < roomGameIds.length - 1;
     const resultHint =
       round.outcome === 'impostors_balanced'
         ? t('gameplay.balanceWin', { count: remainingImpostorIds.length })
@@ -2318,12 +2530,15 @@ function mapFriendNotice(translate: (key: string, options?: Record<string, unkno
 
     const roomGameIds = getRoomSelectedGameIds(activeRoom);
 
-    if (roomGameIds.length <= 1) {
+    if (activeRoom.room.mode !== 'single' && roomGameIds.length <= 1) {
       return null;
     }
 
     const currentIndex = roomGameIds.indexOf(activeRoom.round.gameId);
-    const hasNextGame = currentIndex >= 0 && currentIndex < roomGameIds.length - 1;
+    const hasNextGame =
+      activeRoom.room.mode === 'single'
+        ? getRoundSequenceNumber(activeRoom.round) < activeRoom.room.single_game_round_count
+        : currentIndex >= 0 && currentIndex < roomGameIds.length - 1;
 
     return (
       <Modal visible transparent animationType="fade" onRequestClose={() => {}}>
@@ -2373,10 +2588,9 @@ function mapFriendNotice(translate: (key: string, options?: Record<string, unkno
       <View style={[styles.topBar, isLobbyShell && styles.topBarLobby]}>
         {!isLobbyShell ? (
           <View style={styles.headerIdentity}>
-            <Text style={styles.headerGreeting}>
-              {t('lobby.headerGreeting', {
-                name: displayName ?? username ?? email?.split('@')[0] ?? (isGuest ? t('common.guest') : t('common.player'))
-              })}
+            <Avatar avatarId={profile?.avatar_id ?? DEFAULT_AVATAR_ID} frameId={profile?.frame_id ?? 'plain'} size={isCompactScreen ? 38 : 46} />
+            <Text style={styles.headerName} numberOfLines={1}>
+              {displayName ?? username ?? email?.split('@')[0] ?? (isGuest ? t('common.guest') : t('common.player'))}
             </Text>
             {isGuest ? <Text style={styles.headerStatus}>{t('lobby.guestHeaderStatus')}</Text> : null}
           </View>
@@ -2596,7 +2810,7 @@ function mapFriendNotice(translate: (key: string, options?: Record<string, unkno
             <Pressable style={StyleSheet.absoluteFillObject} onPress={() => setIsGamesCatalogOpen(false)} />
             <View style={styles.gamesCatalogPanel}>
               <View style={styles.panelHeader}>
-                <Text style={styles.panelTitle}>{t('gamesCatalog.title')}</Text>
+                <Text style={styles.panelTitle}>{t(activeRoom ? 'gamesCatalog.title' : 'gamesCatalog.catalogTitle')}</Text>
                 <Pressable onPress={() => setIsGamesCatalogOpen(false)} style={styles.panelClose}>
                   <Text style={styles.panelCloseLabel}>{t('auth.modalClose')}</Text>
                 </Pressable>
@@ -2606,7 +2820,7 @@ function mapFriendNotice(translate: (key: string, options?: Record<string, unkno
                 contentContainerStyle={styles.panelBodyScrollContent}
                 showsVerticalScrollIndicator={false}
               >
-                <Text style={styles.catalogCopy}>{t('gamesCatalog.subtitle')}</Text>
+                {activeRoom ? <Text style={styles.catalogCopy}>{t('gamesCatalog.subtitle')}</Text> : null}
                 {renderGamesCatalogPanel()}
               </ScrollView>
             </View>
@@ -2626,6 +2840,13 @@ function mapFriendNotice(translate: (key: string, options?: Record<string, unkno
         }}
         onSave={() => {
           updateRoomSettings(draftRoomSettings);
+          if (activeRoom) {
+            void saveRoomModeSettings(draftRoomSettings).then((result) => {
+              if (result.error) {
+                setRoomNotice(mapRoomNotice(t, result.error));
+              }
+            });
+          }
           setIsGameSettingsOpen(false);
         }}
       />
@@ -2659,10 +2880,21 @@ function mapFriendNotice(translate: (key: string, options?: Record<string, unkno
   );
 }
 
+const DECORATION_LAYOUT = [
+  { id: 'devil', top: -20, left: -30, size: 120, rotate: '-8deg' },
+  { id: 'joker', top: 80, right: -40, size: 110, rotate: '12deg' },
+  { id: 'ghost', bottom: 140, left: -40, size: 130, rotate: '-6deg' },
+  { id: 'vampire', bottom: -20, right: -20, size: 140, rotate: '9deg' },
+  { id: 'mask', top: '40%', left: -60, size: 100, rotate: '18deg' }
+] as const;
+
 function AmbientBackground({ motionEnabled }: { motionEnabled: boolean }) {
   const theme = useTheme();
+  const { width } = useWindowDimensions();
+  const visibleDecorations = width < 540 ? DECORATION_LAYOUT.slice(2, 4) : DECORATION_LAYOUT;
   const drift1 = useRef(new Animated.Value(0)).current;
   const drift2 = useRef(new Animated.Value(0)).current;
+  const decorationBobs = useRef(DECORATION_LAYOUT.map(() => new Animated.Value(0))).current;
 
   useEffect(() => {
     if (!motionEnabled) {
@@ -2670,6 +2902,10 @@ function AmbientBackground({ motionEnabled }: { motionEnabled: boolean }) {
       drift2.stopAnimation();
       drift1.setValue(0);
       drift2.setValue(0);
+      decorationBobs.forEach((value) => {
+        value.stopAnimation();
+        value.setValue(0);
+      });
       return;
     }
 
@@ -2693,14 +2929,17 @@ function AmbientBackground({ motionEnabled }: { motionEnabled: boolean }) {
 
     const topLoop = makeLoop(drift1, 18000);
     const bottomLoop = makeLoop(drift2, 22000);
+    const decorationLoops = decorationBobs.map((value, index) => makeLoop(value, 5000 + index * 450));
     topLoop.start();
     bottomLoop.start();
+    decorationLoops.forEach((loop) => loop.start());
 
     return () => {
       topLoop.stop();
       bottomLoop.stop();
+      decorationLoops.forEach((loop) => loop.stop());
     };
-  }, [drift1, drift2, motionEnabled]);
+  }, [decorationBobs, drift1, drift2, motionEnabled]);
 
   const translateTop = drift1.interpolate({ inputRange: [0, 1], outputRange: [-30, 30] });
   const translateBottom = drift2.interpolate({ inputRange: [0, 1], outputRange: [20, -20] });
@@ -2737,6 +2976,33 @@ function AmbientBackground({ motionEnabled }: { motionEnabled: boolean }) {
         ]}
       />
       <View style={[ambientStyles.paperFiber, { borderColor: theme.colors.border }]} />
+      {visibleDecorations.map((decoration) => {
+        const source = AVATAR_CATALOG.find((avatar) => avatar.id === decoration.id)?.source ?? AVATAR_CATALOG[0].source;
+        const sourceIndex = DECORATION_LAYOUT.findIndex((item) => item.id === decoration.id);
+        const bobValue = decorationBobs[sourceIndex] ?? decorationBobs[0];
+        const bob = bobValue.interpolate({ inputRange: [0, 1], outputRange: [0, 8] });
+
+        return (
+          <Animated.Image
+            key={decoration.id}
+            source={source}
+            resizeMode="cover"
+            style={[
+              ambientStyles.decoration,
+              {
+                top: 'top' in decoration ? decoration.top : undefined,
+                right: 'right' in decoration ? decoration.right : undefined,
+                bottom: 'bottom' in decoration ? decoration.bottom : undefined,
+                left: 'left' in decoration ? decoration.left : undefined,
+                width: decoration.size,
+                height: decoration.size,
+                borderRadius: decoration.size / 2,
+                transform: [{ rotate: decoration.rotate }, { translateY: motionEnabled ? bob : 0 }]
+              }
+            ]}
+          />
+        );
+      })}
     </View>
   );
 }
@@ -2803,6 +3069,10 @@ const ambientStyles = StyleSheet.create({
     height: 240,
     borderRadius: 120,
     opacity: 0.06
+  },
+  decoration: {
+    position: 'absolute',
+    opacity: 0.18
   }
 });
 
@@ -2935,15 +3205,17 @@ function createStyles(theme: ReturnType<typeof useTheme>, isCompactScreen: boole
     fontSize: typography.body
   },
   headerIdentity: {
+    flexDirection: 'row',
+    alignItems: 'center',
     flexGrow: isCompactScreen ? 0 : 1,
     flexShrink: 1,
     flexBasis: isCompactScreen ? '100%' : 'auto',
     width: isCompactScreen ? '100%' : undefined,
-    gap: spacing.xs,
+    gap: spacing.sm,
     minWidth: 0,
     maxWidth: isCompactScreen ? '100%' : '58%'
   },
-  headerGreeting: {
+  headerName: {
     color: theme.colors.textPrimary,
     fontSize: isNarrowScreen ? typography.section : typography.title,
     fontWeight: '800',

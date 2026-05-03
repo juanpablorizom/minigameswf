@@ -1,8 +1,11 @@
+import type { ImageSourcePropType } from 'react-native';
+
+export const DEFAULT_AVATAR_ID = 'devil';
+
 export type AvatarCatalogItem = {
   id: string;
-  label: string;
-  kind: 'default' | 'emoji';
-  emoji?: string;
+  labelKey: string;
+  source: ImageSourcePropType;
 };
 
 export type FrameCatalogItem = {
@@ -14,13 +17,8 @@ export type FrameCatalogItem = {
 };
 
 export const AVATAR_CATALOG: AvatarCatalogItem[] = [
-  { id: 'default', label: 'Silueta', kind: 'default' },
-  { id: 'devil', label: 'Diablito', kind: 'emoji', emoji: '😈' },
-  { id: 'joker', label: 'Joker', kind: 'emoji', emoji: '🃏' },
-  { id: 'masked', label: 'Enmascarado', kind: 'emoji', emoji: '🎭' },
-  { id: 'innocent', label: 'Inocente', kind: 'emoji', emoji: '🙂' },
-  { id: 'star', label: 'Estrella', kind: 'emoji', emoji: '⭐' },
-  { id: 'spark', label: 'Chispa', kind: 'emoji', emoji: '⚡' }
+  { id: 'devil', labelKey: 'avatars.devil', source: require('../ui/assets/avatars/devil.png') },
+  { id: 'joker', labelKey: 'avatars.joker', source: require('../ui/assets/avatars/joker.png') }
 ];
 
 export const FRAME_CATALOG: FrameCatalogItem[] = [
@@ -32,7 +30,7 @@ export const FRAME_CATALOG: FrameCatalogItem[] = [
 ];
 
 export function getAvatarById(avatarId: string | null | undefined) {
-  return AVATAR_CATALOG.find((avatar) => avatar.id === avatarId) ?? AVATAR_CATALOG[0];
+  return AVATAR_CATALOG.find((avatar) => avatar.id === avatarId) ?? AVATAR_CATALOG.find((avatar) => avatar.id === DEFAULT_AVATAR_ID) ?? AVATAR_CATALOG[0];
 }
 
 export function getFrameById(frameId: string | null | undefined) {

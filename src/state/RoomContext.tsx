@@ -9,6 +9,8 @@ import {
   removeRoomMember,
   leaveCurrentRoom,
   closeRoomForHost,
+  isRoomIdleExpired,
+  pingRoomActivity as pingRoomActivityRequest,
   startImpostorRound as startImpostorRoundRequest,
   startGuessWhoRound as startGuessWhoRoundRequest,
   submitGuessWhoAnswer as submitGuessWhoAnswerRequest,
@@ -44,6 +46,7 @@ import {
   updateRoomMemberPresence,
   updateRoomSelectedGame,
   updateRoomSelectedGames,
+  updateRoomModeSettings,
   updateRoomStatus,
   type RoomDetails,
   type RoomRealtimeState
@@ -55,7 +58,8 @@ import type {
   MajorityCategoryId,
   TriviaTopicId,
   WhoseTopCategoryId,
-  WhoSaidTopicId
+  WhoSaidTopicId,
+  RoomSettings
 } from '../navigation/types';
 import { useAuth } from './AuthContext';
 
@@ -71,6 +75,7 @@ type RoomContextValue = {
   syncState: RoomRealtimeState;
   syncNotice: string | null;
   refreshActiveRoom: () => Promise<void>;
+  pingRoomActivity: () => Promise<RoomActionResult>;
   createRoom: (selectedGameIds: GameId[]) => Promise<RoomActionResult>;
   joinRoomByCode: (code: string) => Promise<RoomActionResult>;
   removeMember: (memberUserId: string) => Promise<RoomActionResult>;
@@ -129,6 +134,7 @@ type RoomContextValue = {
   returnRoomToLobby: () => Promise<RoomActionResult>;
   saveSelectedGame: (selectedGameId: string | null) => Promise<RoomActionResult>;
   saveSelectedGames: (selectedGameIds: GameId[]) => Promise<RoomActionResult>;
+  saveRoomModeSettings: (settings: RoomSettings) => Promise<RoomActionResult>;
   markRoomActive: () => Promise<RoomActionResult>;
   setRoomScreenActive: (isActive: boolean) => void;
 };
@@ -204,6 +210,14 @@ export function RoomProvider({ children }: PropsWithChildren) {
     }
 
     const roomDetails = await getRoomDetails(activeRoomId, user.id);
+
+    if (roomDetails?.room.last_active_at && isRoomIdleExpired(roomDetails.room.last_active_at)) {
+      setActiveRoom(null);
+      setSyncState('idle');
+      setSyncNotice('ROOM_EXPIRED');
+      return;
+    }
+
     setActiveRoom(roomDetails);
   }, [user]);
 
@@ -349,6 +363,19 @@ export function RoomProvider({ children }: PropsWithChildren) {
       syncNotice,
       refreshActiveRoom: async () => {
         await refreshResolvedActiveRoom();
+      },
+      pingRoomActivity: async () => {
+        if (!user || !activeRoom) {
+          return { error: 'AUTH_REQUIRED' };
+        }
+
+        try {
+          await pingRoomActivityRequest(activeRoom.room.id);
+          await refreshResolvedActiveRoom();
+          return { roomId: activeRoom.room.id };
+        } catch (error) {
+          return { error: mapRoomError(error) };
+        }
       },
       createRoom: async (selectedGameIds) => {
         if (!user) {
@@ -1024,6 +1051,24 @@ export function RoomProvider({ children }: PropsWithChildren) {
 
         try {
           await updateRoomSelectedGames(activeRoom.room.id, user.id, selectedGameIds);
+          const roomDetails = await getRoomDetails(activeRoom.room.id, user.id);
+          setActiveRoom(roomDetails);
+          return { roomId: activeRoom.room.id };
+        } catch (error) {
+          return { error: mapRoomError(error) };
+        } finally {
+          setIsBusy(false);
+        }
+      },
+      saveRoomModeSettings: async (settings) => {
+        if (!user || !activeRoom) {
+          return { error: 'AUTH_REQUIRED' };
+        }
+
+        setIsBusy(true);
+
+        try {
+          await updateRoomModeSettings(activeRoom.room.id, user.id, settings.mode, settings.singleGameRoundCount);
           const roomDetails = await getRoomDetails(activeRoom.room.id, user.id);
           setActiveRoom(roomDetails);
           return { roomId: activeRoom.room.id };

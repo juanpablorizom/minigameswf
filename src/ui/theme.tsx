@@ -43,6 +43,7 @@ type ThemeOption = {
   id: AppThemePreference;
   emphasis: 'light' | 'dark' | 'accent';
   preview: [string, string, string];
+  paletteSwatch: [string, string, string, string];
 };
 
 const neutralLightTheme: AppTheme = {
@@ -280,12 +281,12 @@ export const appThemes: Record<AppThemePreference, AppTheme> = {
 };
 
 export const themeOptions: ThemeOption[] = [
-  { id: 'neutral-light', emphasis: 'light', preview: ['#F4F0E8', '#F1EBDD', '#C4622A'] },
-  { id: 'green', emphasis: 'accent', preview: ['#0D1411', '#17241D', '#CBE8D6'] },
-  { id: 'gold', emphasis: 'accent', preview: ['#12100C', '#201B15', '#E7D0A2'] },
-  { id: 'light-blue', emphasis: 'light', preview: ['#E9EFF2', '#F8FBFC', '#23455B'] },
-  { id: 'dark-green', emphasis: 'dark', preview: ['#0B110A', '#141D15', '#CFE0B4'] },
-  { id: 'legacy-dark', emphasis: 'accent', preview: ['#171311', '#2A221E', '#D6B989'] }
+  { id: 'neutral-light', emphasis: 'light', preview: ['#F4F0E8', '#F1EBDD', '#C4622A'], paletteSwatch: ['#F4F0E8', '#E8E1D4', '#C4622A', '#1A1714'] },
+  { id: 'green', emphasis: 'accent', preview: ['#0D1411', '#17241D', '#CBE8D6'], paletteSwatch: ['#0D1411', '#17241D', '#CBE8D6', '#7BC495'] },
+  { id: 'gold', emphasis: 'accent', preview: ['#12100C', '#201B15', '#E7D0A2'], paletteSwatch: ['#12100C', '#292219', '#E7D0A2', '#D5A04E'] },
+  { id: 'light-blue', emphasis: 'light', preview: ['#E9EFF2', '#F8FBFC', '#23455B'], paletteSwatch: ['#E9EFF2', '#F8FBFC', '#23455B', '#3E7C68'] },
+  { id: 'dark-green', emphasis: 'dark', preview: ['#0B110A', '#141D15', '#CFE0B4'], paletteSwatch: ['#0B110A', '#1A261C', '#CFE0B4', '#97C27B'] },
+  { id: 'legacy-dark', emphasis: 'accent', preview: ['#171311', '#2A221E', '#D6B989'], paletteSwatch: ['#171311', '#322924', '#D6B989', '#92A784'] }
 ];
 
 export const shadows = {
