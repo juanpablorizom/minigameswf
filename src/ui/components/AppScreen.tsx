@@ -21,10 +21,7 @@ export function AppScreen({ children, title, subtitle, footer }: AppScreenProps)
       <ScrollView
         contentContainerStyle={[
           styles.content,
-          {
-            maxWidth: responsive.isDesktop ? layout.compactWidth : '100%',
-            paddingHorizontal: responsive.screenPaddingX
-          }
+          { paddingHorizontal: responsive.screenPaddingX }
         ]}
         showsVerticalScrollIndicator={false}
       >
@@ -51,7 +48,6 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
       width: '100%',
       maxWidth: layout.compactWidth,
       alignSelf: 'center',
-      paddingHorizontal: layout.screenPaddingX,
       paddingTop: layout.screenPaddingTop,
       paddingBottom: layout.screenPaddingBottom,
       gap: layout.sectionGap

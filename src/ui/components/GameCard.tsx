@@ -1,7 +1,7 @@
 import type { ImageSourcePropType } from 'react-native';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { controls, layout, radius, spacing } from '../system/layout';
+import { controls, layout, radius, spacing, useResponsive } from '../system/layout';
 import { textStyles } from '../system/typography';
 import { useTheme } from '../theme';
 import { MinimalIcon } from './MinimalIcon';
@@ -28,7 +28,8 @@ export function GameCard({
   onHelpPress
 }: GameCardProps) {
   const theme = useTheme();
-  const styles = createStyles(theme);
+  const { isPhone } = useResponsive();
+  const styles = createStyles(theme, isPhone);
 
   return (
     <Pressable
@@ -81,11 +82,12 @@ export function GameCard({
   );
 }
 
-function createStyles(theme: ReturnType<typeof useTheme>) {
+function createStyles(theme: ReturnType<typeof useTheme>, isPhone: boolean) {
+  const imageHeight = isPhone ? 180 : 220;
   return StyleSheet.create({
     card: {
       width: '100%',
-      minHeight: 320,
+      minHeight: isPhone ? 260 : 320,
       borderRadius: radius.lg,
       borderWidth: 1,
       borderColor: theme.colors.border,
@@ -160,7 +162,7 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
     },
     image: {
       width: '100%',
-      height: 220
+      height: imageHeight
     },
     title: {
       color: theme.colors.textPrimary,
@@ -172,7 +174,7 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
     },
     placeholderWrap: {
       width: '100%',
-      height: 220,
+      height: imageHeight,
       borderRadius: radius.md,
       borderWidth: 1,
       borderStyle: 'dashed',

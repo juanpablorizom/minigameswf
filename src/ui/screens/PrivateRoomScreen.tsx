@@ -11,6 +11,7 @@ import { AppScreen } from '../components/AppScreen';
 import { AvatarSilhouette } from '../components/AvatarSilhouette';
 import { Badge } from '../components/Badge';
 import { SurfaceCard } from '../components/SurfaceCard';
+import { useResponsive } from '../system/layout';
 import { spacing, typography, useTheme } from '../theme';
 
 type PrivateRoomScreenProps = {
@@ -60,7 +61,8 @@ export function PrivateRoomScreen({
 }: PrivateRoomScreenProps) {
   const { t } = useTranslation();
   const theme = useTheme();
-  const styles = createStyles(theme);
+  const { isPhone } = useResponsive();
+  const styles = createStyles(theme, isPhone);
   const [copied, setCopied] = useState(false);
   const activeMembers = members.filter((member) => member.isActive);
   const scoreRows = activeMembers
@@ -347,7 +349,7 @@ export function PrivateRoomScreen({
   );
 }
 
-function createStyles(theme: ReturnType<typeof useTheme>) {
+function createStyles(theme: ReturnType<typeof useTheme>, isPhone: boolean) {
   return StyleSheet.create({
   roomTop: {
     flexDirection: 'row',
@@ -414,7 +416,8 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
   },
   qrSection: {
     gap: spacing.md,
-    alignItems: 'center'
+    alignItems: isPhone ? 'center' : 'flex-start',
+    flexDirection: isPhone ? 'column' : 'row'
   },
   qrCard: {
     padding: spacing.md,
@@ -425,7 +428,8 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
   },
   qrMeta: {
     gap: spacing.xs,
-    alignItems: 'center'
+    alignItems: isPhone ? 'center' : 'flex-start',
+    flex: isPhone ? undefined : 1
   },
   qrTitle: {
     color: theme.colors.textPrimary,

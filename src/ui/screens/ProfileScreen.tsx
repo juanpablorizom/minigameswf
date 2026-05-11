@@ -8,7 +8,7 @@ import { AvatarSilhouette } from '../components/AvatarSilhouette';
 import { Badge } from '../components/Badge';
 import { MinimalIcon } from '../components/MinimalIcon';
 import { SurfaceCard } from '../components/SurfaceCard';
-import { controls, layout, radius, spacing } from '../system/layout';
+import { controls, layout, radius, spacing, useResponsive } from '../system/layout';
 import { textStyles, typography } from '../system/typography';
 import { useTheme } from '../theme';
 
@@ -49,7 +49,8 @@ export function ProfileScreen({
 }: ProfileScreenProps) {
   const { t } = useTranslation();
   const theme = useTheme();
-  const styles = createStyles(theme);
+  const { scale } = useResponsive();
+  const styles = createStyles(theme, scale);
   const accountLabel = displayName ?? username ?? email?.split('@')[0] ?? t('common.guest');
 
   return (
@@ -101,7 +102,8 @@ type MenuRowProps = {
 
 function MenuRow({ label, value, onPress }: MenuRowProps) {
   const theme = useTheme();
-  const styles = createStyles(theme);
+  const { scale } = useResponsive();
+  const styles = createStyles(theme, scale);
 
   return (
     <Pressable onPress={onPress} style={({ pressed, hovered }) => [styles.menuRow, hovered && styles.menuRowHover, pressed && styles.menuRowPressed]}>
@@ -124,7 +126,8 @@ type OptionChipProps = {
 
 function OptionChip({ label, active, onPress }: OptionChipProps) {
   const theme = useTheme();
-  const styles = createStyles(theme);
+  const { scale } = useResponsive();
+  const styles = createStyles(theme, scale);
 
   return (
     <Pressable onPress={onPress} style={[styles.optionChip, active && styles.optionChipActive]}>
@@ -133,7 +136,9 @@ function OptionChip({ label, active, onPress }: OptionChipProps) {
   );
 }
 
-function createStyles(theme: ReturnType<typeof useTheme>) {
+function createStyles(theme: ReturnType<typeof useTheme>, scale: number) {
+  const heroSize = Math.round(48 * Math.min(scale, 1));
+  const heroLineHeight = Math.round(54 * Math.min(scale, 1));
   return StyleSheet.create({
     hero: {
       gap: spacing.xs,
@@ -147,7 +152,9 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
     },
     heroName: {
       color: theme.colors.highlight,
-      ...textStyles.hero
+      ...textStyles.hero,
+      fontSize: heroSize,
+      lineHeight: heroLineHeight
     },
     profileHeader: {
       flexDirection: 'row',

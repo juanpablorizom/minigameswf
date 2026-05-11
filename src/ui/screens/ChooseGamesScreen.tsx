@@ -26,6 +26,7 @@ export function ChooseGamesScreen({ selectedGameIds, settings, onToggleGame, onC
   const styles = createStyles(theme);
   const responsive = useResponsive();
   const isWide = !responsive.isPhone;
+  const columnStyle = responsive.isDesktop ? styles.cellDesktop : isWide ? styles.cellWide : styles.cell;
   const roundOptions = [1, 2, 3, 5, 10];
 
   function setMode(mode: RoomSettings['mode']) {
@@ -91,7 +92,7 @@ export function ChooseGamesScreen({ selectedGameIds, settings, onToggleGame, onC
       <View style={styles.gridShell}>
         <View style={[styles.grid, isWide && styles.gridWide]}>
           {featuredGames.map((game) => (
-            <View key={game.id} style={[styles.cell, isWide && styles.cellWide]}>
+            <View key={game.id} style={columnStyle}>
               <GameCard
                 title={t(`gameMeta.names.${game.id}`)}
                 imageSource={gameRegistry[game.id].thumbnail}
@@ -197,6 +198,9 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
     },
     cellWide: {
       width: '48%'
+    },
+    cellDesktop: {
+      width: '31.8%'
     },
     validationCopy: {
       color: theme.colors.error,

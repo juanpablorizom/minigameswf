@@ -9,6 +9,7 @@ import { Badge } from '../components/Badge';
 import { SurfaceCard } from '../components/SurfaceCard';
 import { Toast } from '../components/Toast';
 import { haptic, playSound } from '../../lib/feedback';
+import { useResponsive } from '../system/layout';
 import { radius, spacing, typography, useTheme } from '../theme';
 
 type GameplayScreenProps = {
@@ -47,7 +48,8 @@ export function GameplayScreen({
 }: GameplayScreenProps) {
   const { t } = useTranslation();
   const theme = useTheme();
-  const styles = createStyles(theme);
+  const { isPhone } = useResponsive();
+  const styles = createStyles(theme, isPhone);
   const [isVoteModalVisible, setIsVoteModalVisible] = useState(false);
   const [pendingVoteTargetId, setPendingVoteTargetId] = useState<string | null>(null);
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
@@ -363,7 +365,7 @@ export function GameplayScreen({
   );
 }
 
-function createStyles(theme: ReturnType<typeof useTheme>) {
+function createStyles(theme: ReturnType<typeof useTheme>, isPhone: boolean) {
   return StyleSheet.create({
     headerRow: {
       flexDirection: 'row',
@@ -371,14 +373,15 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
       gap: spacing.md
     },
     revealCard: {
-      minHeight: 360,
+      minHeight: isPhone ? 240 : 320,
       borderRadius: radius.lg,
       borderWidth: 1,
       borderColor: theme.colors.border,
       backgroundColor: theme.colors.backgroundElevated,
       alignItems: 'center',
       justifyContent: 'center',
-      paddingHorizontal: spacing.xl,
+      paddingHorizontal: isPhone ? spacing.lg : spacing.xl,
+      paddingVertical: spacing.lg,
       gap: spacing.md
     },
     revealEyebrow: {
@@ -390,7 +393,7 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
     },
     revealValue: {
       color: theme.colors.textPrimary,
-      fontSize: 52,
+      fontSize: isPhone ? 40 : 52,
       fontWeight: '800',
       textAlign: 'center',
       letterSpacing: -1.2

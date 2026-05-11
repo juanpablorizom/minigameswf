@@ -5,6 +5,7 @@ import Svg, { Path } from 'react-native-svg';
 
 import { AppButton } from '../components/AppButton';
 import { AppScreen } from '../components/AppScreen';
+import { useResponsive } from '../system/layout';
 import { radius, spacing, typography, useTheme } from '../theme';
 
 type WelcomeScreenProps = {
@@ -26,7 +27,8 @@ export function WelcomeScreen({
 }: WelcomeScreenProps) {
   const { t } = useTranslation();
   const theme = useTheme();
-  const styles = createStyles(theme);
+  const { scale } = useResponsive();
+  const styles = createStyles(theme, scale);
   const [guestDisplayName, setGuestDisplayName] = useState('');
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
@@ -264,7 +266,9 @@ const iconStyles = StyleSheet.create({
   }
 });
 
-function createStyles(theme: ReturnType<typeof useTheme>) {
+function createStyles(theme: ReturnType<typeof useTheme>, scale: number) {
+  const heroSize = Math.round(48 * Math.min(scale, 1));
+  const heroLineHeight = Math.round(56 * Math.min(scale, 1));
   return StyleSheet.create({
     shell: {
       width: '100%',
@@ -303,9 +307,9 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
     },
     title: {
       color: theme.colors.textPrimary,
-      fontSize: typography.hero,
+      fontSize: heroSize,
       fontWeight: '800',
-      lineHeight: 56,
+      lineHeight: heroLineHeight,
       letterSpacing: -1.8
     },
     subtitle: {

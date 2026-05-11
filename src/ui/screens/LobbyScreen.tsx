@@ -9,7 +9,7 @@ import { AppScreen } from '../components/AppScreen';
 import { AvatarSilhouette } from '../components/AvatarSilhouette';
 import { MinimalIcon } from '../components/MinimalIcon';
 import { SurfaceCard } from '../components/SurfaceCard';
-import { layout, radius, spacing } from '../system/layout';
+import { layout, radius, spacing, useResponsive } from '../system/layout';
 import { textStyles, typography } from '../system/typography';
 import { useTheme } from '../theme';
 
@@ -25,7 +25,8 @@ type LobbyScreenProps = {
 export function LobbyScreen({ displayName, scenario, friends, onAction, onLeaveStoredRoom, notice = null }: LobbyScreenProps) {
   const { t } = useTranslation();
   const theme = useTheme();
-  const styles = createStyles(theme);
+  const { scale } = useResponsive();
+  const styles = createStyles(theme, scale);
   const actionLabels: Record<LobbyActionId, string> = {
     createRoom: t('lobby.createRoom'),
     joinByCode: t('lobby.joinByCode'),
@@ -142,7 +143,9 @@ export function LobbyScreen({ displayName, scenario, friends, onAction, onLeaveS
   );
 }
 
-function createStyles(theme: ReturnType<typeof useTheme>) {
+function createStyles(theme: ReturnType<typeof useTheme>, scale: number) {
+  const heroSize = Math.round(48 * Math.min(scale, 1));
+  const heroLineHeight = Math.round(54 * Math.min(scale, 1));
   return StyleSheet.create({
     hero: {
       gap: spacing.xs,
@@ -156,7 +159,9 @@ function createStyles(theme: ReturnType<typeof useTheme>) {
     },
     name: {
       color: theme.colors.highlight,
-      ...textStyles.hero
+      ...textStyles.hero,
+      fontSize: heroSize,
+      lineHeight: heroLineHeight
     },
     createHeader: {
       minHeight: 92,
